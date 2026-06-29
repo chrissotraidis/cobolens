@@ -550,6 +550,7 @@ pre {
 }
 
 .summary-card,
+.answer-card,
 .relationship-card {
   display: grid;
   gap: 12px;
@@ -596,8 +597,43 @@ pre {
 }
 
 .summary-output p,
+.answer-card p,
 .relationship-card p {
   margin: 0;
+}
+
+.answer-card {
+  padding-top: 12px;
+  border-top: 1px solid #20262e;
+  color: #b7c2cd;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.answer-question {
+  color: #7d8996;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.citation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.citation-list button {
+  max-width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: #b8f0dc;
+  border-color: rgba(90, 167, 161, 0.36);
+  background: rgba(90, 167, 161, 0.1);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .summary-meta {

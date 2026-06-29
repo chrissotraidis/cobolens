@@ -20,7 +20,9 @@ import {
   isCloudProvider,
   settingsForProvider,
 } from "./model/config";
+import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
+import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import "./App.css";
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -29,6 +31,17 @@ type SummaryState = {
   status: SummaryStatus;
   summary?: UnitSummary;
   error?: string;
+};
+type ChatStatus = "idle" | "running" | "ready" | "error";
+type ChatAnswer = {
+  question: string;
+  text: string;
+  citations: Citation[];
+};
+type SourceFocus = {
+  file: string;
+  line: number;
+  nodeId?: string;
 };
 
 declare global {
@@ -55,6 +68,11 @@ function App() {
   const [settingsMessage, setSettingsMessage] = useState("");
   const [summaries, setSummaries] = useState<Record<string, SummaryState>>({});
   const [bulkSummaryStatus, setBulkSummaryStatus] = useState("");
+  const [sourceFocus, setSourceFocus] = useState<SourceFocus | null>(null);
+  const [chatQuestion, setChatQuestion] = useState("");
+  const [chatStatus, setChatStatus] = useState<ChatStatus>("idle");
+  const [chatAnswer, setChatAnswer] = useState<ChatAnswer | null>(null);
+  const [chatError, setChatError] = useState("");
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -117,17 +135,17 @@ function App() {
 
   useEffect(() => {
     const node = selectedNode;
-    if (!root || !node?.file) {
+    const target = sourceFocus ?? (node?.file ? { file: node.file, line: node.lines?.[0] ?? 1, nodeId: node.id } : null);
+    if (!root || !target) {
       setSnippet(null);
       return;
     }
 
     let cancelled = false;
-    const line = node.lines?.[0] ?? 1;
     invoke<SourceSnippet>("read_source_snippet", {
       root,
-      file: node.file,
-      line,
+      file: target.file,
+      line: target.line,
     })
       .then((result) => {
         if (!cancelled) setSnippet(result);
@@ -139,7 +157,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [root, selectedNode]);
+  }, [root, selectedNode, sourceFocus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +193,7 @@ function App() {
     setGraph(null);
     setSnippet(null);
     setSelectedEdge(null);
+    setSourceFocus(null);
     setError("");
     setStatus("running");
 
@@ -200,6 +219,11 @@ function App() {
     setHistory(initialFocus ? [initialFocus] : []);
     setSummaries({});
     setBulkSummaryStatus("");
+    setChatAnswer(null);
+    setChatQuestion("");
+    setChatStatus("idle");
+    setChatError("");
+    setSourceFocus(null);
     setStatus("ready");
   }
 
@@ -208,12 +232,29 @@ function App() {
     setFocusNodeId(nodeId);
     setSelectedNodeId(nodeId);
     setSelectedEdge(null);
+    setSourceFocus(null);
     setExpandedNodeIds(new Set());
     setHistory((current) => [...current.filter((id) => id !== nodeId), nodeId].slice(-8));
   }
 
   function selectNode(nodeId: string) {
     focusOnNode(nodeId);
+  }
+
+  function selectEdge(edge: GraphEdge | null) {
+    if (!edge) {
+      setSelectedEdge(null);
+      return;
+    }
+    setSelectedEdge(edge);
+    if (edge.site && graph) {
+      jumpToCitation({
+        file: edge.site.file,
+        line: edge.site.line,
+        label: edgeLabel(edge, graph),
+        nodeId: edge.from,
+      }, true);
+    }
   }
 
   function toggleExpandFocus() {
@@ -308,7 +349,7 @@ function App() {
 
   async function sourceExcerptForNode(node: GraphNode) {
     if (!root || !node.file) {
-      throw new Error("Open a codebase from the desktop app before generating summaries.");
+      throw new Error("Open a codebase from the desktop app before using model features.");
     }
     const startLine = node.lines?.[0] ?? 1;
     const endLine = node.lines?.[1] ?? startLine;
@@ -319,6 +360,55 @@ function App() {
       endLine,
       maxLines: 220,
     });
+  }
+
+  async function askQuestion() {
+    if (!graph || !chatQuestion.trim()) return;
+    const question = chatQuestion.trim();
+    setChatStatus("running");
+    setChatError("");
+
+    try {
+      const context = await retrieveQuestionContext({
+        graph,
+        question,
+        readExcerpt: sourceExcerptForNode,
+      });
+      const apiKey = isCloudProvider(modelSettings.provider)
+        ? await invoke<string>("read_provider_key", { provider: modelSettings.provider })
+        : undefined;
+      const answer = await generateGroundedAnswer({
+        question,
+        context,
+        settings: modelSettings,
+        apiKey,
+      });
+      setChatAnswer({ question, text: answer.text, citations: context.citations });
+      setChatStatus("ready");
+      if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : String(err));
+      setChatStatus("error");
+    }
+  }
+
+  function jumpToCitation(citation: Citation, keepEdge = false) {
+    const citedNode =
+      (citation.nodeId ? nodeById.get(citation.nodeId) : undefined) ??
+      graph?.nodes.find(
+        (node) =>
+          node.file === citation.file &&
+          (node.lines?.[0] ?? 1) <= citation.line &&
+          (node.lines?.[1] ?? Number.MAX_SAFE_INTEGER) >= citation.line,
+      );
+
+    if (citedNode) {
+      setFocusNodeId(citedNode.id);
+      setSelectedNodeId(citedNode.id);
+      setHistory((current) => [...current.filter((id) => id !== citedNode.id), citedNode.id].slice(-8));
+    }
+    if (!keepEdge) setSelectedEdge(null);
+    setSourceFocus({ file: citation.file, line: citation.line, nodeId: citedNode?.id });
   }
 
   window.__cobolensLoadGraph = (nextGraph, nextRoot = "") => {
@@ -435,7 +525,7 @@ function App() {
               expandedNodeIds={expandedNodeIds}
               selectedEdge={selectedEdge}
               onSelectNode={selectNode}
-              onSelectEdge={setSelectedEdge}
+              onSelectEdge={selectEdge}
             />
           </div>
         </section>
@@ -464,12 +554,27 @@ function App() {
                 onGenerateSelected={generateSelectedSummary}
                 onGenerateAll={generateAllProgramSummaries}
               />
+              <ChatAnswerPanel
+                status={chatStatus}
+                answer={chatAnswer}
+                error={chatError}
+                onOpenCitation={jumpToCitation}
+              />
               <RelationshipDetails status={status} error={error} selectedEdge={selectedEdge} graph={graph} />
             </div>
             <div className="chat-input" aria-label="Ask a question">
-              <input type="text" aria-label="Ask about the codebase" disabled />
-              <button type="button" disabled>
-                Ask
+              <input
+                type="text"
+                aria-label="Ask about the codebase"
+                value={chatQuestion}
+                onChange={(event) => setChatQuestion(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") askQuestion();
+                }}
+                disabled={!graph || chatStatus === "running"}
+              />
+              <button type="button" onClick={askQuestion} disabled={!graph || !chatQuestion.trim() || chatStatus === "running"}>
+                {chatStatus === "running" ? "..." : "Ask"}
               </button>
             </div>
           </section>
@@ -638,6 +743,47 @@ function SummaryDock({
   );
 }
 
+function ChatAnswerPanel({
+  status,
+  answer,
+  error,
+  onOpenCitation,
+}: {
+  status: ChatStatus;
+  answer: ChatAnswer | null;
+  error: string;
+  onOpenCitation: (citation: Citation) => void;
+}) {
+  return (
+    <section className="answer-card">
+      <div className="relationship-title">Ask</div>
+      {status === "running" ? (
+        <p>Thinking...</p>
+      ) : status === "error" ? (
+        <p className="error-text">{error}</p>
+      ) : answer ? (
+        <>
+          <div className="answer-question">{answer.question}</div>
+          <p>{answer.text}</p>
+          <div className="citation-list">
+            {answer.citations.slice(0, 8).map((citation) => (
+              <button
+                key={`${citation.file}:${citation.line}:${citation.label}`}
+                type="button"
+                onClick={() => onOpenCitation(citation)}
+              >
+                {citation.file}:{citation.line}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p>Ask where a symbol happens or what depends on it.</p>
+      )}
+    </section>
+  );
+}
+
 function RelationshipDetails({
   status,
   error,
@@ -677,8 +823,8 @@ function CodeSnippet({ node, snippet }: { node: GraphNode; snippet: SourceSnippe
   return (
     <div className="source-view">
       <div className="source-header">
-        <span>{node.file}</span>
-        <strong>line {node.lines?.[0] ?? 1}</strong>
+        <span>{snippet?.file ?? node.file}</span>
+        <strong>line {snippet?.highlightLine ?? node.lines?.[0] ?? 1}</strong>
       </div>
       <pre>
         <code>

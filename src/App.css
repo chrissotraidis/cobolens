@@ -38,6 +38,12 @@ button:hover {
   border-color: #5aa7a1;
 }
 
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 input {
   min-width: 0;
   border: 1px solid #303843;
@@ -151,6 +157,66 @@ input:focus {
   gap: 12px;
 }
 
+.primary-action {
+  height: 34px;
+  color: #08100f;
+  border-color: #66c2a5;
+  background: #66c2a5;
+  font-weight: 700;
+}
+
+.path-label {
+  min-height: 34px;
+  overflow: hidden;
+  color: #9aa6b2;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.status-pill {
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid #303843;
+  border-radius: 999px;
+  color: #9aa6b2;
+  background: #171c22;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-pill.running {
+  color: #e8d796;
+  border-color: rgba(229, 199, 95, 0.45);
+  background: rgba(229, 199, 95, 0.12);
+}
+
+.status-pill.ready {
+  color: #b8f0dc;
+  border-color: rgba(102, 194, 165, 0.45);
+  background: rgba(102, 194, 165, 0.12);
+}
+
+.status-pill.error {
+  color: #ffb4a2;
+  border-color: rgba(252, 141, 98, 0.45);
+  background: rgba(252, 141, 98, 0.12);
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  color: #aeb8c3;
+  font-size: 14px;
+}
+
+.metric-row strong {
+  color: #e7ebef;
+}
+
 h2,
 .panel-title,
 .graph-toolbar {
@@ -258,11 +324,15 @@ h2,
 
 .orbit {
   position: absolute;
+  display: grid;
+  place-items: center;
   width: 76px;
   height: 76px;
   border: 1px solid #303843;
   border-radius: 50%;
+  color: #cdd5de;
   background: rgba(17, 21, 26, 0.72);
+  font-weight: 700;
 }
 
 .orbit-one {
@@ -319,7 +389,35 @@ pre {
 
 .summary-empty {
   padding: 16px;
+  overflow: auto;
   color: #9aa6b2;
+}
+
+.summary-empty p {
+  margin: 0;
+}
+
+.error-text {
+  color: #ffb4a2;
+}
+
+.parse-errors {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parse-errors li {
+  display: grid;
+  gap: 3px;
+}
+
+.parse-errors strong {
+  color: #e7ebef;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
 }
 
 .chat-input {

@@ -119,6 +119,10 @@ input:focus {
 .breadcrumbs button {
   height: 30px;
   padding: 0 12px;
+  max-width: 138px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mode-indicator {
@@ -217,6 +221,33 @@ input:focus {
   color: #e7ebef;
 }
 
+.search-results {
+  display: grid;
+  gap: 6px;
+}
+
+.search-results button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.search-results span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-results small,
+.empty-copy {
+  color: #7d8996;
+  font-size: 12px;
+}
+
 h2,
 .panel-title,
 .graph-toolbar {
@@ -295,6 +326,18 @@ h2,
   background: rgba(13, 16, 20, 0.88);
 }
 
+.graph-toolbar > div {
+  display: grid;
+  gap: 2px;
+}
+
+.graph-toolbar small {
+  color: #7d8996;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+}
+
 .graph-toolbar button {
   height: 28px;
   padding: 0 12px;
@@ -306,10 +349,20 @@ h2,
   overflow: hidden;
 }
 
-.focus-node {
+.sigma-canvas {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 0;
+}
+
+.graph-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #9aa6b2;
+}
+
+.graph-empty > div {
   display: grid;
   place-items: center;
   width: 168px;
@@ -318,36 +371,21 @@ h2,
   border-radius: 8px;
   color: #d9fff1;
   background: #13211f;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
-  transform: translate(-50%, -50%);
 }
 
-.orbit {
+.graph-minimap {
   position: absolute;
+  right: 14px;
+  bottom: 14px;
   display: grid;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  border: 1px solid #303843;
-  border-radius: 50%;
-  color: #cdd5de;
-  background: rgba(17, 21, 26, 0.72);
-  font-weight: 700;
-}
-
-.orbit-one {
-  top: 28%;
-  left: 34%;
-}
-
-.orbit-two {
-  right: 26%;
-  bottom: 28%;
-}
-
-.orbit-three {
-  top: 24%;
-  right: 28%;
+  gap: 2px;
+  min-width: 128px;
+  padding: 9px 10px;
+  border: 1px solid #27303a;
+  border-radius: 8px;
+  color: #9aa6b2;
+  background: rgba(17, 21, 26, 0.84);
+  font-size: 12px;
 }
 
 .right-pane {
@@ -381,6 +419,34 @@ pre {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.source-view {
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.source-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid #20262e;
+  color: #9aa6b2;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.source-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-header strong {
+  color: #e7ebef;
 }
 
 .chat-panel {
@@ -418,6 +484,15 @@ pre {
   color: #e7ebef;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
+}
+
+.edge-explanation {
+  display: grid;
+  gap: 8px;
+}
+
+.edge-explanation strong {
+  color: #e7ebef;
 }
 
 .chat-input {

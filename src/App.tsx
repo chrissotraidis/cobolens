@@ -6,14 +6,30 @@ import {
   GraphDocument,
   GraphEdge,
   GraphNode,
+  SourceExcerpt,
   SourceSnippet,
   edgeLabel,
   matchesFuzzy,
   nodeColor,
 } from "./lib/graph";
+import {
+  DEFAULT_MODEL_SETTINGS,
+  ModelProvider,
+  ModelSettings,
+  PROVIDER_LABELS,
+  isCloudProvider,
+  settingsForProvider,
+} from "./model/config";
+import { UnitSummary, generateUnitSummary } from "./model/summaries";
 import "./App.css";
 
 type Status = "idle" | "running" | "ready" | "error";
+type SummaryStatus = "idle" | "running" | "ready" | "error";
+type SummaryState = {
+  status: SummaryStatus;
+  summary?: UnitSummary;
+  error?: string;
+};
 
 declare global {
   interface Window {
@@ -33,10 +49,21 @@ function App() {
   const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
   const [error, setError] = useState<string>("");
+  const [modelSettings, setModelSettings] = useState<ModelSettings>(DEFAULT_MODEL_SETTINGS);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [hasProviderKey, setHasProviderKey] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [summaries, setSummaries] = useState<Record<string, SummaryState>>({});
+  const [bulkSummaryStatus, setBulkSummaryStatus] = useState("");
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
   const selectedNode = nodeById.get(selectedNodeId) ?? focusedNode;
+  const selectedSummaryState = selectedNode ? summaries[selectedNode.id] : undefined;
+  const programNodes = useMemo(
+    () => graph?.nodes.filter((node) => node.type === "program" && !node.external && node.file) ?? [],
+    [graph],
+  );
 
   const counts = useMemo(() => {
     const empty = {
@@ -114,6 +141,28 @@ function App() {
     };
   }, [root, selectedNode]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setKeyDraft("");
+    setSettingsMessage("");
+    if (!isCloudProvider(modelSettings.provider)) {
+      setHasProviderKey(false);
+      return;
+    }
+
+    invoke<boolean>("provider_key_state", { provider: modelSettings.provider })
+      .then((result) => {
+        if (!cancelled) setHasProviderKey(result);
+      })
+      .catch(() => {
+        if (!cancelled) setHasProviderKey(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modelSettings.provider]);
+
   async function chooseFolder() {
     const selected = await open({
       directory: true,
@@ -149,6 +198,8 @@ function App() {
     setSelectedEdge(null);
     setExpandedNodeIds(new Set());
     setHistory(initialFocus ? [initialFocus] : []);
+    setSummaries({});
+    setBulkSummaryStatus("");
     setStatus("ready");
   }
 
@@ -178,6 +229,96 @@ function App() {
   function goHome() {
     if (!graph) return;
     focusOnNode(firstFocusableNode(graph));
+  }
+
+  function chooseProvider(provider: ModelProvider) {
+    setModelSettings((current) => settingsForProvider(current, provider));
+  }
+
+  async function saveKey() {
+    if (!isCloudProvider(modelSettings.provider) || !keyDraft.trim()) return;
+    try {
+      await invoke("save_provider_key", {
+        provider: modelSettings.provider,
+        apiKey: keyDraft.trim(),
+      });
+      setHasProviderKey(true);
+      setKeyDraft("");
+      setSettingsMessage("Key saved");
+    } catch (err) {
+      setSettingsMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function clearKey() {
+    if (!isCloudProvider(modelSettings.provider)) return;
+    try {
+      await invoke("clear_provider_key", { provider: modelSettings.provider });
+      setHasProviderKey(false);
+      setSettingsMessage("Key cleared");
+    } catch (err) {
+      setSettingsMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function generateSelectedSummary() {
+    if (!graph || !selectedNode) return;
+    await generateSummaryForNode(selectedNode);
+  }
+
+  async function generateAllProgramSummaries() {
+    if (!graph || !programNodes.length) return;
+    setBulkSummaryStatus(`0/${programNodes.length}`);
+    for (let index = 0; index < programNodes.length; index += 1) {
+      await generateSummaryForNode(programNodes[index]);
+      setBulkSummaryStatus(`${index + 1}/${programNodes.length}`);
+    }
+  }
+
+  async function generateSummaryForNode(node: GraphNode) {
+    if (!graph || !node.file) return;
+    setSummaries((current) => ({
+      ...current,
+      [node.id]: { status: "running" },
+    }));
+
+    try {
+      const excerpt = await sourceExcerptForNode(node);
+      const apiKey = isCloudProvider(modelSettings.provider)
+        ? await invoke<string>("read_provider_key", { provider: modelSettings.provider })
+        : undefined;
+      const summary = await generateUnitSummary({
+        graph,
+        node,
+        excerpt,
+        settings: modelSettings,
+        apiKey,
+      });
+      setSummaries((current) => ({
+        ...current,
+        [node.id]: { status: "ready", summary },
+      }));
+    } catch (err) {
+      setSummaries((current) => ({
+        ...current,
+        [node.id]: { status: "error", error: err instanceof Error ? err.message : String(err) },
+      }));
+    }
+  }
+
+  async function sourceExcerptForNode(node: GraphNode) {
+    if (!root || !node.file) {
+      throw new Error("Open a codebase from the desktop app before generating summaries.");
+    }
+    const startLine = node.lines?.[0] ?? 1;
+    const endLine = node.lines?.[1] ?? startLine;
+    return invoke<SourceExcerpt>("read_source_excerpt", {
+      root,
+      file: node.file,
+      startLine,
+      endLine,
+      maxLines: 220,
+    });
   }
 
   window.__cobolensLoadGraph = (nextGraph, nextRoot = "") => {
@@ -214,8 +355,8 @@ function App() {
           ))}
         </nav>
 
-        <div className="mode-indicator" aria-label="Privacy mode">
-          Local
+        <div className={`mode-indicator ${modelSettings.privacyMode}`} aria-label="Privacy mode">
+          {modelSettings.privacyMode === "local" ? "Local" : `Cloud: ${PROVIDER_LABELS[modelSettings.provider]}`}
         </div>
       </header>
 
@@ -229,6 +370,18 @@ function App() {
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
           </section>
+
+          <ModelSettingsPanel
+            settings={modelSettings}
+            keyDraft={keyDraft}
+            hasProviderKey={hasProviderKey}
+            message={settingsMessage}
+            onProviderChange={chooseProvider}
+            onSettingsChange={setModelSettings}
+            onKeyDraftChange={setKeyDraft}
+            onSaveKey={saveKey}
+            onClearKey={clearKey}
+          />
 
           <section className="pane-block">
             <h2>Symbols</h2>
@@ -300,21 +453,18 @@ function App() {
           </section>
 
           <section className="chat-panel">
-            <div className="panel-title">Relationship</div>
-            <div className="summary-empty">
-              {status === "error" ? (
-                <p className="error-text">{error}</p>
-              ) : selectedEdge && graph ? (
-                <EdgeExplanation edge={selectedEdge} graph={graph} />
-              ) : graph?.meta.parseErrors.length ? (
-                <ParseErrorSummary graph={graph} />
-              ) : (
-                <p>
-                  {graph
-                    ? "Click an edge to explain its relationship."
-                    : "Unparsed files and relationship details appear here."}
-                </p>
-              )}
+            <div className="panel-title">Summary</div>
+            <div className="summary-stack">
+              <SummaryDock
+                node={selectedNode}
+                state={selectedSummaryState}
+                settings={modelSettings}
+                programCount={programNodes.length}
+                bulkStatus={bulkSummaryStatus}
+                onGenerateSelected={generateSelectedSummary}
+                onGenerateAll={generateAllProgramSummaries}
+              />
+              <RelationshipDetails status={status} error={error} selectedEdge={selectedEdge} graph={graph} />
             </div>
             <div className="chat-input" aria-label="Ask a question">
               <input type="text" aria-label="Ask about the codebase" disabled />
@@ -344,6 +494,174 @@ function LegendItem({ type, label }: { type: string; label: string }) {
       <span className="swatch" style={{ background: nodeColor(type) }} />
       <span>{label}</span>
     </div>
+  );
+}
+
+function ModelSettingsPanel({
+  settings,
+  keyDraft,
+  hasProviderKey,
+  message,
+  onProviderChange,
+  onSettingsChange,
+  onKeyDraftChange,
+  onSaveKey,
+  onClearKey,
+}: {
+  settings: ModelSettings;
+  keyDraft: string;
+  hasProviderKey: boolean;
+  message: string;
+  onProviderChange: (provider: ModelProvider) => void;
+  onSettingsChange: (settings: ModelSettings) => void;
+  onKeyDraftChange: (value: string) => void;
+  onSaveKey: () => void;
+  onClearKey: () => void;
+}) {
+  const cloud = isCloudProvider(settings.provider);
+
+  return (
+    <section className="pane-block model-settings">
+      <h2>Brain</h2>
+      <label className="form-row">
+        <span>Provider</span>
+        <select
+          value={settings.provider}
+          onChange={(event) => onProviderChange(event.currentTarget.value as ModelProvider)}
+        >
+          {Object.entries(PROVIDER_LABELS).map(([provider, label]) => (
+            <option key={provider} value={provider}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="form-row">
+        <span>Model</span>
+        <input
+          value={settings.model}
+          onChange={(event) => onSettingsChange({ ...settings, model: event.currentTarget.value })}
+        />
+      </label>
+      {settings.provider === "ollama" ? (
+        <label className="form-row">
+          <span>Host</span>
+          <input
+            value={settings.baseUrl}
+            onChange={(event) => onSettingsChange({ ...settings, baseUrl: event.currentTarget.value })}
+          />
+        </label>
+      ) : (
+        <label className="form-row">
+          <span>API key</span>
+          <input
+            type="password"
+            value={keyDraft}
+            placeholder={hasProviderKey ? "Saved in keychain" : ""}
+            onChange={(event) => onKeyDraftChange(event.currentTarget.value)}
+          />
+        </label>
+      )}
+      <label className="form-row">
+        <span>Rosetta</span>
+        <select
+          value={settings.rosettaLanguage}
+          onChange={(event) => onSettingsChange({ ...settings, rosettaLanguage: event.currentTarget.value })}
+        >
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="java">Java</option>
+          <option value="c#">C#</option>
+        </select>
+      </label>
+      {cloud ? (
+        <div className="button-row">
+          <button type="button" onClick={onSaveKey} disabled={!keyDraft.trim()}>
+            Save Key
+          </button>
+          <button type="button" onClick={onClearKey} disabled={!hasProviderKey}>
+            Clear
+          </button>
+        </div>
+      ) : null}
+      <div className="settings-footnote">{cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode"}</div>
+    </section>
+  );
+}
+
+function SummaryDock({
+  node,
+  state,
+  settings,
+  programCount,
+  bulkStatus,
+  onGenerateSelected,
+  onGenerateAll,
+}: {
+  node: GraphNode | null;
+  state?: SummaryState;
+  settings: ModelSettings;
+  programCount: number;
+  bulkStatus: string;
+  onGenerateSelected: () => void;
+  onGenerateAll: () => void;
+}) {
+  return (
+    <section className="summary-card">
+      <div className="summary-actions">
+        <div>
+          <strong>{node ? node.name : "No symbol"}</strong>
+          <span>
+            {PROVIDER_LABELS[settings.provider]} / {settings.model}
+          </span>
+        </div>
+        <button type="button" onClick={onGenerateSelected} disabled={!node?.file || state?.status === "running"}>
+          {state?.status === "running" ? "Generating" : "Summarize"}
+        </button>
+      </div>
+      <div className="summary-output">
+        {state?.status === "ready" && state.summary ? (
+          <p>{state.summary.text}</p>
+        ) : state?.status === "error" ? (
+          <p className="error-text">{state.error}</p>
+        ) : (
+          <p>{node?.file ? "No summary yet." : "Select a source-backed symbol."}</p>
+        )}
+      </div>
+      <div className="summary-meta">
+        <button type="button" onClick={onGenerateAll} disabled={!programCount || state?.status === "running"}>
+          Summarize Programs
+        </button>
+        <span>{bulkStatus || `${programCount} source programs`}</span>
+      </div>
+    </section>
+  );
+}
+
+function RelationshipDetails({
+  status,
+  error,
+  selectedEdge,
+  graph,
+}: {
+  status: Status;
+  error: string;
+  selectedEdge: GraphEdge | null;
+  graph: GraphDocument | null;
+}) {
+  return (
+    <section className="relationship-card">
+      <div className="relationship-title">Relationship</div>
+      {status === "error" ? (
+        <p className="error-text">{error}</p>
+      ) : selectedEdge && graph ? (
+        <EdgeExplanation edge={selectedEdge} graph={graph} />
+      ) : graph?.meta.parseErrors.length ? (
+        <ParseErrorSummary graph={graph} />
+      ) : (
+        <p>{graph ? "No edge selected." : "Open a folder to inspect relationships."}</p>
+      )}
+    </section>
   );
 }
 

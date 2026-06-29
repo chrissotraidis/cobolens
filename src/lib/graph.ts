@@ -46,6 +46,14 @@ export type SourceSnippet = {
   }>;
 };
 
+export type SourceExcerpt = {
+  file: string;
+  startLine: number;
+  endLine: number;
+  truncated: boolean;
+  text: string;
+};
+
 export const NODE_COLORS: Record<string, string> = {
   program: "#66c2a5",
   paragraph: "#5aa7d6",

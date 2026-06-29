@@ -10,9 +10,14 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.90",
+    "@ai-sdk/openai": "^3.0.78",
+    "@openrouter/ai-sdk-provider": "^2.10.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
+    "ai": "^6.0.216",
     "graphology": "^0.26.0",
+    "ollama-ai-provider-v2": "^3.6.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sigma": "^3.0.3"

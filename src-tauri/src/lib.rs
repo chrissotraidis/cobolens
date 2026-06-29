@@ -1,3 +1,4 @@
+use keyring::Entry;
 use serde_json::{json, Value};
 use std::{
     env, fs,
@@ -73,6 +74,83 @@ fn read_source_snippet(root: String, file: String, line: usize) -> Result<Value,
     }))
 }
 
+#[tauri::command]
+fn read_source_excerpt(
+    root: String,
+    file: String,
+    start_line: usize,
+    end_line: usize,
+    max_lines: usize,
+) -> Result<Value, String> {
+    let path = safe_source_path(&root, &file)?;
+    let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
+    let lines: Vec<&str> = content.lines().collect();
+    let start = start_line.max(1);
+    let requested_end = end_line.max(start);
+    let max_end = lines.len().max(1);
+    let end = requested_end.min(max_end);
+    let capped_end = (start + max_lines.saturating_sub(1)).min(end);
+    let excerpt = (start..=capped_end)
+        .map(|number| {
+            format!(
+                "{}: {}",
+                number,
+                lines.get(number - 1).copied().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    Ok(json!({
+        "file": file,
+        "startLine": start,
+        "endLine": capped_end,
+        "truncated": capped_end < end,
+        "text": excerpt,
+    }))
+}
+
+#[tauri::command]
+fn save_provider_key(provider: String, api_key: String) -> Result<(), String> {
+    provider_key_entry(&provider)?
+        .set_password(&api_key)
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn read_provider_key(provider: String) -> Result<String, String> {
+    provider_key_entry(&provider)?
+        .get_password()
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn provider_key_state(provider: String) -> Result<bool, String> {
+    match provider_key_entry(&provider)?.get_password() {
+        Ok(value) => Ok(!value.is_empty()),
+        Err(_) => Ok(false),
+    }
+}
+
+#[tauri::command]
+fn clear_provider_key(provider: String) -> Result<(), String> {
+    match provider_key_entry(&provider)?.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(_) => Ok(()),
+    }
+}
+
+fn provider_key_entry(provider: &str) -> Result<Entry, String> {
+    let account = match provider {
+        "anthropic" => "anthropic-api-key",
+        "openai" => "openai-api-key",
+        "openrouter" => "openrouter-api-key",
+        "ollama" => "ollama-api-key",
+        _ => return Err("unknown model provider".to_string()),
+    };
+    Entry::new("Cobolens", account).map_err(|err| err.to_string())
+}
+
 fn safe_source_path(root: &str, file: &str) -> Result<PathBuf, String> {
     let root_path = PathBuf::from(root);
     let file_path = Path::new(file);
@@ -130,7 +208,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             analyze_codebase,
-            read_source_snippet
+            read_source_snippet,
+            read_source_excerpt,
+            save_provider_key,
+            read_provider_key,
+            provider_key_state,
+            clear_provider_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

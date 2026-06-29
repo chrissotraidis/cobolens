@@ -6,9 +6,19 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use tauri::{path::BaseDirectory, Manager};
 
 #[tauri::command]
 fn analyze_codebase(root: String) -> Result<Value, String> {
+    analyze_root(root)
+}
+
+#[tauri::command]
+fn analyze_sample_codebase(app: tauri::AppHandle) -> Result<Value, String> {
+    analyze_root(sample_root(app)?.to_string_lossy().to_string())
+}
+
+fn analyze_root(root: String) -> Result<Value, String> {
     let out = env::temp_dir().join("cobolens-graph.json");
     let analyzer = analyzer_binary_path()?;
     let mut child = Command::new(analyzer)
@@ -47,6 +57,29 @@ fn analyze_codebase(root: String) -> Result<Value, String> {
 
     let json = fs::read_to_string(&out).map_err(|err| err.to_string())?;
     serde_json::from_str(&json).map_err(|err| err.to_string())
+}
+
+fn sample_root(app: tauri::AppHandle) -> Result<PathBuf, String> {
+    if let Ok(path) = app
+        .path()
+        .resolve("samples/mini-bank", BaseDirectory::Resource)
+    {
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let dev_sample = manifest_dir
+        .parent()
+        .unwrap_or(&manifest_dir)
+        .join("samples")
+        .join("mini-bank");
+    if dev_sample.exists() {
+        return Ok(dev_sample);
+    }
+
+    Err("bundled sample codebase was not found".to_string())
 }
 
 #[tauri::command]
@@ -208,6 +241,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             analyze_codebase,
+            analyze_sample_codebase,
             read_source_snippet,
             read_source_excerpt,
             save_provider_key,

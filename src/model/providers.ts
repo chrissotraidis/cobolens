@@ -7,6 +7,7 @@ import type { ModelSettings } from "./config";
 
 export function createLanguageModel(settings: ModelSettings, apiKey?: string): LanguageModel {
   if (settings.provider === "ollama") {
+    assertLocalOllamaUrl(settings.baseUrl);
     const ollama = createOllama({ baseURL: normalizeOllamaBaseUrl(settings.baseUrl) });
     return ollama.completion(settings.model);
   }
@@ -24,6 +25,14 @@ export function createLanguageModel(settings: ModelSettings, apiKey?: string): L
   }
 
   return createOpenRouter({ apiKey })(settings.model);
+}
+
+export function assertLocalOllamaUrl(baseUrl: string) {
+  const parsed = new URL(baseUrl || "http://127.0.0.1:11434/api");
+  const host = parsed.hostname.toLocaleLowerCase();
+  if (host !== "localhost" && host !== "127.0.0.1" && host !== "::1") {
+    throw new Error("Local mode only permits Ollama on localhost.");
+  }
 }
 
 function normalizeOllamaBaseUrl(baseUrl: string) {

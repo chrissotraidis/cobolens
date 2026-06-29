@@ -324,6 +324,19 @@ h2,
   font-size: 12px;
 }
 
+.cost-meter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  color: #aeb8c3;
+  font-size: 12px;
+}
+
+.cost-meter strong {
+  color: #e7ebef;
+}
+
 .swatch,
 .dot {
   display: inline-block;

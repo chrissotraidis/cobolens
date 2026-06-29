@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useState } from "react";
+import { downloadDocumentationExport, estimateTokens } from "./export/docs";
 import { GraphView } from "./graph/GraphView";
 import {
   GraphDocument,
@@ -73,6 +74,8 @@ function App() {
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle");
   const [chatAnswer, setChatAnswer] = useState<ChatAnswer | null>(null);
   const [chatError, setChatError] = useState("");
+  const [modelCallCount, setModelCallCount] = useState(0);
+  const [exportStatus, setExportStatus] = useState("");
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -81,6 +84,14 @@ function App() {
   const programNodes = useMemo(
     () => graph?.nodes.filter((node) => node.type === "program" && !node.external && node.file) ?? [],
     [graph],
+  );
+  const bulkTokenEstimate = useMemo(
+    () =>
+      programNodes.reduce(
+        (total, node) => total + estimateTokens(`${node.name} ${node.file ?? ""} ${node.lines?.join("-") ?? ""}`) + 900,
+        0,
+      ),
+    [programNodes],
   );
 
   const counts = useMemo(() => {
@@ -208,6 +219,24 @@ function App() {
     }
   }
 
+  async function openSample() {
+    setRoot("Bundled sample: Mini Bank");
+    setGraph(null);
+    setSnippet(null);
+    setSelectedEdge(null);
+    setSourceFocus(null);
+    setError("");
+    setStatus("running");
+
+    try {
+      const result = await invoke<GraphDocument>("analyze_sample_codebase");
+      acceptGraph(result, "Bundled sample: Mini Bank");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus("error");
+    }
+  }
+
   function acceptGraph(nextGraph: GraphDocument, nextRoot: string) {
     const initialFocus = firstFocusableNode(nextGraph);
     setRoot(nextRoot);
@@ -224,6 +253,7 @@ function App() {
     setChatStatus("idle");
     setChatError("");
     setSourceFocus(null);
+    setExportStatus("");
     setStatus("ready");
   }
 
@@ -335,6 +365,7 @@ function App() {
         settings: modelSettings,
         apiKey,
       });
+      setModelCallCount((count) => count + 1);
       setSummaries((current) => ({
         ...current,
         [node.id]: { status: "ready", summary },
@@ -383,6 +414,7 @@ function App() {
         settings: modelSettings,
         apiKey,
       });
+      setModelCallCount((count) => count + 1);
       setChatAnswer({ question, text: answer.text, citations: context.citations });
       setChatStatus("ready");
       if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
@@ -409,6 +441,17 @@ function App() {
     }
     if (!keepEdge) setSelectedEdge(null);
     setSourceFocus({ file: citation.file, line: citation.line, nodeId: citedNode?.id });
+  }
+
+  async function exportDocs() {
+    if (!graph) return;
+    setExportStatus("Exporting");
+    try {
+      await downloadDocumentationExport(graph, summaries, focusNodeId);
+      setExportStatus("Exported Markdown, Mermaid, PNG");
+    } catch (err) {
+      setExportStatus(err instanceof Error ? err.message : String(err));
+    }
   }
 
   window.__cobolensLoadGraph = (nextGraph, nextRoot = "") => {
@@ -457,6 +500,9 @@ function App() {
             <button className="primary-action" type="button" onClick={chooseFolder}>
               Open Folder
             </button>
+            <button type="button" onClick={openSample}>
+              Open Sample
+            </button>
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
           </section>
@@ -471,7 +517,17 @@ function App() {
             onKeyDraftChange={setKeyDraft}
             onSaveKey={saveKey}
             onClearKey={clearKey}
+            modelCallCount={modelCallCount}
+            bulkTokenEstimate={bulkTokenEstimate}
           />
+
+          <section className="pane-block">
+            <h2>Export</h2>
+            <button type="button" onClick={exportDocs} disabled={!graph}>
+              Export Docs
+            </button>
+            <div className="settings-footnote">{exportStatus || "Markdown, Mermaid, PNG"}</div>
+          </section>
 
           <section className="pane-block">
             <h2>Symbols</h2>
@@ -607,6 +663,8 @@ function ModelSettingsPanel({
   keyDraft,
   hasProviderKey,
   message,
+  modelCallCount,
+  bulkTokenEstimate,
   onProviderChange,
   onSettingsChange,
   onKeyDraftChange,
@@ -617,6 +675,8 @@ function ModelSettingsPanel({
   keyDraft: string;
   hasProviderKey: boolean;
   message: string;
+  modelCallCount: number;
+  bulkTokenEstimate: number;
   onProviderChange: (provider: ModelProvider) => void;
   onSettingsChange: (settings: ModelSettings) => void;
   onKeyDraftChange: (value: string) => void;
@@ -690,6 +750,11 @@ function ModelSettingsPanel({
         </div>
       ) : null}
       <div className="settings-footnote">{cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode"}</div>
+      <div className="cost-meter">
+        <span>{cloud ? "Cloud meter" : "Local calls"}</span>
+        <strong>{modelCallCount}</strong>
+      </div>
+      <div className="settings-footnote">Bulk summary est. {bulkTokenEstimate.toLocaleString()} tokens</div>
     </section>
   );
 }

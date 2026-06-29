@@ -144,6 +144,37 @@ fn read_source_excerpt(
 }
 
 #[tauri::command]
+fn write_export_files(
+    output_dir: String,
+    prefix: String,
+    markdown: String,
+    mermaid: String,
+    png: Vec<u8>,
+) -> Result<String, String> {
+    let output_dir = PathBuf::from(output_dir)
+        .canonicalize()
+        .map_err(|err| format!("export folder is unavailable: {err}"))?;
+    if !output_dir.is_dir() {
+        return Err("export destination must be a folder".to_string());
+    }
+
+    if png.len() < 8 || &png[..8] != b"\x89PNG\r\n\x1a\n" {
+        return Err("export PNG payload was invalid".to_string());
+    }
+
+    let prefix = safe_export_prefix(&prefix)?;
+    let markdown_path = output_dir.join(format!("{prefix}.md"));
+    let mermaid_path = output_dir.join(format!("{prefix}.mmd"));
+    let png_path = output_dir.join(format!("{prefix}.png"));
+
+    fs::write(&markdown_path, markdown).map_err(|err| err.to_string())?;
+    fs::write(&mermaid_path, mermaid).map_err(|err| err.to_string())?;
+    fs::write(&png_path, png).map_err(|err| err.to_string())?;
+
+    Ok(output_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 fn save_provider_key(provider: String, api_key: String) -> Result<(), String> {
     provider_key_entry(&provider)?
         .set_password(&api_key)
@@ -200,6 +231,29 @@ fn safe_source_path(root: &str, file: &str) -> Result<PathBuf, String> {
     Ok(source_canonical)
 }
 
+fn safe_export_prefix(prefix: &str) -> Result<String, String> {
+    let stem = prefix
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '-' || character == '_' {
+                character.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .chars()
+        .take(80)
+        .collect::<String>();
+
+    if stem.is_empty() {
+        return Err("export filename prefix was empty".to_string());
+    }
+
+    Ok(stem)
+}
+
 fn analyzer_binary_path() -> Result<PathBuf, String> {
     if let Ok(path) = env::var("COBOLENS_ANALYZE_BIN") {
         return Ok(PathBuf::from(path));
@@ -244,6 +298,7 @@ pub fn run() {
             analyze_sample_codebase,
             read_source_snippet,
             read_source_excerpt,
+            write_export_files,
             save_provider_key,
             read_provider_key,
             provider_key_state,

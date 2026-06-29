@@ -1,7 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useState } from "react";
-import { downloadDocumentationExport, estimateTokens } from "./export/docs";
+import {
+  buildDocumentationExport,
+  documentationExportPrefix,
+  documentationPngBytes,
+  downloadBuiltDocumentationExport,
+  estimateTokens,
+} from "./export/docs";
 import { GraphView } from "./graph/GraphView";
 import {
   GraphDocument,
@@ -447,10 +453,37 @@ function App() {
     if (!graph) return;
     setExportStatus("Exporting");
     try {
-      await downloadDocumentationExport(graph, summaries, focusNodeId);
+      const docs = buildDocumentationExport(graph, summaries, focusNodeId);
+      const prefix = documentationExportPrefix(docs);
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Export Cobolens documentation",
+      });
+
+      if (typeof selected === "string") {
+        const png = await documentationPngBytes(graph, focusNodeId, docs.diagramTitle);
+        const target = await invoke<string>("write_export_files", {
+          outputDir: selected,
+          prefix,
+          markdown: docs.markdown,
+          mermaid: docs.mermaid,
+          png,
+        });
+        setExportStatus(`Exported to ${target}`);
+        return;
+      }
+
+      await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
       setExportStatus("Exported Markdown, Mermaid, PNG");
-    } catch (err) {
-      setExportStatus(err instanceof Error ? err.message : String(err));
+    } catch {
+      try {
+        const docs = buildDocumentationExport(graph, summaries, focusNodeId);
+        await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+        setExportStatus("Exported Markdown, Mermaid, PNG");
+      } catch (fallbackErr) {
+        setExportStatus(fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
+      }
     }
   }
 

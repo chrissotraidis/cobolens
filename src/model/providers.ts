@@ -6,6 +6,10 @@ import { createOllama } from "ollama-ai-provider-v2";
 import type { ModelSettings } from "./config";
 
 export function createLanguageModel(settings: ModelSettings, apiKey?: string): LanguageModel {
+  if (settings.privacyMode === "local" && settings.provider !== "ollama") {
+    throw new Error("Local mode only permits the Ollama provider.");
+  }
+
   if (settings.provider === "ollama") {
     assertLocalOllamaUrl(settings.baseUrl);
     const ollama = createOllama({ baseURL: normalizeOllamaBaseUrl(settings.baseUrl) });

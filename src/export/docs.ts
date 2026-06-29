@@ -94,11 +94,28 @@ export async function downloadDocumentationExport(
   focusNodeId: string,
 ) {
   const docs = buildDocumentationExport(graph, summaries, focusNodeId);
-  const prefix = `cobolens-${safeName(docs.diagramTitle)}`;
+  await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+}
+
+export async function downloadBuiltDocumentationExport(
+  graph: GraphDocument,
+  focusNodeId: string,
+  docs: DocumentationExport,
+) {
+  const prefix = documentationExportPrefix(docs);
   downloadBlob(`${prefix}.md`, new Blob([docs.markdown], { type: "text/markdown;charset=utf-8" }));
   downloadBlob(`${prefix}.mmd`, new Blob([docs.mermaid], { type: "text/plain;charset=utf-8" }));
-  const png = await diagramPngBlob(docs.diagramTitle, docs.mermaid);
+  const png = await diagramPngBlob(graph, focusNodeId, docs.diagramTitle);
   downloadBlob(`${prefix}.png`, png);
+}
+
+export function documentationExportPrefix(docs: DocumentationExport) {
+  return `cobolens-${safeName(docs.diagramTitle)}`;
+}
+
+export async function documentationPngBytes(graph: GraphDocument, focusNodeId: string, title: string) {
+  const blob = await diagramPngBlob(graph, focusNodeId, title);
+  return Array.from(new Uint8Array(await blob.arrayBuffer()));
 }
 
 export function estimateTokens(text: string) {
@@ -126,23 +143,63 @@ function downloadBlob(filename: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function diagramPngBlob(title: string, mermaid: string) {
+async function diagramPngBlob(graph: GraphDocument, focusNodeId: string, title: string) {
   const canvas = document.createElement("canvas");
-  canvas.width = 1200;
-  canvas.height = 720;
+  canvas.width = 1400;
+  canvas.height = 900;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas is unavailable.");
-  context.fillStyle = "#0b0d10";
+  context.fillStyle = "#f7f9fb";
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#e7ebef";
-  context.font = "bold 30px sans-serif";
-  context.fillText(title, 48, 64);
-  context.font = "18px monospace";
-  context.fillStyle = "#9aa6b2";
-  mermaid
-    .split("\n")
-    .slice(0, 28)
-    .forEach((line, index) => context.fillText(line, 48, 112 + index * 21));
+  context.fillStyle = "#111827";
+  context.font = "bold 34px sans-serif";
+  context.fillText(title, 56, 68);
+
+  const visible = visibleDiagramGraph(graph, focusNodeId);
+  const positions = layoutNodes(visible.nodes, canvas.width, canvas.height);
+
+  context.lineWidth = 2;
+  context.strokeStyle = "#9aa7b4";
+  context.fillStyle = "#334155";
+  context.font = "16px sans-serif";
+  for (const edge of visible.edges) {
+    const from = positions.get(edge.from);
+    const to = positions.get(edge.to);
+    if (!from || !to) continue;
+    drawArrow(context, from.x, from.y, to.x, to.y);
+    const labelX = (from.x + to.x) / 2;
+    const labelY = (from.y + to.y) / 2;
+    drawLabel(context, edge.type, labelX, labelY);
+  }
+
+  for (const node of visible.nodes) {
+    const position = positions.get(node.id);
+    if (!position) continue;
+    const isFocus = node.id === focusNodeId;
+    const width = 190;
+    const height = 66;
+    context.fillStyle = isFocus ? "#0f766e" : "#ffffff";
+    context.strokeStyle = isFocus ? "#0f766e" : "#cbd5e1";
+    context.lineWidth = isFocus ? 4 : 2;
+    roundedRect(context, position.x - width / 2, position.y - height / 2, width, height, 8);
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = isFocus ? "#ffffff" : "#111827";
+    context.font = "bold 17px sans-serif";
+    context.fillText(fitText(context, node.name, width - 26), position.x - width / 2 + 13, position.y - 6);
+    context.fillStyle = isFocus ? "#d1fae5" : "#64748b";
+    context.font = "14px sans-serif";
+    context.fillText(node.type, position.x - width / 2 + 13, position.y + 19);
+  }
+
+  context.fillStyle = "#475569";
+  context.font = "15px sans-serif";
+  context.fillText(
+    `${visible.nodes.length} nodes, ${visible.edges.length} relationships exported from Cobolens`,
+    56,
+    canvas.height - 40,
+  );
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -150,4 +207,97 @@ async function diagramPngBlob(title: string, mermaid: string) {
       else reject(new Error("Could not render PNG diagram."));
     }, "image/png");
   });
+}
+
+function visibleDiagramGraph(graph: GraphDocument, focusNodeId?: string) {
+  const edges = focusNodeId
+    ? graph.edges.filter((edge) => edge.from === focusNodeId || edge.to === focusNodeId).slice(0, 40)
+    : graph.edges.slice(0, 40);
+  const nodeIds = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
+  if (focusNodeId) nodeIds.add(focusNodeId);
+  const nodes = graph.nodes.filter((candidate) => nodeIds.has(candidate.id)).slice(0, 24);
+  const keptNodeIds = new Set(nodes.map((node) => node.id));
+  return {
+    nodes,
+    edges: edges.filter((edge) => keptNodeIds.has(edge.from) && keptNodeIds.has(edge.to)),
+  };
+}
+
+function layoutNodes(nodes: GraphDocument["nodes"], width: number, height: number) {
+  const positions = new Map<string, { x: number; y: number }>();
+  if (!nodes.length) return positions;
+  const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 1.6)));
+  const rows = Math.max(1, Math.ceil(nodes.length / columns));
+  const left = 150;
+  const right = width - 150;
+  const top = 155;
+  const bottom = height - 145;
+  const xGap = columns === 1 ? 0 : (right - left) / (columns - 1);
+  const yGap = rows === 1 ? 0 : (bottom - top) / (rows - 1);
+
+  nodes.forEach((node, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    positions.set(node.id, {
+      x: columns === 1 ? width / 2 : left + column * xGap,
+      y: rows === 1 ? (top + bottom) / 2 : top + row * yGap,
+    });
+  });
+
+  return positions;
+}
+
+function drawArrow(context: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  const startX = fromX + Math.cos(angle) * 105;
+  const startY = fromY + Math.sin(angle) * 45;
+  const endX = toX - Math.cos(angle) * 105;
+  const endY = toY - Math.sin(angle) * 45;
+  context.beginPath();
+  context.moveTo(startX, startY);
+  context.lineTo(endX, endY);
+  context.stroke();
+  context.beginPath();
+  context.moveTo(endX, endY);
+  context.lineTo(endX - Math.cos(angle - Math.PI / 7) * 14, endY - Math.sin(angle - Math.PI / 7) * 14);
+  context.lineTo(endX - Math.cos(angle + Math.PI / 7) * 14, endY - Math.sin(angle + Math.PI / 7) * 14);
+  context.closePath();
+  context.fillStyle = "#9aa7b4";
+  context.fill();
+}
+
+function drawLabel(context: CanvasRenderingContext2D, value: string, x: number, y: number) {
+  const text = fitText(context, value, 120);
+  const metrics = context.measureText(text);
+  context.fillStyle = "rgba(247, 249, 251, 0.86)";
+  roundedRect(context, x - metrics.width / 2 - 8, y - 15, metrics.width + 16, 23, 6);
+  context.fill();
+  context.fillStyle = "#334155";
+  context.fillText(text, x - metrics.width / 2, y + 3);
+}
+
+function roundedRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + width, y, x + width, y + height, radius);
+  context.arcTo(x + width, y + height, x, y + height, radius);
+  context.arcTo(x, y + height, x, y, radius);
+  context.arcTo(x, y, x + width, y, radius);
+  context.closePath();
+}
+
+function fitText(context: CanvasRenderingContext2D, value: string, maxWidth: number) {
+  if (context.measureText(value).width <= maxWidth) return value;
+  let text = value;
+  while (text.length > 1 && context.measureText(`${text}...`).width > maxWidth) {
+    text = text.slice(0, -1);
+  }
+  return `${text}...`;
 }

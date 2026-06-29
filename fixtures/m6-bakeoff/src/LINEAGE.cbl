@@ -1,0 +1,47 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. LINEAGE.
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT CUSTOMER-FILE ASSIGN TO CUSTIN.
+           SELECT REPORT-FILE ASSIGN TO RPTFILE.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  CUSTOMER-FILE.
+           COPY CUSTOMER.
+       FD  REPORT-FILE.
+           COPY REPORT.
+       WORKING-STORAGE SECTION.
+       01  WS-RATE                 PIC S9(3)V99 COMP-3.
+       01  SQLCODE                 PIC S9(9) COMP.
+       PROCEDURE DIVISION.
+       MAIN-PARA.
+           OPEN INPUT CUSTOMER-FILE
+                OUTPUT REPORT-FILE.
+           READ CUSTOMER-FILE
+               AT END
+                   GO TO DONE-PARA
+           END-READ.
+           PERFORM BUILD-REPORT.
+           WRITE REPORT-RECORD.
+           CLOSE CUSTOMER-FILE REPORT-FILE.
+           STOP RUN.
+
+       BUILD-REPORT.
+           MOVE CUSTOMER-ID TO REPORT-ID.
+           MOVE CUSTOMER-NAME TO REPORT-NAME.
+           MOVE CUSTOMER-BALANCE TO REPORT-AMOUNT.
+           EXEC SQL
+               SELECT RATE
+                 INTO :WS-RATE
+                 FROM CUSTOMER_TABLE
+                WHERE CUSTOMER_ID = :CUSTOMER-ID
+           END-EXEC.
+           EXEC CICS LINK PROGRAM('RATEAPI')
+                COMMAREA(WS-RATE)
+           END-EXEC.
+           MOVE WS-RATE TO REPORT-RATE.
+
+       DONE-PARA.
+           EXIT.
+

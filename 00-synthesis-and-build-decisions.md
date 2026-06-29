@@ -1,0 +1,105 @@
+# Cobolens — Research Synthesis & Build Decisions
+
+*Master index for the research set. Name: **Cobolens**. This doc consolidates the four deep dives + test-repo research into one set of recommendations.*
+
+> **Source of truth:** `COBOL-Lens-PRD.md` is the canonical build document. This file is reference/orientation. If anything here conflicts with the PRD, the PRD wins.
+
+**The product, locked in one sentence:** a free, open-source, local desktop app — point it at a COBOL folder, it reads everything, draws an interactive dependency map with diagrams and section summaries, and lets you chat with the code using your choice of brain (Anthropic / OpenAI / OpenRouter / local Ollama), with the standout draw that it can run **fully local / air-gapped** so the code never leaves your machine.
+
+**v1 is feature-complete, not a toy:** reads a COBOL codebase → dependency map + visualizations + section summaries → AI chat. Deferred to later: write/generate COBOL, and behavior-equivalence *verification* (the hard problem the venture-backed players own).
+
+---
+
+## The documents in this set
+
+| # | File | What it covers |
+|---|---|---|
+| 00 | this file | Synthesis, recommended stack, open decisions |
+| 01 | `01-incumbent-teardown.md` | The hated enterprise tools (IBM ADDI, Rocket/Micro Focus EA, Broadcom, etc.) + positioning angles |
+| 02 | `02-parser-landscape.md` | Which COBOL/JCL parser to bundle (license, runtime, dialects) |
+| 03 | `03-ux-design-study.md` | Sourcetrail & friends → concrete UI/UX design principles + viz library |
+| 04 | `04-desktop-shell-and-model-plumbing.md` | Tauri vs Electron + bring-your-own-model plumbing |
+| 05 | `05-test-repos.md` | Open COBOL codebases to build/test/demo against |
+
+---
+
+## Positioning (from doc 01)
+
+The enterprise version of this idea **already exists and is widely disliked** — which validates demand and hands us a clear enemy:
+
+- **IBM ADDI** and **Rocket Enterprise Analyzer** (formerly Micro Focus/OpenText — now on its *third owner in ~2 years* after Rocket's $2.275B acquisition) both require multi-server installs, central databases, and dated Eclipse/Windows thick clients. IBM specs a 64 GB / 2 TB server for ADDI. **Nobody publishes a price** — all quote-based, enterprise-sales-gated, no free tier, no real trial.
+- The free space today is only *parsers and editor plugins* (GnuCOBOL, SuperBOL, ProLeap, VS Code extensions). **Nobody ships the full polished product** — interactive project-wide map + diagrams + summaries + BYO-model chat in a local app. That exact combination is open territory.
+
+**Positioning angles for the README / pitch (weakness → our answer):**
+- Multi-server install + 64 GB DB → **zero-install, runs on your laptop**
+- Eclipse/IE6-era UI → **modern, slick, fast (Sourcetrail-grade UX)**
+- Quote-only, renewal price hikes, vendor churn → **$0, open source, yours forever**
+- Single-vendor cloud AI → **bring your own model, including fully-local Ollama for data sovereignty**
+- Heavyweight migration suites → **understand-first, for the individual engineer, not a procurement cycle**
+
+---
+
+## Recommended stack (consolidated)
+
+**Desktop shell → Tauri v2** (doc 04). <10 MB installers, ~30-50 MB RAM, sub-0.5s startup, secure by default, and first-class **sidecar** support for spawning a bundled parser and talking to local Ollama. Clearly beats Electron for a fast/slick/local utility.
+
+**Parser → ProLeap (MIT) for COBOL semantics + mapa (MIT) for JCL & call-tree, run as a one-time JVM "analysis sidecar"; tree-sitter-cobol (MIT) embedded in the UI for instant highlighting/navigation** (doc 02). Avoid GnuCOBOL and jcl-assess as core deps — both GPL (viral). Fallbacks if ProLeap struggles on real code: Koopa, then the che4z grammar (highest IBM fidelity). **Run a half-day bake-off on 2-3 real target programs before locking this in** — dialect reality on actual code beats any spec-sheet claim.
+
+**Model plumbing → Vercel AI SDK** (doc 04). Anthropic + OpenAI first-party; OpenRouter + Ollama as well-maintained providers — all four behind one interface, switchable by config. Don't build this yourself.
+
+**Local model → Ollama** at `localhost:11434` for chat and embeddings; runs ~7B models on ~16 GB RAM, no GPU required, fully air-gapped. **OpenRouter** is the low-friction cloud tier (one key, many models).
+
+**Context strategy → graph-guided RAG over the dependency map** (doc 04). The dependency map *is* the retrieval index: send only the relevant code slice, not whole files. Cuts cloud token cost by orders of magnitude, fits small local-model context windows, and improves answers. This is also a marketing point ("surgical and private, not brute-force").
+
+**UI → dark, IDE-grade three-pane workspace** (doc 03):
+- **Center:** interactive graph, **focus-and-expand** (center on the selected symbol, show only its in/out relationships, expand outward) — *never render the full graph* (the cardinal rule; the hairball is what kills these tools).
+- **Top-right:** synchronized code panel showing the snippet at every usage site.
+- **Bottom-right:** AI chat + section-summary dock, bidirectionally linked to the graph (click a node → explain it; ask a question → it drives the graph).
+- **Left:** fuzzy search, program/copybook tree, type filters, persistent color legend.
+- **Top bar:** search, breadcrumb history, Home reset.
+- **Viz library:** **Sigma.js + graphology** (WebGL, scales to tens of thousands of nodes) with **dagre/ELK** for hierarchical layout and **Mermaid** for static, exportable section diagrams. Cytoscape.js is the fallback if post-clustering graphs stay under ~2-3k nodes.
+- Diagrams are drawn **deterministically from the parsed graph**, never by the AI (AI diagrams lie). The AI only explains.
+
+---
+
+## The one architectural tension to resolve first
+
+Docs 02 and 04 pull against each other: the best *semantic* parsers (ProLeap, mapa) are **JVM/Java**, but Tauri's whole advantage is being **light**. Bundling a JRE erodes the size win. Three honest paths:
+
+1. **GraalVM native-image** the ProLeap+mapa analyzer → ship as a small native Tauri sidecar. *Best end state, some build complexity.*
+2. **Bundle a trimmed JRE** as a sidecar. *Simplest, heavier install (~40-70 MB).*
+3. **Start tree-sitter-only** (syntax + basic call graph via CALL/PERFORM/COPY text), ship fast, add the JVM semantic engine in a later milestone. *Fastest to a demo, weaker JCL/data-flow at first.*
+
+**Recommendation:** prototype with path 3 to get the UI and flow real quickly, but architect the parser as a swappable sidecar from day one so path 1 drops in later without rework. Decide for real after the parser bake-off (doc 02).
+
+---
+
+## Proposed high-level architecture
+
+```
+Tauri app (Rust shell + web UI)
+├── UI (web): Sigma.js graph + code panel + chat dock   ← doc 03
+├── Model layer: Vercel AI SDK → Anthropic/OpenAI/OpenRouter/Ollama   ← doc 04
+├── Retrieval: graph-guided RAG over the dependency map   ← doc 04
+└── Analysis sidecar (spawned): ProLeap + mapa  → emits the graph/map (JSON)   ← doc 02
+        (+ tree-sitter embedded in UI for instant highlighting)
+   Test corpora: COBOL Legacy Benchmark Suite, IBM zopeneditor-sample, bundled demo   ← doc 05
+```
+
+---
+
+## Decisions (locked — see PRD §17)
+
+1. **Name** — **Cobolens** (COBOL + lens). Collision-checked.
+2. **License** — **MIT.**
+3. **Parser path** — **Path 3 now** (tree-sitter, end-to-end fast) with a **swappable sidecar**; upgrade to ProLeap + mapa (path 1) later. Confirm specifics after the bake-off.
+4. **v1 scope** — **Confirmed:** read + map + visualize + summarize + grounded chat (BYO model, incl. fully local). No write/generate, no migration, no verification.
+5. **Distribution** — open-source GitHub repo, compile-from-source (cross-platform via Tauri); prebuilt installers later.
+
+**Still open:** first-run demo repo — pick which small sample to bundle (doc 05).
+
+---
+
+## Honest framing (carry-over from the planning conversation)
+
+The differentiation is **UX, packaging, and the local/air-gapped guarantee — not technology.** The parsers, the models, the RAG pattern, and even "talk to your COBOL" all exist in pieces already, and the frontier vendors (Anthropic's modernization playbook, AWS, Google, IBM) are charging at this space. So the right goal is **a sharp, beloved, free tool and a credibility/portfolio piece** — "ADDI but free, local, and slick" — not a company. Build it for the individual engineer everyone else ignores, and lean hard on the two things the giants can't easily match: it's free, and it never sends your code anywhere.

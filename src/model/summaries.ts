@@ -16,12 +16,14 @@ export async function generateUnitSummary({
   excerpt,
   settings,
   apiKey,
+  abortSignal,
 }: {
   graph: GraphDocument;
   node: GraphNode;
   excerpt: SourceExcerpt;
   settings: ModelSettings;
   apiKey?: string;
+  abortSignal?: AbortSignal;
 }): Promise<UnitSummary> {
   const result = await generateText({
     model: createLanguageModel(settings, apiKey),
@@ -29,6 +31,7 @@ export async function generateUnitSummary({
     prompt: summaryUserPrompt(graph, node, excerpt),
     temperature: 0.1,
     maxOutputTokens: 420,
+    abortSignal,
   });
 
   return {

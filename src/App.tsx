@@ -74,6 +74,7 @@ type AnalysisProgress = {
 };
 
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
+const MODEL_CALL_TIMEOUT_MS = 45_000;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
   extensions: ".cbl,.cob,.cpy,.jcl",
@@ -133,6 +134,8 @@ function App() {
   const [exportStatus, setExportStatus] = useState("");
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
+  const activeChatAbortRef = useRef<AbortController | null>(null);
+  const activeSummaryAbortRef = useRef<AbortController | null>(null);
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -535,6 +538,14 @@ function App() {
   }
 
   async function checkModelReadiness() {
+    try {
+      await prepareModelCall();
+    } catch (err) {
+      setModelReadiness({ status: "error", message: friendlyModelError(err, modelSettings) });
+    }
+  }
+
+  async function prepareModelCall() {
     setModelReadiness({ status: "checking", message: "Checking AI settings" });
     try {
       if (isCloudProvider(modelSettings.provider)) {
@@ -544,18 +555,21 @@ function App() {
         if (!hasProviderKey) {
           throw new Error(`Save a ${PROVIDER_LABELS[modelSettings.provider]} key before using cloud AI.`);
         }
-        await providerKeyForModel(modelSettings);
+        const apiKey = await providerKeyForModel(modelSettings);
         setModelReadiness({
           status: "ready",
           message: `${PROVIDER_LABELS[modelSettings.provider]} key is saved. Cloud calls happen only when you run AI Summary or non-graph Ask.`,
         });
-        return;
+        return apiKey;
       }
 
       const message = await checkOllamaReadiness(modelSettings);
       setModelReadiness({ status: "ready", message });
+      return undefined;
     } catch (err) {
-      setModelReadiness({ status: "error", message: friendlyModelError(err, modelSettings) });
+      const message = friendlyModelError(err, modelSettings);
+      setModelReadiness({ status: "error", message });
+      throw new Error(message);
     }
   }
 
@@ -570,13 +584,17 @@ function App() {
     setInspectorTab("summary");
     setBulkSummaryStatus(`0/${summaryNodes.length}`);
     for (let index = 0; index < summaryNodes.length; index += 1) {
-      await generateSummaryForNode(summaryNodes[index]);
+      const generated = await generateSummaryForNode(summaryNodes[index]);
+      if (!generated) {
+        setBulkSummaryStatus(`Stopped at ${index}/${summaryNodes.length}`);
+        return;
+      }
       setBulkSummaryStatus(`${index + 1}/${summaryNodes.length}`);
     }
   }
 
   async function generateSummaryForNode(node: GraphNode) {
-    if (!graph || !node.file) return;
+    if (!graph || !node.file) return false;
     setSummaries((current) => ({
       ...current,
       [node.id]: { status: "running" },
@@ -584,24 +602,29 @@ function App() {
 
     try {
       const excerpt = await sourceExcerptForNode(node);
-      const apiKey = await providerKeyForModel(modelSettings);
-      const summary = await generateUnitSummary({
-        graph,
-        node,
-        excerpt,
-        settings: modelSettings,
-        apiKey,
-      });
+      const apiKey = await prepareModelCall();
+      const summary = await runTimedModelCall("Summary generation", activeSummaryAbortRef, (abortSignal) =>
+        generateUnitSummary({
+          graph,
+          node,
+          excerpt,
+          settings: modelSettings,
+          apiKey,
+          abortSignal,
+        }),
+      );
       setModelCallCount((count) => count + 1);
       setSummaries((current) => ({
         ...current,
         [node.id]: { status: "ready", summary },
       }));
+      return true;
     } catch (err) {
       setSummaries((current) => ({
         ...current,
         [node.id]: { status: "error", error: friendlyModelError(err, modelSettings) },
       }));
+      return false;
     }
   }
 
@@ -638,17 +661,21 @@ function App() {
         if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
         return;
       }
-      const apiKey = await providerKeyForModel(modelSettings);
-      const answer = await generateGroundedAnswer({
-        question,
-        context,
-        settings: modelSettings,
-        apiKey,
-      });
+      const answerContext = context;
+      const apiKey = await prepareModelCall();
+      const answer = await runTimedModelCall("Ask", activeChatAbortRef, (abortSignal) =>
+        generateGroundedAnswer({
+          question,
+          context: answerContext,
+          settings: modelSettings,
+          apiKey,
+          abortSignal,
+        }),
+      );
       setModelCallCount((count) => count + 1);
-      setChatAnswer({ question, text: answer.text, citations: context.citations, source: "model" });
+      setChatAnswer({ question, text: answer.text, citations: answerContext.citations, source: "model" });
       setChatStatus("ready");
-      if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
+      if (answerContext.focusNodes[0]) focusOnNode(answerContext.focusNodes[0].id, { preserveChat: true });
     } catch (err) {
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
@@ -660,6 +687,14 @@ function App() {
       setChatError(friendlyModelError(err, modelSettings));
       setChatStatus("error");
     }
+  }
+
+  function cancelAsk() {
+    activeChatAbortRef.current?.abort();
+  }
+
+  function cancelSummary() {
+    activeSummaryAbortRef.current?.abort();
   }
 
   function jumpToCitation(citation: Citation, keepEdge = false) {
@@ -935,6 +970,7 @@ function App() {
                   canAsk={Boolean(graph)}
                   onQuestionChange={setChatQuestion}
                   onAsk={() => askQuestion()}
+                  onCancel={cancelAsk}
                   onAskPreset={askQuestion}
                   onOpenCitation={jumpToCitation}
                 />
@@ -949,6 +985,7 @@ function App() {
                   bulkStatus={bulkSummaryStatus}
                   onGenerateSelected={generateSelectedSummary}
                   onGenerateAll={generateAllSummaries}
+                  onCancelSummary={cancelSummary}
                   onOpenCitation={jumpToCitation}
                 />
               ) : null}
@@ -1248,6 +1285,7 @@ function SummaryDock({
   bulkStatus,
   onGenerateSelected,
   onGenerateAll,
+  onCancelSummary,
   onOpenCitation,
 }: {
   node: GraphNode | null;
@@ -1258,10 +1296,12 @@ function SummaryDock({
   bulkStatus: string;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
+  onCancelSummary: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
   const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
+  const generating = state?.status === "running";
 
   return (
     <section className="summary-card">
@@ -1274,11 +1314,17 @@ function SummaryDock({
         </div>
         <button
           type="button"
-          onClick={onGenerateSelected}
-          disabled={!node?.file || state?.status === "running"}
-          title={!node?.file ? "Select a symbol with source to summarize" : "Generate an AI summary for this symbol"}
+          onClick={generating ? onCancelSummary : onGenerateSelected}
+          disabled={!generating && !node?.file}
+          title={
+            generating
+              ? "Stop the running summary request"
+              : !node?.file
+                ? "Select a symbol with source to summarize"
+                : "Generate an AI summary for this symbol"
+          }
         >
-          {state?.status === "running" ? "Generating" : state?.summary ? "Regenerate" : "Generate Summary"}
+          {generating ? "Stop" : state?.summary ? "Regenerate" : "Generate Summary"}
         </button>
       </div>
       <div className="summary-output">
@@ -1305,7 +1351,7 @@ function SummaryDock({
         )}
       </div>
       <div className="summary-meta">
-        <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || state?.status === "running"}>
+        <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
           Summarize All
         </button>
         <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
@@ -1331,6 +1377,7 @@ function ChatAnswerPanel({
   canAsk,
   onQuestionChange,
   onAsk,
+  onCancel,
   onAskPreset,
   onOpenCitation,
 }: {
@@ -1343,6 +1390,7 @@ function ChatAnswerPanel({
   canAsk: boolean;
   onQuestionChange: (question: string) => void;
   onAsk: () => void;
+  onCancel: () => void;
   onAskPreset: (question: string) => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
@@ -1362,7 +1410,7 @@ function ChatAnswerPanel({
           ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
           : "Graph shortcuts answer without a model";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
-  const askButtonLabel = status === "running" ? "..." : workingWithModel ? "Ask AI" : "Ask";
+  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : "Ask";
 
   return (
     <section className="answer-card" aria-live="polite">
@@ -1408,7 +1456,11 @@ function ChatAnswerPanel({
           }}
           disabled={!canAsk || status === "running"}
         />
-        <button type="button" onClick={onAsk} disabled={!canAsk || !question.trim() || status === "running"}>
+        <button
+          type="button"
+          onClick={status === "running" ? onCancel : onAsk}
+          disabled={!canAsk || (status !== "running" && !question.trim())}
+        >
           {askButtonLabel}
         </button>
       </div>
@@ -1823,6 +1875,46 @@ async function providerKeyForModel(settings: ModelSettings) {
     throw new Error("Cloud API keys are stored in the desktop keychain. Use the desktop app to call cloud providers.");
   }
   return invoke<string>("read_provider_key", { provider: settings.provider });
+}
+
+async function runTimedModelCall<T>(
+  label: string,
+  activeControllerRef: { current: AbortController | null },
+  task: (abortSignal: AbortSignal) => Promise<T>,
+) {
+  activeControllerRef.current?.abort();
+  const controller = new AbortController();
+  let timedOut = false;
+  activeControllerRef.current = controller;
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, MODEL_CALL_TIMEOUT_MS);
+
+  try {
+    return await task(controller.signal);
+  } catch (err) {
+    if (controller.signal.aborted || isAbortError(err)) {
+      const seconds = Math.round(MODEL_CALL_TIMEOUT_MS / 1000);
+      throw new Error(
+        timedOut
+          ? `${label} timed out after ${seconds}s. Check AI readiness, try a smaller local model, or switch providers.`
+          : `${label} was stopped.`,
+      );
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeout);
+    if (activeControllerRef.current === controller) {
+      activeControllerRef.current = null;
+    }
+  }
+}
+
+function isAbortError(err: unknown) {
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (!(err instanceof Error)) return false;
+  return err.name === "AbortError" || /\babort(?:ed)?\b/i.test(err.message);
 }
 
 async function checkOllamaReadiness(settings: ModelSettings) {

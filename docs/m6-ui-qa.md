@@ -81,8 +81,8 @@ Scan settings check:
   `analysis-progress` events and shown in the Ingest pane as counts such as
   `Parse 3/4` while indexing is running.
 - In the browser preview those controls stay disabled because the preview is a
-  fixed prebuilt graph JSON, while `Re-scan` reloads the generated fixture graph
-  without blanking the current graph view.
+  fixed prebuilt graph JSON. `Re-scan` is disabled there too, so browser users
+  are not offered a scan action that cannot touch a local folder.
 
 Relationship-click check:
 
@@ -130,12 +130,18 @@ Model-backed Ask check:
   response as an `Ollama answer with cited graph context`, increments the local
   call counter, cites `src/LINEAGE.cbl:1` plus relationship lines, and does not
   explain `LINEAGE` as a generic compiler concept.
+- While a model-backed Ask is running, the submit button changes to `Stop`.
+  Stopping the request returns a graph-cited fallback with a model note instead
+  of leaving the panel in a permanent loading state.
 
 Model-backed Summary check:
 
 - The Summary dock bulk action now reports `4 source units` on the M6 fixture,
   covering source-backed programs, copybooks, and paragraphs rather than only
   programs.
+- Generating a summary first checks model readiness. While it is running, the
+  action changes to `Stop`; stopping it leaves a clear `Summary generation was
+  stopped.` message and restores the `Generate Summary` action.
 - Generating a `LINEAGE` summary with local Ollama cites `src/LINEAGE.cbl:1`
   plus relationship lines, avoids generic preamble text, and does not explain
   `LINEAGE` as a generic compiler concept.

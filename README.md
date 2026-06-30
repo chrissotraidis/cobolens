@@ -42,6 +42,8 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   physical datasets, with cited source lines.
 - Generate the M6 fixture graph and use the app to answer:
   "what depends on this?" and "where does this data flow?"
+- Preflight local/cloud model readiness for AI Ask and summaries, with Stop
+  controls and bounded timeouts so model calls do not leave the UI spinning.
 - Validate parser candidates against the strict M6 fixture and the cloned
   benchmark suite when available locally.
 

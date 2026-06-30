@@ -12,11 +12,13 @@ export async function generateGroundedAnswer({
   context,
   settings,
   apiKey,
+  abortSignal,
 }: {
   question: string;
   context: RetrievedContext;
   settings: ModelSettings;
   apiKey?: string;
+  abortSignal?: AbortSignal;
 }): Promise<GroundedAnswer> {
   const result = await generateText({
     model: createLanguageModel(settings, apiKey),
@@ -38,6 +40,7 @@ export async function generateGroundedAnswer({
     ].join("\n"),
     temperature: 0.1,
     maxOutputTokens: 520,
+    abortSignal,
   });
 
   return { text: result.text.trim() };

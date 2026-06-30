@@ -6,6 +6,8 @@ Date: 2026-06-30
 
 Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture, but the final PRD path still needs packaging validation and benchmark-scale comparison before adopting a JVM analyzer.
 
+For v1, keep the current Rust analyzer as the production sidecar. It is the smallest path that satisfies the current local M6 gate while preserving the swappable sidecar contract. Treat ProLeap and mapa as proven candidates, not adopted production dependencies, until the official benchmark suite and Windows/Tauri packaging gates are green.
+
 This is the load-bearing decision gate from the original plan:
 
 - Keep the current Rust sidecar as the working v1 implementation until a JVM candidate proves the same contract.

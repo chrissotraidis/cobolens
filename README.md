@@ -130,6 +130,7 @@ Check the optional local Ollama path:
 ```sh
 npm run ollama:check
 npm run ollama:summary-smoke
+npm run ollama:ask-smoke
 ```
 
 This verifies that `ollama` is installed in the same Linux environment, the

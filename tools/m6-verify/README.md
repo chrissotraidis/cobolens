@@ -32,6 +32,7 @@ every development machine has Ollama installed. Run it explicitly with:
 ```sh
 npm run ollama:check
 npm run ollama:summary-smoke
+npm run ollama:ask-smoke
 ```
 
 Desktop shell startup is also environment-specific because it needs a running

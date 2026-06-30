@@ -11,6 +11,7 @@
     "m6:verify": "node tools/m6-verify/run.mjs",
     "ollama:check": "node tools/local-model/ollama-smoke.mjs",
     "ollama:summary-smoke": "node tools/local-model/ollama-summary-smoke.mjs",
+    "ollama:ask-smoke": "node tools/local-model/ollama-ask-smoke.mjs",
     "desktop:smoke": "node tools/desktop/tauri-attached-smoke.mjs",
     "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",

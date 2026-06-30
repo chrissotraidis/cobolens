@@ -14,7 +14,8 @@ export function graphAnswerFallback(
   modelNote = "",
 ) {
   const matched = context.focusNodes.slice(0, 3);
-  const matchedIds = new Set(matched.map((node) => node.id));
+  const relationshipTargets = matched.slice(0, 1);
+  const matchedIds = new Set(relationshipTargets.map((node) => node.id));
   const directEdges = context.edges.filter((edge) => matchedIds.has(edge.from) || matchedIds.has(edge.to));
   const incoming = directEdges.filter((edge) => matchedIds.has(edge.to));
   const outgoing = directEdges.filter((edge) => matchedIds.has(edge.from));
@@ -96,7 +97,7 @@ function nodeName(graph: GraphDocument, nodeId: string) {
 }
 
 function graphQuestionIntent(question: string): GraphQuestionIntent {
-  if (/\b(depend\w*|impact\w*|used by)\b/i.test(question)) return "dependency";
+  if (/\b(depend\w*|impact\w*|used by|uses?)\b/i.test(question)) return "dependency";
   if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
   if (/\b(flow\w*|read\w*|writ\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
   if (/\b(where|happen\w*)\b/i.test(question)) return "where";

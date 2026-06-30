@@ -547,6 +547,39 @@ pre {
   line-height: 1.6;
 }
 
+.source-lines {
+  display: grid;
+  gap: 1px;
+}
+
+.source-line {
+  display: grid;
+  grid-template-columns: 14px 42px minmax(0, 1fr);
+  gap: 8px;
+  min-width: max-content;
+  padding: 1px 7px;
+  border-radius: 5px;
+}
+
+.source-line.is-highlighted {
+  color: #e7fff6;
+  background: rgba(90, 167, 161, 0.16);
+  box-shadow: inset 3px 0 0 #66c2a5;
+}
+
+.source-line-marker {
+  color: #66c2a5;
+}
+
+.source-line-number {
+  color: #7d8996;
+  text-align: right;
+}
+
+.source-line-text {
+  white-space: pre;
+}
+
 .source-view {
   display: grid;
   grid-template-rows: 34px minmax(0, 1fr);
@@ -573,10 +606,6 @@ pre {
 
 .source-header strong {
   color: #e7ebef;
-}
-
-.chat-panel {
-  grid-template-rows: 38px minmax(0, 1fr) 54px;
 }
 
 .summary-empty,
@@ -795,6 +824,22 @@ pre {
   white-space: nowrap;
 }
 
+.chat-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-composer input,
+.chat-composer button {
+  height: 34px;
+}
+
+.chat-composer input {
+  padding: 0 10px;
+}
+
 .lineage-card {
   padding-top: 12px;
   border-top: 1px solid #20262e;
@@ -944,21 +989,6 @@ pre {
 .relationship-card {
   padding-top: 12px;
   border-top: 1px solid #20262e;
-}
-
-.chat-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px;
-  gap: 8px;
-  align-items: center;
-  padding: 10px;
-  border-top: 1px solid #20262e;
-  background: #11151a;
-}
-
-.chat-input input,
-.chat-input button {
-  height: 36px;
 }
 
 @media (max-width: 900px) {

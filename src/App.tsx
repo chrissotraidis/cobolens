@@ -227,6 +227,12 @@ function App() {
     inspectorBodyRef.current?.scrollTo({ top: 0 });
   }, [selectedNodeId]);
 
+  useEffect(() => {
+    if (chatStatus === "ready" || chatStatus === "error") {
+      inspectorBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [chatAnswer?.question, chatStatus]);
+
   async function chooseFolder() {
     if (!canUseTauri()) {
       setError("Open Folder is available in the desktop app. Use Open Sample to explore the browser demo.");
@@ -776,6 +782,10 @@ function App() {
                 error={chatError}
                 node={selectedNode}
                 settings={modelSettings}
+                question={chatQuestion}
+                canAsk={Boolean(graph)}
+                onQuestionChange={setChatQuestion}
+                onAsk={() => askQuestion()}
                 onAskPreset={askQuestion}
                 onOpenCitation={jumpToCitation}
               />
@@ -806,22 +816,6 @@ function App() {
                 }}
               />
               <RelationshipDetails selectedEdge={selectedEdge} graph={graph} />
-            </div>
-            <div className="chat-input" aria-label="Ask a question">
-              <input
-                type="text"
-                aria-label="Ask about the codebase"
-                placeholder="Ask about dependencies, data flow, or a source line..."
-                value={chatQuestion}
-                onChange={(event) => setChatQuestion(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") askQuestion();
-                }}
-                disabled={!graph || chatStatus === "running"}
-              />
-              <button type="button" onClick={() => askQuestion()} disabled={!graph || !chatQuestion.trim() || chatStatus === "running"}>
-                {chatStatus === "running" ? "..." : "Ask"}
-              </button>
             </div>
           </section>
         </aside>
@@ -1041,6 +1035,10 @@ function ChatAnswerPanel({
   error,
   node,
   settings,
+  question,
+  canAsk,
+  onQuestionChange,
+  onAsk,
   onAskPreset,
   onOpenCitation,
 }: {
@@ -1049,6 +1047,10 @@ function ChatAnswerPanel({
   error: string;
   node: GraphNode | null;
   settings: ModelSettings;
+  question: string;
+  canAsk: boolean;
+  onQuestionChange: (question: string) => void;
+  onAsk: () => void;
   onAskPreset: (question: string) => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
@@ -1077,6 +1079,22 @@ function ChatAnswerPanel({
           ))}
         </div>
       ) : null}
+      <div className="chat-composer" aria-label="Ask a question">
+        <input
+          type="text"
+          aria-label="Ask about the codebase"
+          placeholder="Ask where something happens, what uses it, or where data flows..."
+          value={question}
+          onChange={(event) => onQuestionChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onAsk();
+          }}
+          disabled={!canAsk || status === "running"}
+        />
+        <button type="button" onClick={onAsk} disabled={!canAsk || !question.trim() || status === "running"}>
+          {status === "running" ? "..." : "Ask"}
+        </button>
+      </div>
       {status === "running" ? (
         <ProgressNote
           label="Working from graph context"
@@ -1092,7 +1110,7 @@ function ChatAnswerPanel({
           <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
         </>
       ) : (
-        <p>Ask where a symbol happens, what depends on it, or where data flows. Graph questions answer instantly without a model.</p>
+        <p>Graph questions answer instantly without a model. Broader explanation questions use the selected AI provider with cited context.</p>
       )}
     </section>
   );
@@ -1347,7 +1365,13 @@ function RelationshipList({
                   <span className="swatch" style={{ background: nodeColor(related?.type ?? "") }} />
                   <span>{related?.name ?? relatedId}</span>
                 </button>
-                <button type="button" className="lineage-edge" onClick={() => onOpenEdge(edge)} disabled={!edge.site}>
+                <button
+                  type="button"
+                  className="lineage-edge"
+                  onClick={() => onOpenEdge(edge)}
+                  disabled={!edge.site}
+                  title={edge.site ? `Show cited relationship at ${edge.site.file}:${edge.site.line}` : "No source location recorded"}
+                >
                   {edge.type}
                   {edge.site ? ` ${edge.site.file}:${edge.site.line}` : ""}
                 </button>
@@ -1399,12 +1423,21 @@ function CodeSnippet({ node, snippet }: { node: GraphNode; snippet: SourceSnippe
         <strong>line {snippet?.highlightLine ?? node.lines?.[0] ?? 1}</strong>
       </div>
       <pre>
-        <code>
-          {snippet
-            ? snippet.lines
-                .map((line) => `${line.number === snippet.highlightLine ? ">" : " "} ${padLine(line.number)} ${line.text}`)
-                .join("\n")
-            : "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."}
+        <code className={snippet ? "source-lines" : undefined}>
+          {snippet ? (
+            snippet.lines.map((line) => (
+              <span
+                key={line.number}
+                className={line.number === snippet.highlightLine ? "source-line is-highlighted" : "source-line"}
+              >
+                <span className="source-line-marker">{line.number === snippet.highlightLine ? ">" : " "}</span>
+                <span className="source-line-number">{padLine(line.number)}</span>
+                <span className="source-line-text">{line.text || " "}</span>
+              </span>
+            ))
+          ) : (
+            "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."
+          )}
         </code>
       </pre>
     </div>

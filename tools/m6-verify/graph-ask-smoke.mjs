@@ -58,6 +58,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const lineageAnswer = graphAnswerFallback(graph, lineageQuestion, lineageContext);
+  const usesQuestion = "Who uses CUSTOMER?";
+  const usesContext = await retrieveQuestionContext({
+    graph,
+    question: usesQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const usesAnswer = graphAnswerFallback(graph, usesQuestion, usesContext);
   const whereQuestion = "Where does LINEAGE happen?";
   const whereContext = await retrieveQuestionContext({
     graph,
@@ -84,6 +91,7 @@ try {
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
     ["flow question classified as graph-only", isGraphQuestion(flowQuestion)],
     ["where question classified as graph-only", isGraphQuestion(whereQuestion)],
+    ["uses question classified as graph-only", isGraphQuestion(usesQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -91,6 +99,8 @@ try {
     ["reports JCL users before display limit", lineageAnswer.text.includes("Upstream or used by: STEP010.")],
     ["prioritizes incoming dependency relationship", lineageAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
     ["cites incoming JCL dependency", lineageAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
+    ["reports copybook where-used", usesAnswer.text.includes("Upstream or used by: LINEAGE")],
+    ["cites copybook usage", usesAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 11)],
     ["reports recorded locations", whereAnswer.text.includes("Recorded locations: src/LINEAGE.cbl:1")],
     ["cites matched location", whereAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["reports runtime transfer answer", callAnswer.text.includes("Calls or runtime transfers: LINK RATEAPI.")],

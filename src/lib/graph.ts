@@ -62,6 +62,11 @@ export const NODE_COLORS: Record<string, string> = {
   "jcl-step": "#b8a2ff",
   file: "#8da0cb",
   "data-item": "#f2a7c7",
+  dataset: "#7bc8e8",
+  "db2-table": "#9bd17c",
+  "cics-command": "#f4b06a",
+  "jcl-dd": "#d4b483",
+  "jcl-proc": "#c7a2d8",
   cluster: "#6b7480",
 };
 

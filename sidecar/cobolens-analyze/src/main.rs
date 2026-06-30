@@ -381,6 +381,25 @@ fn parse_cobol_file(
             continue;
         }
 
+        if let Some(data_item) = data_item_definition(&tokens) {
+            let data_id = format!("data:{}", normalize_symbol(data_item));
+            builder.node(GraphNode {
+                id: data_id.clone(),
+                node_type: "data-item".to_string(),
+                name: data_item.to_string(),
+                file: Some(source_file.rel.clone()),
+                lines: Some([line_number, line_number]),
+                external: None,
+                steps: None,
+            });
+            builder.edge(GraphEdge {
+                from: owner_id.clone(),
+                to: data_id,
+                edge_type: "DEFINES".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
         if let Some(copybook) = copy_target(&tokens) {
             let copy_id = format!("copy:{}", normalize_symbol(copybook));
             builder.node(GraphNode {
@@ -415,6 +434,97 @@ fn parse_cobol_file(
                 from: owner_id.clone(),
                 to: program_id,
                 edge_type: "CALLS".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
+        if let Some((source, target)) = move_targets(&tokens) {
+            let source_id = ensure_data_item(builder, source, source_file, line_number);
+            let target_id = ensure_data_item(builder, target, source_file, line_number);
+            builder.edge(GraphEdge {
+                from: source_id,
+                to: target_id,
+                edge_type: "moves-to".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
+        if let Some(read_target) = read_target(&tokens) {
+            let target_id =
+                ensure_dataset(builder, read_target, Some(source_file), Some(line_number));
+            builder.edge(GraphEdge {
+                from: owner_id.clone(),
+                to: target_id,
+                edge_type: "reads".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
+        if let Some(write_target) = write_target(&tokens) {
+            let target_id = ensure_data_item(builder, write_target, source_file, line_number);
+            builder.edge(GraphEdge {
+                from: owner_id.clone(),
+                to: target_id,
+                edge_type: "writes".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
+        if let Some(table) = sql_table_target(&tokens) {
+            let table_id = format!("db2:{}", normalize_symbol(table));
+            builder.node(GraphNode {
+                id: table_id.clone(),
+                node_type: "db2-table".to_string(),
+                name: table.to_string(),
+                file: None,
+                lines: None,
+                external: Some(true),
+                steps: None,
+            });
+            builder.edge(GraphEdge {
+                from: owner_id.clone(),
+                to: table_id,
+                edge_type: sql_table_edge_type(&tokens).to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
+        if let Some(program) = cics_link_target(&tokens) {
+            let command_id = format!(
+                "cics:{}/{}:{}",
+                normalize_symbol(owner_name),
+                line_number,
+                normalize_symbol(program)
+            );
+            let program_id = format!("prog:{}", normalize_symbol(program));
+            builder.node(GraphNode {
+                id: command_id.clone(),
+                node_type: "cics-command".to_string(),
+                name: format!("LINK {program}"),
+                file: Some(source_file.rel.clone()),
+                lines: Some([line_number, line_number]),
+                external: None,
+                steps: None,
+            });
+            builder.node(GraphNode {
+                id: program_id.clone(),
+                node_type: "program".to_string(),
+                name: program.to_string(),
+                file: None,
+                lines: None,
+                external: Some(true),
+                steps: None,
+            });
+            builder.edge(GraphEdge {
+                from: owner_id.clone(),
+                to: command_id.clone(),
+                edge_type: "executes".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+            builder.edge(GraphEdge {
+                from: command_id,
+                to: program_id,
+                edge_type: "links".to_string(),
                 site: Some(site(source_file, line_number)),
             });
         }
@@ -459,6 +569,7 @@ fn parse_jcl_file(
         .to_string();
     let mut job_id = format!("job:{}", normalize_symbol(&job_name));
     let mut previous_step_id: Option<String> = None;
+    let mut current_step_id: Option<String> = None;
     let mut steps = Vec::new();
 
     for (idx, line) in lines.iter().enumerate() {
@@ -522,6 +633,7 @@ fn parse_jcl_file(
                 });
             }
             previous_step_id = Some(step_id.clone());
+            current_step_id = Some(step_id.clone());
 
             if let Some(program) = exec_program(&tokens[exec_index + 1..]) {
                 let program_id = format!("prog:{}", normalize_symbol(program));
@@ -541,6 +653,44 @@ fn parse_jcl_file(
                     site: Some(site(source_file, line_number)),
                 });
             }
+            continue;
+        }
+
+        if tokens.len() >= 2 && tokens[1].eq_ignore_ascii_case("DD") {
+            let Some(step_id) = current_step_id.as_ref() else {
+                continue;
+            };
+            let Some(dataset) = jcl_dsn(line) else {
+                continue;
+            };
+            let dd_id = format!(
+                "dd:{}/{}",
+                normalize_symbol(&job_name),
+                normalize_symbol(&tokens[0])
+            );
+            let dataset_id =
+                ensure_dataset(builder, &dataset, Some(source_file), Some(line_number));
+            builder.node(GraphNode {
+                id: dd_id.clone(),
+                node_type: "jcl-dd".to_string(),
+                name: tokens[0].to_string(),
+                file: Some(source_file.rel.clone()),
+                lines: Some([line_number, line_number]),
+                external: None,
+                steps: None,
+            });
+            builder.edge(GraphEdge {
+                from: step_id.clone(),
+                to: dd_id.clone(),
+                edge_type: "DECLARES-DD".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+            builder.edge(GraphEdge {
+                from: dd_id,
+                to: dataset_id,
+                edge_type: "uses-dd".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
         }
     }
 
@@ -623,6 +773,98 @@ fn perform_target(tokens: &[String]) -> Option<&str> {
     Some(target)
 }
 
+fn data_item_definition(tokens: &[String]) -> Option<&str> {
+    let level = tokens.first()?;
+    if !level.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    if matches!(level.as_str(), "66" | "77" | "88") {
+        return None;
+    }
+    let name = tokens.get(1)?;
+    if name.eq_ignore_ascii_case("FILLER") {
+        return None;
+    }
+    Some(name)
+}
+
+fn move_targets(tokens: &[String]) -> Option<(&str, &str)> {
+    if !tokens.first()?.eq_ignore_ascii_case("MOVE") {
+        return None;
+    }
+    let to_index = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("TO"))?;
+    let source = tokens.get(1)?;
+    let target = tokens.get(to_index + 1)?;
+    Some((source, target))
+}
+
+fn read_target(tokens: &[String]) -> Option<&str> {
+    let index = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("READ"))?;
+    tokens.get(index + 1).map(String::as_str)
+}
+
+fn write_target(tokens: &[String]) -> Option<&str> {
+    let index = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("WRITE"))?;
+    tokens.get(index + 1).map(String::as_str)
+}
+
+fn sql_table_target(tokens: &[String]) -> Option<&str> {
+    if let Some(index) = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("FROM"))
+    {
+        return tokens.get(index + 1).map(String::as_str);
+    }
+    if tokens
+        .first()
+        .is_some_and(|token| token.eq_ignore_ascii_case("UPDATE"))
+    {
+        return tokens.get(1).map(String::as_str);
+    }
+    if tokens.len() >= 3
+        && tokens[0].eq_ignore_ascii_case("INSERT")
+        && tokens[1].eq_ignore_ascii_case("INTO")
+    {
+        return tokens.get(2).map(String::as_str);
+    }
+    None
+}
+
+fn sql_table_edge_type(tokens: &[String]) -> &'static str {
+    if tokens
+        .iter()
+        .any(|token| token.eq_ignore_ascii_case("UPDATE") || token.eq_ignore_ascii_case("INSERT"))
+    {
+        "updates"
+    } else {
+        "queries"
+    }
+}
+
+fn cics_link_target(tokens: &[String]) -> Option<&str> {
+    let has_exec_cics = tokens.windows(2).any(|window| {
+        window[0].eq_ignore_ascii_case("EXEC") && window[1].eq_ignore_ascii_case("CICS")
+    });
+    if !has_exec_cics
+        || !tokens
+            .iter()
+            .any(|token| token.eq_ignore_ascii_case("LINK") || token.eq_ignore_ascii_case("XCTL"))
+    {
+        return None;
+    }
+
+    let program_index = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("PROGRAM"))?;
+    tokens.get(program_index + 1).map(String::as_str)
+}
+
 fn exec_program(tokens: &[String]) -> Option<&str> {
     for token in tokens {
         if let Some(program) = token.strip_prefix("PGM=") {
@@ -641,6 +883,59 @@ fn is_inline_perform_keyword(token: &str) -> bool {
         token.to_ascii_uppercase().as_str(),
         "VARYING" | "UNTIL" | "TIMES" | "WITH" | "TEST"
     )
+}
+
+fn jcl_dsn(line: &str) -> Option<String> {
+    let upper = line.to_ascii_uppercase();
+    let index = upper.find("DSN=")?;
+    let raw = &line[index + 4..];
+    let dataset = raw
+        .split(|ch: char| ch == ',' || ch.is_ascii_whitespace())
+        .next()?;
+    let dataset = clean_symbol(dataset);
+    if dataset.is_empty() {
+        None
+    } else {
+        Some(dataset)
+    }
+}
+
+fn ensure_data_item(
+    builder: &mut GraphBuilder,
+    name: &str,
+    source_file: &SourceFile,
+    line_number: usize,
+) -> String {
+    let id = format!("data:{}", normalize_symbol(name));
+    builder.node(GraphNode {
+        id: id.clone(),
+        node_type: "data-item".to_string(),
+        name: name.to_string(),
+        file: Some(source_file.rel.clone()),
+        lines: Some([line_number, line_number]),
+        external: None,
+        steps: None,
+    });
+    id
+}
+
+fn ensure_dataset(
+    builder: &mut GraphBuilder,
+    name: &str,
+    source_file: Option<&SourceFile>,
+    line_number: Option<usize>,
+) -> String {
+    let id = format!("dataset:{}", normalize_symbol(name));
+    builder.node(GraphNode {
+        id: id.clone(),
+        node_type: "dataset".to_string(),
+        name: name.to_string(),
+        file: source_file.map(|file| file.rel.clone()),
+        lines: source_file.and_then(|_| line_number.map(|line| [line, line])),
+        external: source_file.is_none().then_some(true),
+        steps: None,
+    });
+    id
 }
 
 fn tokenize(line: &str) -> Vec<String> {

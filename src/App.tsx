@@ -594,6 +594,10 @@ function App() {
             <LegendItem type="copybook" label="Copybooks" />
             <LegendItem type="jcl-job" label="JCL jobs" />
             <LegendItem type="jcl-step" label="JCL steps" />
+            <LegendItem type="data-item" label="Data items" />
+            <LegendItem type="dataset" label="Datasets" />
+            <LegendItem type="db2-table" label="DB2 tables" />
+            <LegendItem type="cics-command" label="CICS commands" />
           </section>
         </aside>
 

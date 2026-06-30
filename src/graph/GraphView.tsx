@@ -43,6 +43,9 @@ type GraphViewProps = {
   selectedEdge: GraphEdge | null;
   onSelectNode: (nodeId: string) => void;
   onSelectEdge: (edge: GraphEdge | null) => void;
+  canOpenFolder: boolean;
+  onOpenFolder: () => void;
+  onOpenSample: () => void;
 };
 
 const DIRECT_LIMIT_PER_TYPE = 14;
@@ -56,6 +59,9 @@ export function GraphView({
   selectedEdge,
   onSelectNode,
   onSelectEdge,
+  canOpenFolder,
+  onOpenFolder,
+  onOpenSample,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<Sigma<NodeAttributes, EdgeAttributes> | null>(null);
@@ -107,7 +113,18 @@ export function GraphView({
   if (!graph) {
     return (
       <div className="graph-empty">
-        <div>Select a codebase</div>
+        <div className="graph-empty-card">
+          <strong>Select a codebase</strong>
+          <span>Start with the bundled sample or open a COBOL folder.</span>
+          <div className="graph-empty-actions">
+            <button type="button" className="primary-action" onClick={onOpenSample}>
+              Open Sample
+            </button>
+            <button type="button" onClick={onOpenFolder} disabled={!canOpenFolder}>
+              Open Folder
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -115,7 +132,10 @@ export function GraphView({
   if (!slice) {
     return (
       <div className="graph-empty">
-        <div>No focus node available</div>
+        <div className="graph-empty-card">
+          <strong>No focus node available</strong>
+          <span>Open Sample or re-scan the selected codebase.</span>
+        </div>
       </div>
     );
   }

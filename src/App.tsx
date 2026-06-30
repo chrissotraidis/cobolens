@@ -973,6 +973,9 @@ function App() {
               selectedEdge={selectedEdge}
               onSelectNode={selectNode}
               onSelectEdge={selectEdge}
+              canOpenFolder={desktopAvailable}
+              onOpenFolder={chooseFolder}
+              onOpenSample={openSample}
             />
           </div>
         </section>

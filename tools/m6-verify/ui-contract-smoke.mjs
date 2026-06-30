@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const appSource = await readFile(resolve(repoRoot, "src", "App.tsx"), "utf8");
 const appCss = await readFile(resolve(repoRoot, "src", "App.css"), "utf8");
+const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphView.tsx"), "utf8");
 
 const checks = [
   [
@@ -38,6 +39,15 @@ const checks = [
       "Used By",
       'title="Lineage"',
     ]),
+  ],
+  [
+    "Empty graph canvas offers first-run sample and folder actions",
+    includesAll(graphViewSource, [
+      'className="graph-empty-card"',
+      "Start with the bundled sample or open a COBOL folder.",
+      "onOpenSample",
+      "canOpenFolder",
+    ]) && includesAll(appCss, [".graph-empty-actions", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
   ],
 ];
 

@@ -27,6 +27,13 @@ In the in-app browser, the M6 fixture graph loaded with inventory counts:
 - 2 copybooks
 - 1 JCL step
 
+First-run check:
+
+- With no graph loaded, the center canvas offers `Open Sample` and `Open Folder`
+  actions. In browser preview, `Open Sample` is the primary action and opens the
+  bundled fixture graph while `Open Folder` remains disabled for the desktop
+  shell.
+
 The right-side Impact panel for `LINEAGE` showed:
 
 - `LINK RATEAPI` via `executes src/LINEAGE.cbl:40`

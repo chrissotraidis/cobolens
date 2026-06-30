@@ -115,6 +115,9 @@ Graph-backed Ask check:
 - Inspector tabs remain readable at the default desktop preview width, and
   duplicated relationship source controls expose section-specific labels such
   as `Depends On: show ...` and `Lineage: show ...`.
+- `npm run m6:verify` includes `tools/m6-verify/ui-contract-smoke.mjs` to keep
+  the Ask response block, inspector tab widths, and relationship labels covered
+  by automated checks.
 - `AI explain LINEAGE` now submits an AI-backed explanation request directly, so
   the suggested-question button behaves like the other Ask shortcuts instead of
   looking like a dead control.

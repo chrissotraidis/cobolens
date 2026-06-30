@@ -164,6 +164,8 @@ npm run desktop:smoke
 `npm run m6:verify` also runs Tauri command-level tests that exercise the
 desktop analysis path against the bundled sample, source snippet reads, and
 path traversal rejection.
+It also includes a UI contract smoke for the Ask/Inspector shell so graph-answer
+layout, readable tabs, and relationship citation labels do not regress silently.
 
 The packaged analyzer/sample smoke used for the current Linux validation ran
 the analyzer extracted from the AppImage against the bundled `mini-bank` sample

@@ -21,6 +21,7 @@ import {
   nodeColor,
 } from "./lib/graph";
 import {
+  DEFAULT_MODELS,
   DEFAULT_MODEL_SETTINGS,
   ModelProvider,
   ModelSettings,
@@ -66,6 +67,11 @@ type ScanSettings = {
   extensions: string;
   encoding: string;
 };
+type AppSettings = {
+  schemaVersion: 1;
+  model: ModelSettings;
+  scan: ScanSettings;
+};
 type AnalysisProgress = {
   phase: string;
   done: number;
@@ -73,6 +79,7 @@ type AnalysisProgress = {
   root?: string;
 };
 
+const APP_SETTINGS_STORAGE_KEY = "cobolens.settings.v1";
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const MODEL_CALL_TIMEOUT_MS = 45_000;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
@@ -133,6 +140,7 @@ function App() {
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
+  const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
   const activeSummaryAbortRef = useRef<AbortController | null>(null);
@@ -184,6 +192,41 @@ function App() {
       .sort((left, right) => searchScore(left, query) - searchScore(right, query))
       .slice(0, 12);
   }, [graph, query]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAppSettings()
+      .then((settings) => {
+        if (cancelled || !settings) return;
+        setModelSettings(settings.model);
+        setScanSettings(settings.scan);
+      })
+      .catch(() => {
+        // Settings are convenience state; defaults keep the app usable.
+      })
+      .finally(() => {
+        if (!cancelled) setAppSettingsLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!appSettingsLoaded) return;
+    const timeout = window.setTimeout(() => {
+      saveAppSettings({
+        schemaVersion: 1,
+        model: modelSettings,
+        scan: normalizedScanSettings(scanSettings),
+      }).catch(() => {
+        // Saving settings should never block codebase exploration.
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [appSettingsLoaded, modelSettings, scanSettings]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -1420,6 +1463,25 @@ function ChatAnswerPanel({
           <span>{answerSubtitle}</span>
         </div>
       </div>
+      <div className="answer-response">
+        {status === "running" ? (
+          <ProgressNote
+            label={progressLabel}
+            detail={aiProgressDetail(settings, elapsedSeconds)}
+            elapsedSeconds={elapsedSeconds}
+          />
+        ) : status === "error" ? (
+          <p className="error-text">{error}</p>
+        ) : answer ? (
+          <>
+            <div className="answer-question">{answer.question}</div>
+            <p>{answer.text}</p>
+            <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
+          </>
+        ) : (
+          <p>Ask graph questions for instant answers, or ask for an explanation to use the selected AI provider with cited context.</p>
+        )}
+      </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested graph questions">
           {explainQuestion ? (
@@ -1464,23 +1526,6 @@ function ChatAnswerPanel({
           {askButtonLabel}
         </button>
       </div>
-      {status === "running" ? (
-        <ProgressNote
-          label={progressLabel}
-          detail={aiProgressDetail(settings, elapsedSeconds)}
-          elapsedSeconds={elapsedSeconds}
-        />
-      ) : status === "error" ? (
-        <p className="error-text">{error}</p>
-      ) : answer ? (
-        <>
-          <div className="answer-question">{answer.question}</div>
-          <p>{answer.text}</p>
-          <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
-        </>
-      ) : (
-        <p>Graph questions answer instantly without a model. Broader explanation questions use the selected AI provider with cited context.</p>
-      )}
     </section>
   );
 }
@@ -1737,6 +1782,7 @@ function RelationshipList({
                 <button
                   type="button"
                   className="lineage-edge"
+                  aria-label={`${title}: show ${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`}
                   onClick={() => onOpenEdge(edge)}
                   disabled={!edge.site}
                   title={edge.site ? `Show cited relationship at ${edge.site.file}:${edge.site.line}` : "No source location recorded"}
@@ -1863,6 +1909,77 @@ function normalizedScanSettings(settings: ScanSettings) {
       .map((extension) => (extension.startsWith(".") ? extension : `.${extension}`))
       .join(","),
   };
+}
+
+async function loadAppSettings(): Promise<AppSettings | null> {
+  if (canUseTauri()) {
+    const settings = await invoke<unknown>("load_app_settings");
+    return normalizeAppSettings(settings);
+  }
+
+  const stored = window.localStorage.getItem(APP_SETTINGS_STORAGE_KEY);
+  if (!stored) return null;
+  return normalizeAppSettings(JSON.parse(stored));
+}
+
+async function saveAppSettings(settings: AppSettings) {
+  if (canUseTauri()) {
+    await invoke("save_app_settings", { settings });
+    return;
+  }
+  window.localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+}
+
+function normalizeAppSettings(value: unknown): AppSettings | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Partial<AppSettings>;
+  return {
+    schemaVersion: 1,
+    model: normalizeModelSettings(raw.model),
+    scan: normalizeSavedScanSettings(raw.scan),
+  };
+}
+
+function normalizeModelSettings(value: unknown): ModelSettings {
+  if (!value || typeof value !== "object") return DEFAULT_MODEL_SETTINGS;
+  const raw = value as Partial<ModelSettings>;
+  const provider = isModelProvider(raw.provider) ? raw.provider : DEFAULT_MODEL_SETTINGS.provider;
+  return {
+    provider,
+    model: typeof raw.model === "string" && raw.model.trim() ? raw.model : DEFAULT_MODELS[provider],
+    baseUrl:
+      provider === "ollama"
+        ? typeof raw.baseUrl === "string" && raw.baseUrl.trim()
+          ? raw.baseUrl
+          : DEFAULT_MODEL_SETTINGS.baseUrl
+        : "",
+    privacyMode: isCloudProvider(provider) ? "cloud" : "local",
+    rosettaLanguage:
+      typeof raw.rosettaLanguage === "string" && raw.rosettaLanguage.trim()
+        ? raw.rosettaLanguage
+        : DEFAULT_MODEL_SETTINGS.rosettaLanguage,
+  };
+}
+
+function normalizeSavedScanSettings(value: unknown): ScanSettings {
+  if (!value || typeof value !== "object") return DEFAULT_SCAN_SETTINGS;
+  const raw = value as Partial<ScanSettings>;
+  return normalizedScanSettings({
+    format: isScanFormat(raw.format) ? raw.format : DEFAULT_SCAN_SETTINGS.format,
+    extensions:
+      typeof raw.extensions === "string" && raw.extensions.trim()
+        ? raw.extensions
+        : DEFAULT_SCAN_SETTINGS.extensions,
+    encoding: typeof raw.encoding === "string" && raw.encoding.trim() ? raw.encoding : DEFAULT_SCAN_SETTINGS.encoding,
+  });
+}
+
+function isModelProvider(value: unknown): value is ModelProvider {
+  return value === "ollama" || value === "anthropic" || value === "openai" || value === "openrouter";
+}
+
+function isScanFormat(value: unknown): value is ScanFormat {
+  return value === "auto" || value === "fixed" || value === "free";
 }
 
 function sourceBaseForGraphUrl(graphUrl: string) {

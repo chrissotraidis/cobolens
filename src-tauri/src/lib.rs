@@ -390,6 +390,62 @@ fn write_export_files(
 }
 
 #[tauri::command]
+fn load_app_settings(app: tauri::AppHandle) -> Result<Value, String> {
+    load_app_settings_for(&app)
+}
+
+fn load_app_settings_for<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<Value, String> {
+    let path = app_settings_path(app)?;
+    if !path.exists() {
+        return Ok(Value::Null);
+    }
+
+    let json = fs::read_to_string(&path).map_err(|err| err.to_string())?;
+    serde_json::from_str(&json).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn save_app_settings(app: tauri::AppHandle, settings: Value) -> Result<(), String> {
+    save_app_settings_for(&app, settings)
+}
+
+fn save_app_settings_for<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    settings: Value,
+) -> Result<(), String> {
+    if contains_secret_like_field(&settings) {
+        return Err("app settings cannot contain API keys or secrets".to_string());
+    }
+
+    let path = app_settings_path(app)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(&settings).map_err(|err| err.to_string())?;
+    fs::write(path, json).map_err(|err| err.to_string())
+}
+
+fn app_settings_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
+    app.path()
+        .resolve("settings.json", BaseDirectory::AppConfig)
+        .map_err(|err| err.to_string())
+}
+
+fn contains_secret_like_field(value: &Value) -> bool {
+    match value {
+        Value::Object(object) => object.iter().any(|(key, child)| {
+            let normalized = key.to_ascii_lowercase().replace(['_', '-'], "");
+            matches!(
+                normalized.as_str(),
+                "apikey" | "keydraft" | "secret" | "token"
+            ) || contains_secret_like_field(child)
+        }),
+        Value::Array(items) => items.iter().any(contains_secret_like_field),
+        _ => false,
+    }
+}
+
+#[tauri::command]
 fn save_provider_key(provider: String, api_key: String) -> Result<(), String> {
     provider_key_entry(&provider)?
         .set_password(&api_key)
@@ -586,6 +642,8 @@ pub fn run() {
             read_source_snippet,
             read_source_excerpt,
             write_export_files,
+            load_app_settings,
+            save_app_settings,
             save_provider_key,
             read_provider_key,
             provider_key_state,
@@ -789,6 +847,46 @@ mod tests {
 
         assert!(analyzer_progress_payload("ordinary log line", &root).is_none());
         assert!(analyzer_progress_payload(r#"{"phase":"parse"}"#, &root).is_none());
+    }
+
+    #[test]
+    fn app_settings_round_trip_without_secrets() {
+        let app = tauri::test::mock_app();
+        let settings = json!({
+            "schemaVersion": 1,
+            "model": {
+                "provider": "ollama",
+                "model": "llama3.2",
+                "baseUrl": "http://127.0.0.1:11434/api",
+                "privacyMode": "local",
+                "rosettaLanguage": "python"
+            },
+            "scan": {
+                "format": "auto",
+                "extensions": ".cbl,.cob,.cpy,.jcl",
+                "encoding": "utf8"
+            }
+        });
+
+        save_app_settings_for(app.handle(), settings.clone()).unwrap();
+        let loaded = load_app_settings_for(app.handle()).unwrap();
+
+        assert_eq!(loaded, settings);
+    }
+
+    #[test]
+    fn app_settings_reject_secret_like_fields() {
+        assert!(contains_secret_like_field(
+            &json!({"model": {"apiKey": "nope"}})
+        ));
+        assert!(contains_secret_like_field(&json!({"keyDraft": "nope"})));
+        assert!(contains_secret_like_field(
+            &json!({"nested": [{"token": "nope"}]})
+        ));
+        assert!(!contains_secret_like_field(&json!({
+            "model": {"provider": "ollama", "model": "llama3.2"},
+            "scan": {"encoding": "utf8"}
+        })));
     }
 
     #[test]

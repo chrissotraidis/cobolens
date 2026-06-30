@@ -654,7 +654,7 @@ pre {
 
 .inspector-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(58px, 0.8fr) minmax(82px, 1.15fr) minmax(78px, 1fr) minmax(58px, 0.72fr);
   gap: 6px;
   padding: 9px 12px;
   border-bottom: 1px solid #20262e;
@@ -668,8 +668,9 @@ pre {
   align-items: center;
   min-width: 0;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 6px;
   color: #9aa6b2;
+  font-size: 13px;
   text-align: left;
 }
 
@@ -884,6 +885,16 @@ pre {
   background: #101419;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.answer-response {
+  display: grid;
+  gap: 10px;
+  min-height: 76px;
+  padding: 10px;
+  border: 1px solid rgba(125, 137, 150, 0.18);
+  border-radius: 7px;
+  background: rgba(17, 21, 26, 0.68);
 }
 
 .answer-header {

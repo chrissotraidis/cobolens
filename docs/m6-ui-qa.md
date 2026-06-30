@@ -69,6 +69,10 @@ Privacy mode checks:
 - Switching Provider to `Anthropic` changes the top bar to `Cloud: Anthropic`
   and explains that retrieved code context is sent to Anthropic; switching back
   to `Ollama` restores the local-mode indicator.
+- Non-secret model and scan preferences are saved to local app settings
+  (`settings.json` in desktop app config, browser local storage in preview).
+  Cloud API keys are still saved only through the OS keychain commands and are
+  rejected if they appear in app settings.
 
 Scan settings check:
 
@@ -105,6 +109,12 @@ Export check:
 
 Graph-backed Ask check:
 
+- The Ask panel renders the latest answer in a dedicated response block above
+  the composer, so the submitted question and graph answer are visible without
+  scrolling past the suggested-question buttons.
+- Inspector tabs remain readable at the default desktop preview width, and
+  duplicated relationship source controls expose section-specific labels such
+  as `Depends On: show ...` and `Lineage: show ...`.
 - `AI explain LINEAGE` now submits an AI-backed explanation request directly, so
   the suggested-question button behaves like the other Ask shortcuts instead of
   looking like a dead control.

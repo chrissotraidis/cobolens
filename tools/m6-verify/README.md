@@ -5,7 +5,10 @@ This runner verifies the completed M6 surface:
 - strict M6 bake-off fixture,
 - benchmark validation helper against the M6 fixture,
 - frontend production build,
-- Rust sidecar `cargo check`.
+- graph-grounded documentation export smoke,
+- graph-only Ask smoke for "What depends on CUSTOMER-ID?",
+- Rust sidecar `cargo check`,
+- Tauri shell `cargo test`.
 
 It also runs JVM parser work as advisory checks:
 

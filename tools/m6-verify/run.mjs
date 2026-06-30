@@ -36,6 +36,12 @@ const checks = [
     args: ["check"],
     cwd: resolve(repoRoot, "sidecar", "cobolens-analyze"),
   },
+  {
+    name: "Tauri shell tests",
+    command: "cargo",
+    args: ["test"],
+    cwd: resolve(repoRoot, "src-tauri"),
+  },
 ];
 
 for (const check of checks) {

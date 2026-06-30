@@ -132,17 +132,17 @@ function App() {
     [focusNodeId, history, nodeById],
   );
   const selectedSummaryState = selectedNode ? summaries[selectedNode.id] : undefined;
-  const programNodes = useMemo(
-    () => graph?.nodes.filter((node) => node.type === "program" && !node.external && node.file) ?? [],
+  const summaryNodes = useMemo(
+    () => graph?.nodes.filter((node) => isSummaryUnit(node) && !node.external && node.file) ?? [],
     [graph],
   );
   const bulkTokenEstimate = useMemo(
     () =>
-      programNodes.reduce(
+      summaryNodes.reduce(
         (total, node) => total + estimateTokens(`${node.name} ${node.file ?? ""} ${node.lines?.join("-") ?? ""}`) + 900,
         0,
       ),
-    [programNodes],
+    [summaryNodes],
   );
 
   const counts = useMemo(() => {
@@ -532,12 +532,12 @@ function App() {
     await generateSummaryForNode(selectedNode);
   }
 
-  async function generateAllProgramSummaries() {
-    if (!graph || !programNodes.length) return;
-    setBulkSummaryStatus(`0/${programNodes.length}`);
-    for (let index = 0; index < programNodes.length; index += 1) {
-      await generateSummaryForNode(programNodes[index]);
-      setBulkSummaryStatus(`${index + 1}/${programNodes.length}`);
+  async function generateAllSummaries() {
+    if (!graph || !summaryNodes.length) return;
+    setBulkSummaryStatus(`0/${summaryNodes.length}`);
+    for (let index = 0; index < summaryNodes.length; index += 1) {
+      await generateSummaryForNode(summaryNodes[index]);
+      setBulkSummaryStatus(`${index + 1}/${summaryNodes.length}`);
     }
   }
 
@@ -895,10 +895,10 @@ function App() {
                 graph={graph}
                 state={selectedSummaryState}
                 settings={modelSettings}
-                programCount={programNodes.length}
+                summaryUnitCount={summaryNodes.length}
                 bulkStatus={bulkSummaryStatus}
                 onGenerateSelected={generateSelectedSummary}
-                onGenerateAll={generateAllProgramSummaries}
+                onGenerateAll={generateAllSummaries}
                 onOpenCitation={jumpToCitation}
               />
               <LineageImpactPanel
@@ -1151,7 +1151,7 @@ function SummaryDock({
   graph,
   state,
   settings,
-  programCount,
+  summaryUnitCount,
   bulkStatus,
   onGenerateSelected,
   onGenerateAll,
@@ -1161,7 +1161,7 @@ function SummaryDock({
   graph: GraphDocument | null;
   state?: SummaryState;
   settings: ModelSettings;
-  programCount: number;
+  summaryUnitCount: number;
   bulkStatus: string;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
@@ -1212,10 +1212,10 @@ function SummaryDock({
         )}
       </div>
       <div className="summary-meta">
-        <button type="button" onClick={onGenerateAll} disabled={!programCount || state?.status === "running"}>
+        <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || state?.status === "running"}>
           Summarize All
         </button>
-        <span>{bulkStatus || `${programCount} source programs`}</span>
+        <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
       </div>
     </section>
   );
@@ -1926,6 +1926,10 @@ function typePriority(type: string) {
 
 function isLineageEdge(edge: GraphEdge) {
   return LINEAGE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function isSummaryUnit(node: GraphNode) {
+  return node.type === "program" || node.type === "paragraph" || node.type === "copybook";
 }
 
 function suggestedGraphQuestions(node: GraphNode | null) {

@@ -115,6 +115,9 @@ Model-backed Ask check:
 
 Model-backed Summary check:
 
+- The Summary dock bulk action now reports `4 source units` on the M6 fixture,
+  covering source-backed programs, copybooks, and paragraphs rather than only
+  programs.
 - Generating a `LINEAGE` summary with local Ollama cites `src/LINEAGE.cbl:1`
   plus relationship lines, avoids generic preamble text, and does not explain
   `LINEAGE` as a generic compiler concept.

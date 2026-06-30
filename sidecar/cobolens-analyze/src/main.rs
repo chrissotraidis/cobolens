@@ -128,6 +128,12 @@ struct SourceFile {
     kind: FileKind,
 }
 
+#[derive(Debug)]
+struct FileAnalysis {
+    warning: Option<String>,
+    dialect_signals: BTreeSet<String>,
+}
+
 #[derive(Default)]
 struct GraphBuilder {
     nodes: BTreeMap<String, GraphNode>,
@@ -273,6 +279,7 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
     let mut builder = GraphBuilder::default();
     let mut parse_errors = Vec::new();
     let mut parsed_file_count = 0;
+    let mut dialect_signals = BTreeSet::new();
 
     for (index, source_file) in files.iter().enumerate() {
         emit_progress(&mut progress, "parse", index, total)?;
@@ -282,9 +289,10 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
             options.encoding.as_str(),
             &mut builder,
         ) {
-            Ok(warning) => {
+            Ok(analysis) => {
                 parsed_file_count += 1;
-                if let Some(reason) = warning {
+                dialect_signals.extend(analysis.dialect_signals);
+                if let Some(reason) = analysis.warning {
                     parse_errors.push(ParseError {
                         file: source_file.rel.clone(),
                         reason,
@@ -305,7 +313,7 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
         schema_version: 1,
         meta: GraphMeta {
             scanned_at: current_timestamp(),
-            dialect_guess: "unknown".to_string(),
+            dialect_guess: dialect_guess(&dialect_signals),
             file_count: total,
             parsed_file_count,
             parse_errors,
@@ -328,12 +336,13 @@ fn parse_file(
     format: SourceFormat,
     encoding: &str,
     builder: &mut GraphBuilder,
-) -> Result<Option<String>, String> {
+) -> Result<FileAnalysis, String> {
     let content = read_source_text(&source_file.path, encoding)?;
     let logical_lines = match source_file.kind {
         FileKind::Jcl => content.lines().map(ToOwned::to_owned).collect(),
         FileKind::Cobol | FileKind::Copybook => normalize_cobol_lines(&content, format),
     };
+    let dialect_signals = scan_dialect_signals(source_file, &content, &logical_lines, format);
 
     match source_file.kind {
         FileKind::Cobol | FileKind::Copybook => {
@@ -341,12 +350,86 @@ fn parse_file(
                 .err()
                 .map(|reason| format!("{reason}; lightweight scan completed"));
             parse_cobol_file(source_file, &logical_lines, builder)?;
-            Ok(parse_warning)
+            Ok(FileAnalysis {
+                warning: parse_warning,
+                dialect_signals,
+            })
         }
         FileKind::Jcl => {
             parse_jcl_file(source_file, &logical_lines, builder)?;
-            Ok(None)
+            Ok(FileAnalysis {
+                warning: None,
+                dialect_signals,
+            })
         }
+    }
+}
+
+fn scan_dialect_signals(
+    source_file: &SourceFile,
+    content: &str,
+    logical_lines: &[String],
+    format: SourceFormat,
+) -> BTreeSet<String> {
+    let mut signals = BTreeSet::new();
+    match source_file.kind {
+        FileKind::Jcl => {
+            signals.insert("JCL".to_string());
+        }
+        FileKind::Cobol | FileKind::Copybook => {
+            signals.insert("COBOL".to_string());
+            if source_file.kind == FileKind::Copybook {
+                signals.insert("copybooks".to_string());
+            }
+            let fixed = match format {
+                SourceFormat::Fixed => true,
+                SourceFormat::Free => false,
+                SourceFormat::Auto => content.lines().any(looks_fixed),
+            };
+            signals.insert(if fixed { "fixed-format" } else { "free-format" }.to_string());
+            if logical_lines.iter().any(|line| has_token_window(line, "EXEC", "SQL")) {
+                signals.insert("EXEC SQL".to_string());
+            }
+            if logical_lines.iter().any(|line| has_token_window(line, "EXEC", "CICS")) {
+                signals.insert("EXEC CICS".to_string());
+            }
+            if logical_lines.iter().any(|line| line.trim_start().starts_with(">>")) {
+                signals.insert("compiler directives".to_string());
+            }
+        }
+    }
+    signals
+}
+
+fn has_token_window(line: &str, first: &str, second: &str) -> bool {
+    tokenize(line).windows(2).any(|window| {
+        window[0].eq_ignore_ascii_case(first) && window[1].eq_ignore_ascii_case(second)
+    })
+}
+
+fn dialect_guess(signals: &BTreeSet<String>) -> String {
+    if signals.is_empty() {
+        return "unknown".to_string();
+    }
+    let mut labels = Vec::new();
+    if signals.contains("EXEC SQL") || signals.contains("EXEC CICS") {
+        labels.push("IBM Enterprise COBOL-like".to_string());
+    } else if signals.contains("COBOL") {
+        labels.push("COBOL".to_string());
+    }
+    if signals.contains("JCL") {
+        labels.push("JCL".to_string());
+    }
+    let details = signals
+        .iter()
+        .filter(|signal| signal.as_str() != "COBOL" && signal.as_str() != "JCL")
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if details.is_empty() {
+        labels.join(" + ")
+    } else {
+        format!("{} ({})", labels.join(" + "), details.join(", "))
     }
 }
 
@@ -1306,6 +1389,60 @@ mod tests {
                     .as_ref()
                     .is_some_and(|site| site.file == "src/CALLER.cbl" && site.line == 4)
         }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn reports_dialect_signals_from_cobol_and_jcl() {
+        let root = temp_test_dir("dialect-signals");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::create_dir_all(root.join("jcl")).unwrap();
+        fs::write(
+            root.join("src").join("LINEAGE.cbl"),
+            [
+                "000100 IDENTIFICATION DIVISION.",
+                "000200 PROGRAM-ID. LINEAGE.",
+                "000300 PROCEDURE DIVISION.",
+                "000400     EXEC SQL",
+                "000500       SELECT NAME FROM CUSTOMER_TABLE",
+                "000600     END-EXEC.",
+                "000700     EXEC CICS LINK PROGRAM('RATEAPI') END-EXEC.",
+                "000800     STOP RUN.",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("jcl").join("DAILY.jcl"),
+            [
+                "//DAILYLN JOB",
+                "//STEP010 EXEC PGM=LINEAGE",
+                "//CUSTIN DD DSN=BANK.CUSTOMER.MASTER",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        let out = root.join("graph.json");
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out,
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string(), ".jcl".to_string()],
+            encoding: "utf8".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert!(graph
+            .meta
+            .dialect_guess
+            .contains("IBM Enterprise COBOL-like"));
+        assert!(graph.meta.dialect_guess.contains("JCL"));
+        assert!(graph.meta.dialect_guess.contains("EXEC SQL"));
+        assert!(graph.meta.dialect_guess.contains("EXEC CICS"));
+        assert!(graph.meta.dialect_guess.contains("fixed-format"));
         fs::remove_dir_all(root).unwrap();
     }
 

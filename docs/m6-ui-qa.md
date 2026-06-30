@@ -61,6 +61,9 @@ Parse-health checks:
 
 - The normal M6 fixture shows `4/4 parsed` and `No parse warnings` in the left
   navigator.
+- Parse Health also shows the analyzer's lightweight dialect/features guess,
+  such as fixed/free-format COBOL, copybooks, JCL, `EXEC SQL`, `EXEC CICS`, and
+  compiler directives when those signals are present.
 - Loading a minimal warning graph through the `?graph=` URL shows `1/3 parsed`
   and lists file/reason rows such as `bad/UNSUPPORTED.cbl` with
   `unsupported preprocessor directive near line 12`.

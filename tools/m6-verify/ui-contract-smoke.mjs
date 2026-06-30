@@ -68,6 +68,10 @@ const checks = [
       '["JCL", ["jcl-job", "jcl-step"]]',
     ]) && includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
   ],
+  [
+    "Parse health surfaces analyzer dialect metadata",
+    includesAll(appSource, ["Dialect: {graph.meta.dialectGuess || \"unknown\"}", "function ParseHealth"]),
+  ],
 ];
 
 const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);

@@ -1191,6 +1191,7 @@ function ParseHealth({ graph }: { graph: GraphDocument | null }) {
       <div className={`status-pill ${parseErrors.length ? "running" : graph ? "ready" : "idle"}`}>
         {graph ? `${parsed}/${total} parsed` : "No graph"}
       </div>
+      {graph ? <div className="settings-footnote">Dialect: {graph.meta.dialectGuess || "unknown"}</div> : null}
       {graph && !parseErrors.length ? (
         <div className="settings-footnote ready">No parse warnings.</div>
       ) : parseErrors.length ? (

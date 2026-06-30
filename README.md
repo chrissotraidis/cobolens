@@ -32,6 +32,9 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
 - Configure scan format (`auto`, `fixed`, `free`), source extensions, and
   UTF-8 or CP037/EBCDIC source encoding before opening or re-scanning a desktop
   codebase.
+- See a lightweight dialect/features guess in Parse Health, based on detected
+  fixed/free-format COBOL, copybooks, JCL, `EXEC SQL`, `EXEC CICS`, and compiler
+  directives.
 - See desktop indexing progress from the analyzer while scans are running.
 - Skip common build/dependency folders and oversized source-like files during
   scan discovery and cache fingerprinting, so real repo checkouts stay snappy.

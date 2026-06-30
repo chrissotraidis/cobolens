@@ -263,9 +263,14 @@ fn sample_root<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String>
 }
 
 #[tauri::command]
-fn read_source_snippet(root: String, file: String, line: usize) -> Result<Value, String> {
+fn read_source_snippet(
+    root: String,
+    file: String,
+    line: usize,
+    encoding: Option<String>,
+) -> Result<Value, String> {
     let path = safe_source_path(&root, &file)?;
-    let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
+    let content = read_source_text(&path, encoding.as_deref().unwrap_or("utf8"))?;
     let lines: Vec<&str> = content.lines().collect();
     let target = line.max(1);
     let start = target.saturating_sub(8).max(1);
@@ -294,9 +299,10 @@ fn read_source_excerpt(
     start_line: usize,
     end_line: usize,
     max_lines: usize,
+    encoding: Option<String>,
 ) -> Result<Value, String> {
     let path = safe_source_path(&root, &file)?;
-    let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
+    let content = read_source_text(&path, encoding.as_deref().unwrap_or("utf8"))?;
     let lines: Vec<&str> = content.lines().collect();
     let start = start_line.max(1);
     let requested_end = end_line.max(start);
@@ -409,6 +415,72 @@ fn safe_source_path(root: &str, file: &str) -> Result<PathBuf, String> {
         return Err("source file resolved outside the selected root".to_string());
     }
     Ok(source_canonical)
+}
+
+fn read_source_text(path: &Path, encoding: &str) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|err| err.to_string())?;
+    decode_source_bytes(&bytes, encoding)
+}
+
+fn decode_source_bytes(bytes: &[u8], encoding: &str) -> Result<String, String> {
+    if encoding.eq_ignore_ascii_case("utf8") || encoding.eq_ignore_ascii_case("utf-8") {
+        return String::from_utf8(bytes.to_vec()).map_err(|err| err.to_string());
+    }
+    if encoding.eq_ignore_ascii_case("cp037")
+        || encoding.eq_ignore_ascii_case("ibm037")
+        || encoding.eq_ignore_ascii_case("ebcdic-cp-us")
+    {
+        return Ok(decode_cp037_lossy(bytes));
+    }
+    Err(format!("unsupported source encoding: {encoding}"))
+}
+
+fn decode_cp037_lossy(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| cp037_char(*byte)).collect()
+}
+
+fn cp037_char(byte: u8) -> char {
+    match byte {
+        0x00 => '\0',
+        0x05 | 0x15 | 0x25 => '\n',
+        0x0d => '\r',
+        0x40 => ' ',
+        0x4a => '¢',
+        0x4b => '.',
+        0x4c => '<',
+        0x4d => '(',
+        0x4e => '+',
+        0x4f => '|',
+        0x50 => '&',
+        0x5a => '!',
+        0x5b => '$',
+        0x5c => '*',
+        0x5d => ')',
+        0x5e => ';',
+        0x5f => '¬',
+        0x60 => '-',
+        0x61 => '/',
+        0x6a => '¦',
+        0x6b => ',',
+        0x6c => '%',
+        0x6d => '_',
+        0x6e => '>',
+        0x6f => '?',
+        0x7a => ':',
+        0x7b => '#',
+        0x7c => '@',
+        0x7d => '\'',
+        0x7e => '=',
+        0x7f => '"',
+        0x81..=0x89 => (b'a' + (byte - 0x81)) as char,
+        0x91..=0x99 => (b'j' + (byte - 0x91)) as char,
+        0xa2..=0xa9 => (b's' + (byte - 0xa2)) as char,
+        0xc1..=0xc9 => (b'A' + (byte - 0xc1)) as char,
+        0xd1..=0xd9 => (b'J' + (byte - 0xd1)) as char,
+        0xe2..=0xe9 => (b'S' + (byte - 0xe2)) as char,
+        0xf0..=0xf9 => (b'0' + (byte - 0xf0)) as char,
+        _ => char::REPLACEMENT_CHARACTER,
+    }
 }
 
 fn safe_export_prefix(prefix: &str) -> Result<String, String> {
@@ -536,6 +608,7 @@ mod tests {
             root.to_string_lossy().to_string(),
             "../PROGRAM.cbl".to_string(),
             1,
+            None,
         );
 
         assert!(result.is_err());
@@ -550,6 +623,7 @@ mod tests {
             root.to_string_lossy().to_string(),
             "src/ACCTREAD.cbl".to_string(),
             18,
+            None,
         )
         .unwrap();
 
@@ -652,6 +726,30 @@ mod tests {
 
         assert!(analyzer_progress_payload("ordinary log line", &root).is_none());
         assert!(analyzer_progress_payload(r#"{"phase":"parse"}"#, &root).is_none());
+    }
+
+    #[test]
+    fn source_snippet_reads_cp037_source_line() {
+        let root = temp_test_dir("snippet-cp037-root");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("PROGRAM.cbl"),
+            [
+                0xc1, 0xc2, 0xc3, 0x40, 0xf1, 0xf2, 0xf3, 0x4b, 0x25, 0xd1, 0xd2, 0xd3,
+            ],
+        )
+        .unwrap();
+
+        let snippet = read_source_snippet(
+            root.to_string_lossy().to_string(),
+            "PROGRAM.cbl".to_string(),
+            1,
+            Some("cp037".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(snippet["lines"][0]["text"], "ABC 123.");
+        fs::remove_dir_all(root).unwrap();
     }
 
     fn temp_test_dir(name: &str) -> PathBuf {

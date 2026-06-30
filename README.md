@@ -30,7 +30,8 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
 
 - Open or load a graph JSON for a COBOL/JCL codebase.
 - Configure scan format (`auto`, `fixed`, `free`), source extensions, and
-  UTF-8 encoding before opening or re-scanning a desktop codebase.
+  UTF-8 or CP037/EBCDIC source encoding before opening or re-scanning a desktop
+  codebase.
 - See desktop indexing progress from the analyzer while scans are running.
 - Navigate an interactive focus graph.
 - Click nodes and relationships to inspect cited source locations.

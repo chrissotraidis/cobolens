@@ -255,10 +255,6 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
         ));
     }
 
-    if !options.encoding.eq_ignore_ascii_case("utf8") {
-        return Err("only utf8 encoding is supported in M1".to_string());
-    }
-
     let extensions = normalize_extensions(&options.extensions);
     let files = discover_files(&options.root, &extensions).map_err(|err| err.to_string())?;
     let total = files.len();
@@ -268,7 +264,12 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
 
     for (index, source_file) in files.iter().enumerate() {
         emit_progress(&mut progress, "parse", index, total)?;
-        match parse_file(source_file, options.format, &mut builder) {
+        match parse_file(
+            source_file,
+            options.format,
+            options.encoding.as_str(),
+            &mut builder,
+        ) {
             Ok(warning) => {
                 parsed_file_count += 1;
                 if let Some(reason) = warning {
@@ -313,9 +314,10 @@ fn write_graph(graph: &GraphDocument, out: &Path) -> Result<(), String> {
 fn parse_file(
     source_file: &SourceFile,
     format: SourceFormat,
+    encoding: &str,
     builder: &mut GraphBuilder,
 ) -> Result<Option<String>, String> {
-    let content = fs::read_to_string(&source_file.path).map_err(|err| err.to_string())?;
+    let content = read_source_text(&source_file.path, encoding)?;
     let logical_lines = match source_file.kind {
         FileKind::Jcl => content.lines().map(ToOwned::to_owned).collect(),
         FileKind::Cobol | FileKind::Copybook => normalize_cobol_lines(&content, format),
@@ -348,6 +350,72 @@ fn verify_tree_sitter_parse(content: &str) -> Result<(), String> {
         return Err("tree-sitter parse contained errors".to_string());
     }
     Ok(())
+}
+
+fn read_source_text(path: &Path, encoding: &str) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|err| err.to_string())?;
+    decode_source_bytes(&bytes, encoding)
+}
+
+fn decode_source_bytes(bytes: &[u8], encoding: &str) -> Result<String, String> {
+    if encoding.eq_ignore_ascii_case("utf8") || encoding.eq_ignore_ascii_case("utf-8") {
+        return String::from_utf8(bytes.to_vec()).map_err(|err| err.to_string());
+    }
+    if encoding.eq_ignore_ascii_case("cp037")
+        || encoding.eq_ignore_ascii_case("ibm037")
+        || encoding.eq_ignore_ascii_case("ebcdic-cp-us")
+    {
+        return Ok(decode_cp037_lossy(bytes));
+    }
+    Err(format!("unsupported source encoding: {encoding}"))
+}
+
+fn decode_cp037_lossy(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| cp037_char(*byte)).collect()
+}
+
+fn cp037_char(byte: u8) -> char {
+    match byte {
+        0x00 => '\0',
+        0x05 | 0x15 | 0x25 => '\n',
+        0x0d => '\r',
+        0x40 => ' ',
+        0x4a => '¢',
+        0x4b => '.',
+        0x4c => '<',
+        0x4d => '(',
+        0x4e => '+',
+        0x4f => '|',
+        0x50 => '&',
+        0x5a => '!',
+        0x5b => '$',
+        0x5c => '*',
+        0x5d => ')',
+        0x5e => ';',
+        0x5f => '¬',
+        0x60 => '-',
+        0x61 => '/',
+        0x6a => '¦',
+        0x6b => ',',
+        0x6c => '%',
+        0x6d => '_',
+        0x6e => '>',
+        0x6f => '?',
+        0x7a => ':',
+        0x7b => '#',
+        0x7c => '@',
+        0x7d => '\'',
+        0x7e => '=',
+        0x7f => '"',
+        0x81..=0x89 => (b'a' + (byte - 0x81)) as char,
+        0x91..=0x99 => (b'j' + (byte - 0x91)) as char,
+        0xa2..=0xa9 => (b's' + (byte - 0xa2)) as char,
+        0xc1..=0xc9 => (b'A' + (byte - 0xc1)) as char,
+        0xd1..=0xd9 => (b'J' + (byte - 0xd1)) as char,
+        0xe2..=0xe9 => (b'S' + (byte - 0xe2)) as char,
+        0xf0..=0xf9 => (b'0' + (byte - 0xf0)) as char,
+        _ => char::REPLACEMENT_CHARACTER,
+    }
 }
 
 fn parse_cobol_file(
@@ -1119,6 +1187,72 @@ fn emit_progress(
 
 fn print_usage() {
     eprintln!(
-        "usage: cobolens-analyze --root <path> --out <file.json> [--format fixed|free|auto] [--ext .cbl,.cob,.cpy,.jcl] [--encoding utf8]"
+        "usage: cobolens-analyze --root <path> --out <file.json> [--format fixed|free|auto] [--ext .cbl,.cob,.cpy,.jcl] [--encoding utf8|cp037]"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn decodes_common_cp037_source_text() {
+        let bytes = [
+            0xc1, 0xc2, 0xc3, 0x40, 0xf1, 0xf2, 0xf3, 0x4b, 0x25, 0xd1, 0xd2, 0xd3,
+        ];
+
+        assert_eq!(
+            decode_source_bytes(&bytes, "cp037").unwrap(),
+            "ABC 123.\nJKL"
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_source_encoding() {
+        assert!(decode_source_bytes(b"IDENTIFICATION DIVISION.", "latin1").is_err());
+    }
+
+    #[test]
+    fn analyzes_cp037_encoded_cobol_file() {
+        let root = temp_test_dir("cp037-analyze");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src").join("EBCDIC.cbl"), cp037_fixture_program()).unwrap();
+        let out = root.join("graph.json");
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out,
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string()],
+            encoding: "cp037".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert_eq!(graph.meta.file_count, 1);
+        assert_eq!(graph.meta.parsed_file_count, 1);
+        assert!(graph
+            .nodes
+            .iter()
+            .any(|node| { node.node_type == "program" && node.name == "EBCDIC" }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    fn temp_test_dir(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        env::temp_dir().join(format!("cobolens-analyze-{name}-{unique}"))
+    }
+
+    fn cp037_fixture_program() -> Vec<u8> {
+        vec![
+            0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0xc9, 0xc4, 0xc5, 0xd5, 0xe3, 0xc9, 0xc6,
+            0xc9, 0xc3, 0xc1, 0xe3, 0xc9, 0xd6, 0xd5, 0x40, 0xc4, 0xc9, 0xe5, 0xc9, 0xe2, 0xc9,
+            0xd6, 0xd5, 0x4b, 0x25, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0xd7, 0xd9, 0xd6,
+            0xc7, 0xd9, 0xc1, 0xd4, 0x60, 0xc9, 0xc4, 0x4b, 0x40, 0xc5, 0xc2, 0xc3, 0xc4, 0xc9,
+            0xc3, 0x4b, 0x25,
+        ]
+    }
 }

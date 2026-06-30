@@ -74,6 +74,9 @@ Scan settings check:
 
 - The Ingest pane now exposes scan format, extension, and encoding controls for
   the desktop scan path.
+- Encoding offers UTF-8 and CP037 / EBCDIC US. The analyzer and desktop source
+  snippet/excerpt readers decode CP037 so indexed line citations still open in
+  the code panel.
 - In the desktop shell, analyzer JSON progress lines are forwarded as
   `analysis-progress` events and shown in the Ingest pane as counts such as
   `Parse 3/4` while indexing is running.

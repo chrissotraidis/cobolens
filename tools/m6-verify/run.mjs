@@ -41,9 +41,9 @@ const checks = [
     args: ["tools/m6-verify/model-privacy-smoke.mjs"],
   },
   {
-    name: "Rust sidecar check",
+    name: "Rust sidecar tests",
     command: "cargo",
-    args: ["check"],
+    args: ["test"],
     cwd: resolve(repoRoot, "sidecar", "cobolens-analyze"),
   },
   {

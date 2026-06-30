@@ -229,7 +229,7 @@ function App() {
     }
 
     let cancelled = false;
-    readSourceSnippet(root, sourceBase, target.file, target.line)
+    readSourceSnippet(root, sourceBase, target.file, target.line, scanSettings.encoding)
       .then((result) => {
         if (!cancelled) setSnippet(result);
       })
@@ -240,7 +240,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [root, selectedNode, sourceBase, sourceFocus]);
+  }, [root, scanSettings.encoding, selectedNode, sourceBase, sourceFocus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -612,7 +612,7 @@ function App() {
     }
     const startLine = node.lines?.[0] ?? 1;
     const endLine = node.lines?.[1] ?? startLine;
-    return readSourceExcerpt(root, sourceBase, node.file, startLine, endLine, 220);
+    return readSourceExcerpt(root, sourceBase, node.file, startLine, endLine, 220, scanSettings.encoding);
   }
 
   async function askQuestion(questionDraft = chatQuestion) {
@@ -998,6 +998,7 @@ function ScanSettingsPanel({
           onChange={(event) => onSettingsChange({ ...settings, encoding: event.currentTarget.value })}
         >
           <option value="utf8">UTF-8</option>
+          <option value="cp037">CP037 / EBCDIC US</option>
         </select>
       </label>
     </div>
@@ -1796,12 +1797,19 @@ async function checkOllamaReadiness(settings: ModelSettings) {
   }
 }
 
-async function readSourceSnippet(root: string, sourceBase: string, file: string, line: number): Promise<SourceSnippet> {
+async function readSourceSnippet(
+  root: string,
+  sourceBase: string,
+  file: string,
+  line: number,
+  encoding: string,
+): Promise<SourceSnippet> {
   if (root && canUseTauri()) {
     return invoke<SourceSnippet>("read_source_snippet", {
       root,
       file,
       line,
+      encoding,
     });
   }
 
@@ -1831,6 +1839,7 @@ async function readSourceExcerpt(
   startLine: number,
   endLine: number,
   maxLines: number,
+  encoding: string,
 ): Promise<SourceExcerpt> {
   if (root && canUseTauri()) {
     return invoke<SourceExcerpt>("read_source_excerpt", {
@@ -1839,6 +1848,7 @@ async function readSourceExcerpt(
       startLine,
       endLine,
       maxLines,
+      encoding,
     });
   }
 

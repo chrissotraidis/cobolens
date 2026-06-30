@@ -47,6 +47,7 @@ type ChatAnswer = {
   question: string;
   text: string;
   citations: Citation[];
+  source: "graph" | "model";
 };
 type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
@@ -524,7 +525,7 @@ function App() {
       });
       if (isGraphQuestion(question)) {
         const fallback = graphAnswerFallback(graph, question, context);
-        setChatAnswer({ question, text: fallback.text, citations: fallback.citations });
+        setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
         setChatStatus("ready");
         if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
         return;
@@ -537,13 +538,13 @@ function App() {
         apiKey,
       });
       setModelCallCount((count) => count + 1);
-      setChatAnswer({ question, text: answer.text, citations: context.citations });
+      setChatAnswer({ question, text: answer.text, citations: context.citations, source: "model" });
       setChatStatus("ready");
       if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
     } catch (err) {
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
-        setChatAnswer({ question, text: fallback.text, citations: fallback.citations });
+        setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
         setChatStatus("ready");
         if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
         return;
@@ -1065,13 +1066,23 @@ function ChatAnswerPanel({
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
   const elapsedSeconds = useElapsedSeconds(status === "running");
+  const workingWithModel = status === "running" && question.trim() && !isGraphQuestion(question);
+  const answerSubtitle =
+    status === "running"
+      ? workingWithModel
+        ? `${PROVIDER_LABELS[settings.provider]} is answering with cited graph context`
+        : "Answering from graph context"
+      : answer?.source === "model"
+        ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
+        : "Graph answers need no model";
+  const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
 
   return (
     <section className="answer-card" aria-live="polite">
       <div className="answer-header">
         <div>
           <strong>Ask Codebase</strong>
-          <span>{status === "running" ? "Working from graph context" : "Cited answers from the graph"}</span>
+          <span>{answerSubtitle}</span>
         </div>
       </div>
       {starterQuestions.length ? (
@@ -1106,7 +1117,7 @@ function ChatAnswerPanel({
       </div>
       {status === "running" ? (
         <ProgressNote
-          label="Working from graph context"
+          label={progressLabel}
           detail={aiProgressDetail(settings, elapsedSeconds)}
           elapsedSeconds={elapsedSeconds}
         />

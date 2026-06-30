@@ -55,4 +55,12 @@ Export check:
   artifact names: `cobolens-lineage.md`, `cobolens-lineage.mmd`, and
   `cobolens-lineage.png`.
 
+Model-backed Ask check:
+
+- `Check AI` reports `Ollama is ready on localhost with llama3.2`.
+- Asking `Explain LINEAGE in plain English for a new developer.` labels the
+  response as an `Ollama answer with cited graph context`, increments the local
+  call counter, cites `src/LINEAGE.cbl:1` plus relationship lines, and does not
+  explain `LINEAGE` as a generic compiler concept.
+
 This verifies the current UI can answer "what depends on this?" and "where does this data flow?" from the `GraphDocument` alone.

@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-ollama-ask-"));
-const question = "Which program reads CUSTOMER-FILE?";
+const question = "Explain LINEAGE in plain English for a new developer.";
 
 try {
   await writeFile(resolve(tempRoot, "package.json"), JSON.stringify({ type: "module" }));
@@ -71,9 +71,12 @@ try {
   const checks = {
     "answer returned text": answer.text.length > 0,
     "answer mentions LINEAGE": /LINEAGE/i.test(answer.text),
-    "answer cites source line": /src\/LINEAGE\.cbl:21/i.test(answer.text),
+    "answer treats LINEAGE as a program artifact": /program/i.test(answer.text),
+    "answer cites matched source line": /src\/LINEAGE\.cbl:1/i.test(answer.text),
+    "answer cites a relationship": /src\/LINEAGE\.cbl:(11|13|21|26|37|40)/i.test(answer.text),
+    "answer avoids generic compiler hallucination": !/\b(compiler optimization|recompil\w*)\b/i.test(answer.text),
     "retrieval supplied clickable citation": context.citations.some(
-      (citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 21,
+      (citation) => citation.file === "src/LINEAGE.cbl" && [11, 13, 21, 26, 37, 40].includes(citation.line),
     ),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);

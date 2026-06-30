@@ -39,6 +39,7 @@ type GraphViewProps = {
   graph: GraphDocument | null;
   focusNodeId: string;
   expandedNodeIds: Set<string>;
+  hiddenNodeTypes: Set<string>;
   selectedEdge: GraphEdge | null;
   onSelectNode: (nodeId: string) => void;
   onSelectEdge: (edge: GraphEdge | null) => void;
@@ -51,6 +52,7 @@ export function GraphView({
   graph,
   focusNodeId,
   expandedNodeIds,
+  hiddenNodeTypes,
   selectedEdge,
   onSelectNode,
   onSelectEdge,
@@ -61,8 +63,8 @@ export function GraphView({
 
   const slice = useMemo(() => {
     if (!graph || !focusNodeId) return null;
-    return buildFocusSlice(graph, focusNodeId, expandedNodeIds, selectedEdgeKey);
-  }, [expandedNodeIds, focusNodeId, graph, selectedEdgeKey]);
+    return buildFocusSlice(graph, focusNodeId, expandedNodeIds, hiddenNodeTypes, selectedEdgeKey);
+  }, [expandedNodeIds, focusNodeId, graph, hiddenNodeTypes, selectedEdgeKey]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -124,7 +126,7 @@ export function GraphView({
       <div className="graph-minimap" aria-label="Graph orientation">
         <span>{slice.visibleNodeIds.size} visible</span>
         <span>{graph.nodes.length} indexed</span>
-        <span>{slice.hiddenNeighborCount} clustered</span>
+        <span>{slice.hiddenNeighborCount} hidden</span>
       </div>
     </>
   );
@@ -134,6 +136,7 @@ function buildFocusSlice(
   document: GraphDocument,
   focusNodeId: string,
   expandedNodeIds: Set<string>,
+  hiddenNodeTypes: Set<string>,
   selectedEdgeKey: string,
 ): FocusSlice {
   const graph = new Graph<NodeAttributes, EdgeAttributes>({ type: "directed", multi: true });
@@ -186,6 +189,10 @@ function buildFocusSlice(
       const neighborId = edge.from === ownerId ? edge.to : edge.from;
       const neighbor = nodeById.get(neighborId);
       if (!neighbor) continue;
+      if (hiddenNodeTypes.has(neighbor.type)) {
+        hiddenNeighborCount += 1;
+        continue;
+      }
       const bucket = byType.get(neighbor.type) ?? [];
       bucket.push({ edge, neighborId });
       byType.set(neighbor.type, bucket);

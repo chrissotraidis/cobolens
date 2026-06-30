@@ -60,6 +60,17 @@ type SourceFocus = {
 };
 
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+const LEGEND_NODE_TYPES = [
+  ["program", "Programs"],
+  ["paragraph", "Paragraphs"],
+  ["copybook", "Copybooks"],
+  ["jcl-job", "JCL jobs"],
+  ["jcl-step", "JCL steps"],
+  ["data-item", "Data items"],
+  ["dataset", "Datasets"],
+  ["db2-table", "DB2 tables"],
+  ["cics-command", "CICS commands"],
+] as const;
 
 declare global {
   interface Window {
@@ -80,6 +91,7 @@ function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
+  const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
@@ -321,6 +333,7 @@ function App() {
     setSelectedNodeId(initialFocus);
     setSelectedEdge(null);
     setExpandedNodeIds(new Set());
+    setHiddenNodeTypes(new Set());
     setHistory(initialFocus ? [initialFocus] : []);
     setSummaries({});
     setBulkSummaryStatus("");
@@ -375,6 +388,15 @@ function App() {
       const next = new Set(current);
       if (next.has(focusNodeId)) next.delete(focusNodeId);
       else next.add(focusNodeId);
+      return next;
+    });
+  }
+
+  function toggleNodeTypeFilter(type: string) {
+    setHiddenNodeTypes((current) => {
+      const next = new Set(current);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
       return next;
     });
   }
@@ -742,16 +764,17 @@ function App() {
           </section>
 
           <section className="pane-block">
-            <h2>Legend</h2>
-            <LegendItem type="program" label="Programs" />
-            <LegendItem type="paragraph" label="Paragraphs" />
-            <LegendItem type="copybook" label="Copybooks" />
-            <LegendItem type="jcl-job" label="JCL jobs" />
-            <LegendItem type="jcl-step" label="JCL steps" />
-            <LegendItem type="data-item" label="Data items" />
-            <LegendItem type="dataset" label="Datasets" />
-            <LegendItem type="db2-table" label="DB2 tables" />
-            <LegendItem type="cics-command" label="CICS commands" />
+            <h2>Legend & Filters</h2>
+            {LEGEND_NODE_TYPES.map(([type, label]) => (
+              <LegendItem
+                key={type}
+                type={type}
+                label={label}
+                checked={!hiddenNodeTypes.has(type)}
+                disabled={!graph}
+                onToggle={() => toggleNodeTypeFilter(type)}
+              />
+            ))}
           </section>
         </aside>
 
@@ -770,6 +793,7 @@ function App() {
               graph={graph}
               focusNodeId={focusNodeId}
               expandedNodeIds={expandedNodeIds}
+              hiddenNodeTypes={hiddenNodeTypes}
               selectedEdge={selectedEdge}
               onSelectNode={selectNode}
               onSelectEdge={selectEdge}
@@ -884,12 +908,25 @@ function ParseHealth({ graph }: { graph: GraphDocument | null }) {
   );
 }
 
-function LegendItem({ type, label }: { type: string; label: string }) {
+function LegendItem({
+  type,
+  label,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  type: string;
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="filter-row">
+    <label className="filter-row">
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
       <span className="swatch" style={{ background: nodeColor(type) }} />
       <span>{label}</span>
-    </div>
+    </label>
   );
 }
 

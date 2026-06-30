@@ -51,6 +51,13 @@ Parse-health checks:
   and lists file/reason rows such as `bad/UNSUPPORTED.cbl` with
   `unsupported preprocessor directive near line 12`.
 
+Legend/filter checks:
+
+- The left-nav legend renders enabled checkbox filters for graph node types.
+- Turning `Copybooks` off changes the graph orientation from `11 visible`,
+  `26 indexed`, `0 hidden` to `9 visible`, `26 indexed`, `2 hidden`; turning it
+  back on restores the original counts.
+
 Relationship-click check:
 
 - Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to

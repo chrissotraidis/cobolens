@@ -315,11 +315,25 @@ h2,
 
 .filter-row {
   display: grid;
-  grid-template-columns: 12px 1fr;
-  gap: 10px;
+  grid-template-columns: 16px 12px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
   color: #aeb8c3;
+  cursor: pointer;
   font-size: 14px;
+}
+
+.filter-row input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #66c2a5;
+}
+
+.filter-row span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .model-settings {

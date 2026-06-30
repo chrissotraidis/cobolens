@@ -649,6 +649,39 @@ pre {
   font-size: 12px;
 }
 
+.parse-health {
+  gap: 8px;
+}
+
+.parse-warning-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parse-warning-list li {
+  display: grid;
+  gap: 2px;
+  color: #9aa6b2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.parse-warning-list strong {
+  overflow: hidden;
+  color: #e8d796;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parse-warning-more {
+  color: #7d8996;
+}
+
 .edge-explanation {
   display: grid;
   gap: 8px;

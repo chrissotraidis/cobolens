@@ -709,10 +709,13 @@ function App() {
           <section className="pane-block">
             <h2>Inventory</h2>
             <Metric label="Files" value={graph?.meta.fileCount ?? 0} />
+            <Metric label="Parsed" value={graph?.meta.parsedFileCount ?? 0} />
             <Metric label="Programs" value={counts.programs} />
             <Metric label="Copybooks" value={counts.copybooks} />
             <Metric label="JCL steps" value={counts.steps} />
           </section>
+
+          <ParseHealth graph={graph} />
 
           <ModelSettingsPanel
             settings={modelSettings}
@@ -846,6 +849,38 @@ function Metric({ label, value }: { label: string; value: number }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function ParseHealth({ graph }: { graph: GraphDocument | null }) {
+  const parseErrors = graph?.meta.parseErrors ?? [];
+  const visibleErrors = parseErrors.slice(0, 5);
+  const hiddenCount = Math.max(0, parseErrors.length - visibleErrors.length);
+  const parsed = graph?.meta.parsedFileCount ?? 0;
+  const total = graph?.meta.fileCount ?? 0;
+
+  return (
+    <section className="pane-block parse-health">
+      <h2>Parse Health</h2>
+      <div className={`status-pill ${parseErrors.length ? "running" : graph ? "ready" : "idle"}`}>
+        {graph ? `${parsed}/${total} parsed` : "No graph"}
+      </div>
+      {graph && !parseErrors.length ? (
+        <div className="settings-footnote ready">No parse warnings.</div>
+      ) : parseErrors.length ? (
+        <ul className="parse-warning-list">
+          {visibleErrors.map((error) => (
+            <li key={`${error.file}:${error.reason}`}>
+              <strong title={error.file}>{error.file}</strong>
+              <span>{error.reason}</span>
+            </li>
+          ))}
+          {hiddenCount ? <li className="parse-warning-more">+{hiddenCount} more parse warnings</li> : null}
+        </ul>
+      ) : (
+        <div className="settings-footnote">Open a folder or sample to see parse coverage.</div>
+      )}
+    </section>
   );
 }
 

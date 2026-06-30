@@ -1,4 +1,5 @@
-import type { GraphDocument } from "../lib/graph";
+import { edgeLabel } from "../lib/graph";
+import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import type { UnitSummary } from "../model/summaries";
 
 export type SummaryExportState = Record<string, { summary?: UnitSummary } | undefined>;
@@ -20,9 +21,23 @@ export function buildDocumentationExport(
     .filter((node) => node.type === "program" || node.type === "copybook" || node.type === "paragraph")
     .slice(0, 120)
     .map((node) => {
-      const summary = summaries[node.id]?.summary?.text ?? "No generated summary yet.";
+      const summary = summaries[node.id]?.summary?.text ?? graphDerivedSummary(graph, node);
       const file = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
-      return `### ${node.name}\n\n- Type: ${node.type}\n- Source: ${file}\n\n${summary}\n`;
+      const relationships = relationshipFacts(graph, node);
+      return [
+        `### ${node.name}`,
+        "",
+        `- Type: ${node.type}`,
+        `- Source: ${file}`,
+        summaries[node.id]?.summary ? "- Summary: AI-generated from graph and source context" : "- Summary: graph-derived, no model required",
+        "",
+        summary,
+        "",
+        "#### Relationships",
+        "",
+        relationships.length ? relationships.map((fact) => `- ${fact}`).join("\n") : "- No direct relationships recorded.",
+        "",
+      ].join("\n");
     })
     .join("\n");
 
@@ -34,6 +49,27 @@ export function buildDocumentationExport(
     .slice(0, 40)
     .map((node) => [`### ${node.name}`, "", "```mermaid", buildMermaidDiagram(graph, node.id), "```"].join("\n"))
     .join("\n\n");
+  const lineageRows = graph.nodes
+    .filter((node) => LINEAGE_EXPORT_TYPES.has(node.type))
+    .slice(0, 120)
+    .map((node) => {
+      const source = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+      const relationships = relationshipFacts(graph, node);
+      return [
+        `### ${node.name}`,
+        "",
+        `- Type: ${node.type}`,
+        `- Source: ${source}`,
+        "",
+        graphDerivedSummary(graph, node),
+        "",
+        "#### Cited Relationships",
+        "",
+        relationships.length ? relationships.map((fact) => `- ${fact}`).join("\n") : "- No direct relationships recorded.",
+        "",
+      ].join("\n");
+    })
+    .join("\n");
 
   return {
     diagramTitle: focus?.name ?? "Cobolens diagram",
@@ -59,6 +95,10 @@ export function buildDocumentationExport(
       "## Program Diagrams",
       "",
       programDiagrams || "No program diagrams were available.",
+      "",
+      "## Lineage and Impact",
+      "",
+      lineageRows || "No lineage-backed nodes were indexed.",
       "",
       "## Summaries",
       "",
@@ -122,6 +162,8 @@ export function estimateTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
+const LINEAGE_EXPORT_TYPES = new Set(["data-item", "dataset", "db2-table", "cics-command", "jcl-dd"]);
+
 function mermaidId(id: string) {
   return `n_${id.replace(/[^a-zA-Z0-9_]/g, "_")}`;
 }
@@ -132,6 +174,33 @@ function escapeMermaid(value: string) {
 
 function safeName(value: string) {
   return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "docs";
+}
+
+function graphDerivedSummary(graph: GraphDocument, node: GraphNode) {
+  const incoming = graph.edges.filter((edge) => edge.to === node.id);
+  const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+  const source = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+  const parts = [
+    `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}.`,
+    `Source: ${source}.`,
+    `${incoming.length} incoming and ${outgoing.length} outgoing relationships are recorded in the parsed graph.`,
+  ];
+  const citedEdges = [...outgoing, ...incoming].filter((edge) => edge.site).slice(0, 5);
+  if (citedEdges.length) {
+    parts.push(`Key cited relationships: ${citedEdges.map((edge) => citedRelationship(graph, edge)).join("; ")}.`);
+  }
+  return parts.join(" ");
+}
+
+function relationshipFacts(graph: GraphDocument, node: GraphNode) {
+  return graph.edges
+    .filter((edge) => edge.from === node.id || edge.to === node.id)
+    .slice(0, 16)
+    .map((edge) => citedRelationship(graph, edge));
+}
+
+function citedRelationship(graph: GraphDocument, edge: GraphEdge) {
+  return `${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : " (no source site recorded)"}`;
 }
 
 function downloadBlob(filename: string, blob: Blob) {

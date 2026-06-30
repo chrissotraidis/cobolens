@@ -51,12 +51,21 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const answer = graphAnswerFallback(graph, question, context);
+  const lineageQuestion = "What depends on LINEAGE?";
+  const lineageContext = await retrieveQuestionContext({
+    graph,
+    question: lineageQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const lineageAnswer = graphAnswerFallback(graph, lineageQuestion, lineageContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
     ["cites move relationship", answer.text.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
+    ["reports JCL users before display limit", lineageAnswer.text.includes("Upstream or used by: STEP010.")],
+    ["prioritizes incoming dependency relationship", lineageAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

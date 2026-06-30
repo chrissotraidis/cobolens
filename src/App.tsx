@@ -754,6 +754,7 @@ function App() {
                 answer={chatAnswer}
                 error={chatError}
                 node={selectedNode}
+                settings={modelSettings}
                 onAskPreset={askQuestion}
                 onOpenCitation={jumpToCitation}
               />
@@ -956,6 +957,8 @@ function SummaryDock({
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
 }) {
+  const elapsedSeconds = useElapsedSeconds(state?.status === "running");
+
   return (
     <section className="summary-card">
       <div className="summary-actions">
@@ -977,6 +980,12 @@ function SummaryDock({
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
           <p>{state.summary.text}</p>
+        ) : state?.status === "running" ? (
+          <ProgressNote
+            label="Generating grounded summary"
+            detail={aiProgressDetail(settings, elapsedSeconds)}
+            elapsedSeconds={elapsedSeconds}
+          />
         ) : state?.status === "error" ? (
           <p className="error-text">{state.error}</p>
         ) : node && graph ? (
@@ -1000,6 +1009,7 @@ function ChatAnswerPanel({
   answer,
   error,
   node,
+  settings,
   onAskPreset,
   onOpenCitation,
 }: {
@@ -1007,10 +1017,12 @@ function ChatAnswerPanel({
   answer: ChatAnswer | null;
   error: string;
   node: GraphNode | null;
+  settings: ModelSettings;
   onAskPreset: (question: string) => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
+  const elapsedSeconds = useElapsedSeconds(status === "running");
 
   return (
     <section className="answer-card" aria-live="polite">
@@ -1035,7 +1047,11 @@ function ChatAnswerPanel({
         </div>
       ) : null}
       {status === "running" ? (
-        <p>Thinking...</p>
+        <ProgressNote
+          label="Working from graph context"
+          detail={aiProgressDetail(settings, elapsedSeconds)}
+          elapsedSeconds={elapsedSeconds}
+        />
       ) : status === "error" ? (
         <p className="error-text">{error}</p>
       ) : answer ? (
@@ -1059,6 +1075,62 @@ function ChatAnswerPanel({
       )}
     </section>
   );
+}
+
+function ProgressNote({
+  label,
+  detail,
+  elapsedSeconds,
+}: {
+  label: string;
+  detail: string;
+  elapsedSeconds: number;
+}) {
+  return (
+    <div className="progress-note" role="status">
+      <span className="progress-spinner" aria-hidden="true" />
+      <div>
+        <strong>{label}</strong>
+        <span>
+          {detail}
+          {elapsedSeconds >= 2 ? ` ${elapsedSeconds}s elapsed.` : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function useElapsedSeconds(active: boolean) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setElapsedSeconds(0);
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [active]);
+
+  return elapsedSeconds;
+}
+
+function aiProgressDetail(settings: ModelSettings, elapsedSeconds: number) {
+  if (settings.provider === "ollama") {
+    return elapsedSeconds >= 8
+      ? "Local Ollama can take a little while on CPU; code stays on this machine."
+      : "Using local Ollama; no code leaves this machine.";
+  }
+
+  return elapsedSeconds >= 8
+    ? `Waiting on ${PROVIDER_LABELS[settings.provider]}; only the retrieved code slice was sent.`
+    : `Using ${PROVIDER_LABELS[settings.provider]} with cited graph context.`;
 }
 
 function LineageImpactPanel({

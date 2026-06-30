@@ -672,6 +672,56 @@ pre {
   white-space: pre-line;
 }
 
+.progress-note {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(90, 167, 161, 0.24);
+  border-radius: 8px;
+  color: #b7c2cd;
+  background: rgba(90, 167, 161, 0.07);
+}
+
+.progress-note strong,
+.progress-note span {
+  display: block;
+}
+
+.progress-note strong {
+  color: #e7ebef;
+  font-size: 13px;
+}
+
+.progress-note span {
+  margin-top: 2px;
+  color: #9aa6b2;
+  font-size: 12px;
+}
+
+.progress-spinner {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border: 2px solid rgba(90, 167, 161, 0.25);
+  border-top-color: #66c2a5;
+  border-radius: 50%;
+  animation: progress-spin 900ms linear infinite;
+}
+
+@keyframes progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-spinner {
+    animation: none;
+  }
+}
+
 .answer-card {
   padding: 12px;
   border: 1px solid #20262e;

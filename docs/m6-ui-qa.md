@@ -81,6 +81,9 @@ Legend/filter checks:
   collapsed `+N type` node expands the focused owner or re-centers on a
   non-focused owner, and expanding the focused node raises the direct-neighbor
   limit instead of only changing the toolbar label.
+- When a focused graph slice has no hidden direct neighbors, the toolbar button
+  reads `Focus complete` instead of a disabled-looking `Expand`, and its tooltip
+  points users to search or the Codebase browser for unrelated indexed nodes.
 
 Privacy mode checks:
 

@@ -65,6 +65,14 @@ const checks = [
     ]) && includesAll(appSource, ["function expandNode(nodeId: string)", "onExpandNode={expandNode}"]),
   ],
   [
+    "Graph toolbar explains when the focused slice has no hidden direct neighbors",
+    includesAll(appSource, [
+      'const expandButtonLabel = focusExpanded ? "Collapse" : focusExpansion.hiddenByLimit ? "Expand" : "Focus complete"',
+      "No hidden direct neighbors for this focus; use search or the Codebase browser to jump elsewhere.",
+      "aria-label={expandButtonTitle}",
+    ]) && includesAll(appCss, [".graph-toolbar button", "min-width: 112px"]),
+  ],
+  [
     "Left navigator exposes a grouped codebase browser",
     includesAll(appSource, [
       "function SourceTree",

@@ -581,6 +581,7 @@ h2,
 
 .graph-toolbar button {
   height: 28px;
+  min-width: 112px;
   padding: 0 12px;
 }
 

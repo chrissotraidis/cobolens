@@ -204,6 +204,14 @@ function App() {
     () => graphExpansionState(graph, focusNodeId, hiddenNodeTypes),
     [focusNodeId, graph, hiddenNodeTypes],
   );
+  const focusExpanded = Boolean(focusNodeId && expandedNodeIds.has(focusNodeId));
+  const expandDisabled = !focusNodeId || (!focusExpanded && !focusExpansion.hiddenByLimit);
+  const expandButtonLabel = focusExpanded ? "Collapse" : focusExpansion.hiddenByLimit ? "Expand" : "Focus complete";
+  const expandButtonTitle = focusExpanded
+    ? "Collapse expanded neighbors for this focus"
+    : focusExpansion.hiddenByLimit
+      ? `Show ${focusExpansion.hiddenByLimit} hidden direct neighbors for this focus`
+      : "No hidden direct neighbors for this focus; use search or the Codebase browser to jump elsewhere.";
 
   useEffect(() => {
     let cancelled = false;
@@ -1025,14 +1033,11 @@ function App() {
             <button
               type="button"
               onClick={toggleExpandFocus}
-              disabled={!focusNodeId || (!expandedNodeIds.has(focusNodeId) && !focusExpansion.hiddenByLimit)}
-              title={
-                focusExpansion.hiddenByLimit
-                  ? `Show ${focusExpansion.hiddenByLimit} hidden neighbors for this focus`
-                  : "No hidden neighbors for this focus"
-              }
+              disabled={expandDisabled}
+              title={expandButtonTitle}
+              aria-label={expandButtonTitle}
             >
-              {expandedNodeIds.has(focusNodeId) ? "Collapse" : "Expand"}
+              {expandButtonLabel}
             </button>
           </div>
           <div className="graph-canvas">

@@ -18,7 +18,7 @@ This audit checks the local v1/M6 continuation goal against current repo evidenc
 | Rust sidecar check passes | `cargo check` passed in `sidecar/cobolens-analyze`. `npm run m6:verify` also runs this gate. | Done |
 | Benchmark requirement improved without inventing absent benchmark results | `npm run validate:benchmark -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite` passed for the Rust sidecar: 77 files, 37 parsed, 40 graceful parse errors, 739 nodes, 821 edges. The suite remains ignored under `.cache`. | Current analyzer benchmark validation done |
 | Parser upgrade revisited after UI usefulness | ProLeap and mapa candidates both emit the same `GraphDocument` contract and pass the strict fixture. On the cloned benchmark comparison, Rust, ProLeap, and mapa all pass the graph contract after graceful-error/timeout hardening; ProLeap has the richer DB2/CICS signal, while mapa currently falls back when CallTree times out. `docs/m6-parser-upgrade-readiness.md` keeps Rust as the v1 production sidecar until packaging and parser-quality tradeoffs are resolved. | Done for v1 decision |
-| Packaging implications are explicit | `npm run m6:packaging-readiness` reports sidecar/JDK sizes and startup smoke timings. Current WSL readiness is false because `pkg-config` and Linux Tauri WebKit/dbus development packages are missing; Windows/Tauri packaging remains unverified. | Evidence captured; external packaging still pending |
+| Packaging implications are explicit | `npm run m6:packaging-readiness` reports sidecar/JDK sizes, startup smoke timings, WSL Linux prerequisites, and Windows host prerequisites. Current readiness is false: WSL is missing `pkg-config` and Linux Tauri WebKit/dbus development packages; the Windows host is reachable but lacks Node/npm, Rust, Microsoft C++ Build Tools, and WebView2. | Evidence captured; packaging prerequisites still pending |
 
 ## Current Production Decision
 
@@ -29,13 +29,13 @@ Reasons:
 - The Rust sidecar satisfies the local M6 fixture and UI contract with the smallest footprint.
 - ProLeap and mapa are useful candidates, but both add JVM/runtime packaging work.
 - Official benchmark-suite comparison is contract-green, but adopting a JVM candidate would add packaging and quality tradeoffs.
-- Windows/Tauri packaging startup behavior has not been validated on a Windows build host.
+- Windows/Tauri packaging startup behavior has not been validated because the current Windows host is missing required build prerequisites.
 
 ## Remaining External Gates
 
 1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only path or needs deeper upstream tuning before adoption.
 
-2. Validate Windows/Tauri packaging and startup behavior for the production sidecar choice.
+2. Validate Windows/Tauri packaging and startup behavior after installing the missing host prerequisites or use a Linux environment with the missing Tauri development packages installed.
 
 3. If a JVM analyzer is still desired after those gates, decide between:
 

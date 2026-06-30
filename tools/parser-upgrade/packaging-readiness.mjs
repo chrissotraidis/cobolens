@@ -17,11 +17,14 @@ const candidates = [
 const report = {
   ready: true,
   tauriLinuxSystemDeps: checkTauriLinuxDeps(),
+  windowsHost: checkWindowsHost(),
   artifacts: await artifactReport(),
   startupSmoke: await startupReport(),
 };
 
-report.ready = report.tauriLinuxSystemDeps.ready && report.startupSmoke.every((entry) => entry.ok);
+report.ready =
+  (report.tauriLinuxSystemDeps.ready || report.windowsHost.ready) &&
+  report.startupSmoke.every((entry) => entry.ok);
 
 console.log(JSON.stringify(report, null, 2));
 
@@ -42,6 +45,88 @@ function checkTauriLinuxDeps() {
     packages: checked,
     note: "This only probes local WSL Linux build prerequisites; Windows packaging must still be validated on Windows.",
   };
+}
+
+function checkWindowsHost() {
+  const probe = windowsCommand("ver");
+  if (!probe.ok) {
+    return {
+      available: false,
+      ready: false,
+      tools: [],
+      visualCppBuildTools: { available: false },
+      webView2: { available: false },
+      vbScriptForMsi: { available: false },
+      note: "Windows host tooling was not reachable from this environment.",
+    };
+  }
+
+  const tools = ["node", "npm", "cargo", "rustc"].map((name) => {
+    const found = windowsCommand(`where ${name}`);
+    return {
+      name,
+      available: found.ok,
+      path: found.ok ? firstLine(found.stdout) : null,
+    };
+  });
+  const visualCppBuildTools = checkWindowsVisualCppBuildTools();
+  const webView2 = checkWindowsWebView2();
+  const cscript = windowsCommand("where cscript");
+  const vbScriptForMsi = {
+    available: cscript.ok,
+    path: cscript.ok ? firstLine(cscript.stdout) : null,
+  };
+
+  return {
+    available: true,
+    ready:
+      tools.every((entry) => entry.available) &&
+      visualCppBuildTools.available &&
+      webView2.available &&
+      vbScriptForMsi.available,
+    tools,
+    visualCppBuildTools,
+    webView2,
+    vbScriptForMsi,
+    note: "Tauri Windows prerequisites are Microsoft C++ Build Tools and WebView2; VBSCRIPT is included because bundle.targets is all/MSI.",
+  };
+}
+
+function checkWindowsVisualCppBuildTools() {
+  const vswhere = windowsCommand(
+    'if exist "%ProgramFiles(x86)%\\Microsoft Visual Studio\\Installer\\vswhere.exe" "%ProgramFiles(x86)%\\Microsoft Visual Studio\\Installer\\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Workload.VCTools -property installationPath',
+  );
+  if (vswhere.ok && vswhere.stdout.trim()) {
+    return { available: true, source: "vswhere", path: firstLine(vswhere.stdout) };
+  }
+
+  const cl = windowsCommand("where cl");
+  return {
+    available: cl.ok,
+    source: cl.ok ? "PATH" : "not-found",
+    path: cl.ok ? firstLine(cl.stdout) : null,
+  };
+}
+
+function checkWindowsWebView2() {
+  const keys = [
+    "HKLM\\SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+    "HKCU\\SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+    "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+  ];
+
+  for (const key of keys) {
+    const result = windowsCommand(`reg query "${key}" /v pv`);
+    if (result.ok) {
+      return {
+        available: true,
+        registryKey: key,
+        version: parseRegistryValue(result.stdout, "pv"),
+      };
+    }
+  }
+
+  return { available: false };
 }
 
 async function artifactReport() {
@@ -145,6 +230,35 @@ function command(args) {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+}
+
+function windowsCommand(commandLine) {
+  const result = spawnSync(windowsCmd(), ["/d", "/s", "/c", `cd /d C:\\Windows && ${commandLine}`], {
+    encoding: "utf8",
+  });
+  return {
+    ok: !result.error && result.status === 0,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+function windowsCmd() {
+  return process.env.COMSPEC ?? "/mnt/c/Windows/System32/cmd.exe";
+}
+
+function firstLine(text) {
+  return text.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? "";
+}
+
+function parseRegistryValue(text, name) {
+  const line = text
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .find((entry) => entry.toLowerCase().startsWith(name.toLowerCase() + " "));
+  if (!line) return null;
+  const parts = line.split(/\s+/);
+  return parts.length >= 3 ? parts.slice(2).join(" ") : null;
 }
 
 function linuxEnv() {

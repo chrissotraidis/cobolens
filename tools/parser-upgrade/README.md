@@ -44,3 +44,5 @@ npm run m6:packaging-readiness
 ```
 
 This reports sidecar artifact sizes, startup smoke timings, and local WSL Tauri Linux prerequisites. It is expected to report `ready: false` when `pkg-config` or WebKit/dbus development packages are missing.
+
+When WSL can reach the Windows host, the same report also checks Windows packaging prerequisites: Node/npm, Rust, Microsoft C++ Build Tools, WebView2, and VBScript support for MSI targets.

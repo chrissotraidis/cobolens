@@ -104,10 +104,15 @@ Run:
 npm run m6:packaging-readiness
 ```
 
-The current WSL probe starts all three analyzer candidates and reports sidecar/JDK sizes, but returns `ready: false` because this environment lacks `pkg-config` and the Linux Tauri WebKit/dbus development packages. Do not treat this as Windows packaging validation; Windows/Tauri startup behavior still needs to be checked on a Windows build host before a JVM sidecar is adopted.
+The current probe starts all three analyzer candidates and reports sidecar/JDK sizes, WSL Linux prerequisites, and Windows host prerequisites. It returns `ready: false` in this workspace:
+
+- WSL Linux packaging prerequisites are missing: `pkg-config`, `dbus-1`, `webkit2gtk-4.1`, `javascriptcoregtk-4.1`, and `libsoup-3.0`.
+- The Windows host is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
+
+The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
 
 Remaining decision work:
 
-1. Resolve packaging readiness findings from `npm run m6:packaging-readiness`, especially missing WSL `pkg-config`/WebKit/dbus development packages and Windows/Tauri startup behavior.
+1. Resolve packaging readiness findings from `npm run m6:packaging-readiness`: either install the WSL Linux Tauri development packages or validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
 2. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
 3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa after the packaging gate is green.

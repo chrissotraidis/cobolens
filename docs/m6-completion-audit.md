@@ -4,7 +4,7 @@ Date: 2026-06-30
 
 ## Scope
 
-This audit checks the local v1/M6 continuation goal against current repo evidence. It does not claim official benchmark-suite validation or Windows installer readiness because those external gates are not available in this workspace yet.
+This audit checks the local v1/M6 continuation goal against current repo evidence. The official benchmark suite was cloned into `.cache/benchmarks/COBOL-Legacy-Benchmark-Suite` for local validation, but it remains untracked. This audit does not claim Windows installer readiness.
 
 ## Requirement Evidence
 
@@ -16,8 +16,8 @@ This audit checks the local v1/M6 continuation goal against current repo evidenc
 | Strict M6 bake-off passes | `node tools/m6-bakeoff/run.mjs` passed on the current Rust sidecar. `npm run m6:verify` also runs this gate. | Done |
 | Frontend build passes | `npm run build` passed. `npm run m6:verify` also runs this gate. | Done |
 | Rust sidecar check passes | `cargo check` passed in `sidecar/cobolens-analyze`. `npm run m6:verify` also runs this gate. | Done |
-| Benchmark requirement improved without inventing absent benchmark results | `tools/benchmark-validation/README.md`, `tools/parser-upgrade/compare-candidates.mjs`, and `docs/m6-parser-upgrade-readiness.md` document and automate local-root validation. No official benchmark suite is checked in; `samples/mini-bank` is documented as smoke-only. | Done locally; external benchmark still pending |
-| Parser upgrade revisited after UI usefulness | ProLeap and mapa candidates both emit the same `GraphDocument` contract and pass the strict fixture. `docs/m6-parser-upgrade-readiness.md` keeps Rust as the v1 production sidecar until benchmark and packaging gates are green. | Done for v1 decision |
+| Benchmark requirement improved without inventing absent benchmark results | `npm run validate:benchmark -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite` passed for the Rust sidecar: 77 files, 37 parsed, 40 graceful parse errors, 739 nodes, 821 edges. The suite remains ignored under `.cache`. | Current analyzer benchmark validation done |
+| Parser upgrade revisited after UI usefulness | ProLeap and mapa candidates both emit the same `GraphDocument` contract and pass the strict fixture. On the official benchmark comparison, Rust passed, ProLeap exited during copybook preprocessing, and mapa timed out after 60 seconds. `docs/m6-parser-upgrade-readiness.md` keeps Rust as the v1 production sidecar until benchmark and packaging gates are green. | Done for v1 decision; JVM candidates not benchmark-green |
 | Packaging implications are explicit | `npm run m6:packaging-readiness` reports sidecar/JDK sizes and startup smoke timings. Current WSL readiness is false because `pkg-config` and Linux Tauri WebKit/dbus development packages are missing; Windows/Tauri packaging remains unverified. | Evidence captured; external packaging still pending |
 
 ## Current Production Decision
@@ -28,17 +28,15 @@ Reasons:
 
 - The Rust sidecar satisfies the local M6 fixture and UI contract with the smallest footprint.
 - ProLeap and mapa are useful candidates, but both add JVM/runtime packaging work.
-- Official benchmark-suite comparison is not available locally.
+- Official benchmark-suite comparison is not green for the JVM candidates yet.
 - Windows/Tauri packaging startup behavior has not been validated on a Windows build host.
 
 ## Remaining External Gates
 
-1. Place the official benchmark suite on disk and run:
+1. Fix or explicitly reject the benchmark-blocking JVM candidate issues:
 
-```sh
-npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite
-npm run m6:compare-candidates -- --root /path/to/COBOL-Legacy-Benchmark-Suite
-```
+- ProLeap exits during copybook preprocessing on the cloned benchmark suite.
+- mapa times out under `npm run m6:compare-candidates -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite --timeout-ms 60000`.
 
 2. Validate Windows/Tauri packaging and startup behavior for the production sidecar choice.
 

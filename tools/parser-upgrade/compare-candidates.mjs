@@ -24,14 +24,16 @@ try {
   for (const candidate of options.candidates) {
     const out = resolve(tempRoot, `${safeName(candidate.name)}.json`);
     const started = performance.now();
-    const result = await runAnalyzer(candidate, options.root, out);
+    const result = await runAnalyzer(candidate, options.root, out, options.timeoutMs);
     const elapsedMs = Math.round(performance.now() - started);
     if (!result.ok) {
       results.push({
         name: candidate.name,
         ok: false,
         elapsedMs,
-        error: `analyzer exited with ${result.code}`,
+        error: result.timedOut
+          ? `analyzer timed out after ${options.timeoutMs}ms`
+          : `analyzer exited with ${result.code}`,
         stderrTail: result.stderrLines.slice(-8),
       });
       continue;
@@ -64,6 +66,7 @@ if (results.some((result) => !result.ok)) {
 
 function parseArgs(args) {
   let root = process.env.COBOLENS_BENCHMARK_ROOT ? resolve(process.env.COBOLENS_BENCHMARK_ROOT) : defaultRoot;
+  let timeoutMs = Number(process.env.COBOLENS_COMPARE_TIMEOUT_MS ?? 120_000);
   const candidates = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -71,6 +74,13 @@ function parseArgs(args) {
       const value = args[index + 1];
       if (!value) throw new Error("--root requires a path");
       root = resolve(value);
+      index += 1;
+      continue;
+    }
+    if (arg === "--timeout-ms") {
+      const value = Number(args[index + 1]);
+      if (!Number.isFinite(value) || value <= 0) throw new Error("--timeout-ms requires a positive number");
+      timeoutMs = value;
       index += 1;
       continue;
     }
@@ -86,13 +96,17 @@ function parseArgs(args) {
     throw new Error(`unknown argument: ${arg}`);
   }
 
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("COBOLENS_COMPARE_TIMEOUT_MS must be a positive number");
+  }
+
   if (!candidates.length) {
     for (const [name, command] of defaultCandidates) {
       candidates.push({ name, command: resolve(repoRoot, command) });
     }
   }
 
-  return { root, candidates };
+  return { root, candidates, timeoutMs };
 }
 
 async function assertReadableDirectory(path) {
@@ -104,7 +118,7 @@ async function assertReadableDirectory(path) {
   }
 }
 
-function runAnalyzer(candidate, root, out) {
+function runAnalyzer(candidate, root, out, timeoutMs) {
   const args = [
     "--root",
     root,
@@ -119,19 +133,53 @@ function runAnalyzer(candidate, root, out) {
   ];
 
   return new Promise((resolveRun) => {
-    const child = spawn(candidate.command, args, { cwd: repoRoot, env: linuxEnv() });
+    let settled = false;
+    const child = spawn(candidate.command, args, {
+      cwd: repoRoot,
+      detached: process.platform !== "win32",
+      env: linuxEnv(),
+    });
     const stderrLines = [];
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killAnalyzer(child);
+      resolveRun({ ok: false, code: "timeout", timedOut: true, stderrLines });
+    }, timeoutMs);
     child.stdout.on("data", () => {});
     child.stderr.on("data", (chunk) => {
       stderrLines.push(...chunk.toString("utf8").trim().split(/\r?\n/).filter(Boolean));
     });
     child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       resolveRun({ ok: false, code: "spawn-error", stderrLines: [error.message] });
     });
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       resolveRun({ ok: code === 0, code, stderrLines });
     });
   });
+}
+
+function killAnalyzer(child) {
+  if (!child.pid) return;
+  try {
+    if (process.platform === "win32") {
+      child.kill("SIGKILL");
+      return;
+    }
+    process.kill(-child.pid, "SIGKILL");
+  } catch {
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      // Best effort cleanup; the timeout report is still the useful signal.
+    }
+  }
 }
 
 function validateGraph(graph) {

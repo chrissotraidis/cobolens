@@ -30,9 +30,10 @@ Compare the current Rust, ProLeap, and mapa candidates with:
 npm run m6:compare-candidates
 npm run m6:compare-candidates -- --root samples/mini-bank
 npm run m6:compare-candidates -- --root /path/to/benchmark
+npm run m6:compare-candidates -- --root /path/to/benchmark --timeout-ms 60000
 ```
 
-The default root is `fixtures/m6-bakeoff`. `samples/mini-bank` is only a bundled smoke sample, not the official PRD benchmark suite.
+The default root is `fixtures/m6-bakeoff`. `samples/mini-bank` is only a bundled smoke sample, not the official PRD benchmark suite. `--timeout-ms` caps each candidate so a parser hang is reported as a failed candidate instead of blocking the comparison run.
 
 Check packaging readiness with:
 

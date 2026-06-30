@@ -30,7 +30,7 @@ export function graphAnswerFallback(
         "I could not match that question to a symbol in the graph.",
         ...(modelNote ? ["", `Model note: ${modelNote}`] : []),
       ].join("\n"),
-      citations: context.citations,
+      citations: [],
     };
   }
 

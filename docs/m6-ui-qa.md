@@ -137,6 +137,8 @@ Graph-backed Ask check:
 - `What depends on LINEAGE?` now answers with `STEP010 RUNS LINEAGE` at
   `jcl/DAILYLN.jcl:2` and keeps the citation chips scoped to the matched
   program and incoming JCL relationship.
+- Unknown symbols such as `FROBULATOR` produce an explicit no-match graph
+  answer with no citations, rather than implying unsupported evidence.
 - Selecting `CUSTOMER` from search after a `LINEAGE` Ask clears the old answer,
   resets the composer, and shows `CUSTOMER` suggested questions instead of a
   stale `LINEAGE` response.

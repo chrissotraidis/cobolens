@@ -107,6 +107,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const logicalReportAnswer = graphAnswerFallback(graph, logicalReportQuestion, logicalReportContext);
+  const unknownQuestion = "Where does FROBULATOR happen?";
+  const unknownContext = await retrieveQuestionContext({
+    graph,
+    question: unknownQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const unknownAnswer = graphAnswerFallback(graph, unknownQuestion, unknownContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -142,6 +149,9 @@ try {
     ["daily report answer cites report DD mapping", dailyReportAnswer.text.includes("RPTFILE uses-dd BANK.REPORT.DAILY at jcl/DAILYLN.jcl:4")],
     ["natural report file phrase matches logical COBOL file", logicalReportContext.focusNodes[0]?.name === "REPORT-FILE"],
     ["logical report answer cites COBOL to JCL assignment", logicalReportAnswer.text.includes("REPORT-FILE assigned-to RPTFILE at src/LINEAGE.cbl:7")],
+    ["unknown symbol has no matched focus", unknownContext.focusNodes.length === 0],
+    ["unknown symbol says it could not match", unknownAnswer.text.includes("I could not match that question to a symbol in the graph.")],
+    ["unknown symbol has no citations", unknownAnswer.citations.length === 0],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

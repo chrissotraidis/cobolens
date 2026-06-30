@@ -87,6 +87,7 @@ const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   extensions: ".cbl,.cob,.cpy,.jcl",
   encoding: "utf8",
 };
+const FOCUS_DIRECT_LIMIT_PER_TYPE = 14;
 const LEGEND_NODE_TYPES = [
   ["program", "Programs"],
   ["paragraph", "Paragraphs"],
@@ -124,6 +125,7 @@ function App() {
   const [scanProgress, setScanProgress] = useState<AnalysisProgress | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
+  const [snippetLoading, setSnippetLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [modelSettings, setModelSettings] = useState<ModelSettings>(DEFAULT_MODEL_SETTINGS);
   const [keyDraft, setKeyDraft] = useState("");
@@ -139,7 +141,7 @@ function App() {
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
@@ -192,6 +194,10 @@ function App() {
       .sort((left, right) => searchScore(left, query) - searchScore(right, query))
       .slice(0, 12);
   }, [graph, query]);
+  const focusExpansion = useMemo(
+    () => graphExpansionState(graph, focusNodeId, hiddenNodeTypes),
+    [focusNodeId, graph, hiddenNodeTypes],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -273,16 +279,25 @@ function App() {
     const target = sourceFocus ?? (node?.file ? { file: node.file, line: node.lines?.[0] ?? 1, nodeId: node.id } : null);
     if ((!root && !sourceBase) || !target) {
       setSnippet(null);
+      setSnippetLoading(false);
       return;
     }
 
     let cancelled = false;
+    setSnippet(null);
+    setSnippetLoading(true);
     readSourceSnippet(root, sourceBase, target.file, target.line, scanSettings.encoding)
       .then((result) => {
-        if (!cancelled) setSnippet(result);
+        if (!cancelled) {
+          setSnippet(result);
+          setSnippetLoading(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setSnippet(null);
+        if (!cancelled) {
+          setSnippet(null);
+          setSnippetLoading(false);
+        }
       });
 
     return () => {
@@ -440,6 +455,7 @@ function App() {
     setSourceBase(nextSourceBase);
     setGraph(null);
     setSnippet(null);
+    setSnippetLoading(false);
     setSelectedEdge(null);
     setSourceFocus(null);
     setScanProgress(null);
@@ -536,6 +552,15 @@ function App() {
       else next.add(type);
       return next;
     });
+  }
+
+  function resetNodeTypeFilters() {
+    setHiddenNodeTypes(new Set());
+  }
+
+  function focusOnSearchResult(nodeId: string) {
+    focusOnNode(nodeId);
+    setQuery("");
   }
 
   function goHome() {
@@ -905,7 +930,7 @@ function App() {
             <div className="search-results">
               {searchResults.length ? (
                 searchResults.map((node) => (
-                  <button key={node.id} type="button" onClick={() => focusOnNode(node.id)}>
+                  <button key={node.id} type="button" onClick={() => focusOnSearchResult(node.id)}>
                     <span className="swatch" style={{ background: nodeColor(node.type) }} />
                     <span>{node.name}</span>
                     <small>{node.type}</small>
@@ -953,7 +978,17 @@ function App() {
           </section>
 
           <section className="pane-block">
-            <h2>Legend & Filters</h2>
+            <div className="pane-heading-row">
+              <h2>Legend & Filters</h2>
+              <button type="button" onClick={resetNodeTypeFilters} disabled={!hiddenNodeTypes.size}>
+                Reset
+              </button>
+            </div>
+            <div className="settings-footnote">
+              {hiddenNodeTypes.size
+                ? `${hiddenNodeTypes.size} type${hiddenNodeTypes.size === 1 ? "" : "s"} hidden`
+                : "All types visible"}
+            </div>
             {LEGEND_NODE_TYPES.map(([type, label]) => (
               <LegendItem
                 key={type}
@@ -973,7 +1008,16 @@ function App() {
               <span>Dependency Map</span>
               <small>{focusedNode ? focusedNode.name : "No focus"}</small>
             </div>
-            <button type="button" onClick={toggleExpandFocus} disabled={!focusNodeId}>
+            <button
+              type="button"
+              onClick={toggleExpandFocus}
+              disabled={!focusNodeId || (!expandedNodeIds.has(focusNodeId) && !focusExpansion.hiddenByLimit)}
+              title={
+                focusExpansion.hiddenByLimit
+                  ? `Show ${focusExpansion.hiddenByLimit} hidden neighbors for this focus`
+                  : "No hidden neighbors for this focus"
+              }
+            >
               {expandedNodeIds.has(focusNodeId) ? "Collapse" : "Expand"}
             </button>
           </div>
@@ -998,7 +1042,7 @@ function App() {
           <section className="code-panel">
             <div className="panel-title">Code</div>
             {selectedNode ? (
-              <CodeSnippet node={selectedNode} snippet={snippet} />
+              <CodeSnippet node={selectedNode} snippet={snippet} loading={snippetLoading} />
             ) : (
               <pre>
                 <code>No source selected.</code>
@@ -1311,8 +1355,8 @@ function InspectorTabs({
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "ask", label: "Ask" },
     { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
+    { id: "ask", label: "Ask" },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
     { id: "relationship", label: "Rel", badge: hasRelationship ? "1" : undefined },
   ];
@@ -1425,6 +1469,25 @@ function dependencyCounts(node: GraphNode, graph: GraphDocument | null) {
   const incoming = graph.edges.filter((edge) => edge.to === node.id).length;
   const outgoing = graph.edges.filter((edge) => edge.from === node.id).length;
   return { incoming, outgoing, total: incoming + outgoing };
+}
+
+function graphExpansionState(graph: GraphDocument | null, focusNodeId: string, hiddenNodeTypes: Set<string>) {
+  if (!graph || !focusNodeId) return { hiddenByLimit: 0 };
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const countsByType = new Map<string, number>();
+  for (const edge of graph.edges) {
+    if (edge.from !== focusNodeId && edge.to !== focusNodeId) continue;
+    const neighborId = edge.from === focusNodeId ? edge.to : edge.from;
+    const neighbor = nodeById.get(neighborId);
+    if (!neighbor || hiddenNodeTypes.has(neighbor.type)) continue;
+    countsByType.set(neighbor.type, (countsByType.get(neighbor.type) ?? 0) + 1);
+  }
+
+  let hiddenByLimit = 0;
+  for (const count of countsByType.values()) {
+    hiddenByLimit += Math.max(0, count - FOCUS_DIRECT_LIMIT_PER_TYPE);
+  }
+  return { hiddenByLimit };
 }
 
 function ChatAnswerPanel({
@@ -1844,7 +1907,7 @@ function RelationshipDetails({
   );
 }
 
-function CodeSnippet({ node, snippet }: { node: GraphNode; snippet: SourceSnippet | null }) {
+function CodeSnippet({ node, snippet, loading }: { node: GraphNode; snippet: SourceSnippet | null; loading: boolean }) {
   if (!node.file) {
     return (
       <pre>
@@ -1873,7 +1936,9 @@ function CodeSnippet({ node, snippet }: { node: GraphNode; snippet: SourceSnippe
               </span>
             ))
           ) : (
-            "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."
+            loading
+              ? "Loading source snippet..."
+              : "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."
           )}
         </code>
       </pre>

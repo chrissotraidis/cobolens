@@ -193,6 +193,22 @@ select:focus {
   gap: 12px;
 }
 
+.pane-heading-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.pane-heading-row button {
+  height: 26px;
+  padding: 0 8px;
+  color: #b8f0dc;
+  border-color: rgba(90, 167, 161, 0.34);
+  background: rgba(90, 167, 161, 0.08);
+  font-size: 12px;
+}
+
 .primary-action {
   height: 34px;
   color: #08100f;

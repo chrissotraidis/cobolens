@@ -16,6 +16,11 @@ const checks = [
     args: ["tools/benchmark-validation/run.mjs", "--root", "fixtures/m6-bakeoff"],
   },
   {
+    name: "bundled sample codebase smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/sample-codebase-smoke.mjs"],
+  },
+  {
     name: "frontend build",
     command: npmCommand(),
     args: ["run", "build"],

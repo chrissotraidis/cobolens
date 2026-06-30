@@ -4,6 +4,7 @@ This runner verifies the completed M6 surface:
 
 - strict M6 bake-off fixture,
 - benchmark validation helper against the M6 fixture,
+- bundled `mini-bank` sample graph smoke,
 - frontend production build,
 - graph-grounded documentation export smoke,
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
@@ -24,3 +25,10 @@ npm run m6:verify
 ```
 
 The true parser swap remains gated by benchmark-scale comparison and packaging readiness.
+
+Local Ollama readiness is intentionally separate from this suite because not
+every development machine has Ollama installed. Run it explicitly with:
+
+```sh
+npm run ollama:check
+```

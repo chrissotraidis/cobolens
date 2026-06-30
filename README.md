@@ -118,6 +118,20 @@ Run the current M6 verification suite:
 npm run m6:verify
 ```
 
+Check the optional local Ollama path:
+
+```sh
+npm run ollama:check
+```
+
+This verifies that `ollama` is installed in the same Linux environment, the
+local HTTP API is reachable, and the default `llama3.2` model is installed.
+If it fails, install Ollama and run:
+
+```sh
+ollama pull llama3.2
+```
+
 The packaged analyzer/sample smoke used for the current Linux validation ran
 the analyzer extracted from the AppImage against the bundled `mini-bank` sample
 and produced a graph with 4 parsed files, 25 nodes, 27 edges, and 0 parse

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentationExport,
   documentationExportPrefix,
@@ -29,7 +29,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { assertLocalOllamaUrl, normalizeOllamaBaseUrl } from "./model/providers";
+import { assertLocalOllamaUrl, normalizeOllamaBaseUrl } from "./model/privacy";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -96,6 +96,7 @@ function App() {
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
+  const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -216,6 +217,10 @@ function App() {
   useEffect(() => {
     setModelReadiness({ status: "idle", message: "" });
   }, [modelSettings.provider, modelSettings.model, modelSettings.baseUrl, hasProviderKey]);
+
+  useEffect(() => {
+    inspectorBodyRef.current?.scrollTo({ top: 0 });
+  }, [selectedNodeId]);
 
   async function chooseFolder() {
     if (!canUseTauri()) {
@@ -471,9 +476,10 @@ function App() {
     return readSourceExcerpt(root, sourceBase, node.file, startLine, endLine, 220);
   }
 
-  async function askQuestion() {
-    if (!graph || !chatQuestion.trim()) return;
-    const question = chatQuestion.trim();
+  async function askQuestion(questionDraft = chatQuestion) {
+    if (!graph || !questionDraft.trim()) return;
+    const question = questionDraft.trim();
+    setChatQuestion(question);
     setChatStatus("running");
     setChatError("");
     let context: RetrievedContext | null = null;
@@ -631,30 +637,6 @@ function App() {
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
           </section>
 
-          <ModelSettingsPanel
-            settings={modelSettings}
-            keyDraft={keyDraft}
-            hasProviderKey={hasProviderKey}
-            message={settingsMessage}
-            onProviderChange={chooseProvider}
-            onSettingsChange={setModelSettings}
-            onKeyDraftChange={setKeyDraft}
-            onSaveKey={saveKey}
-            onClearKey={clearKey}
-            onCheckModel={checkModelReadiness}
-            modelReadiness={modelReadiness}
-            modelCallCount={modelCallCount}
-            bulkTokenEstimate={bulkTokenEstimate}
-          />
-
-          <section className="pane-block">
-            <h2>Export</h2>
-            <button type="button" onClick={exportDocs} disabled={!graph}>
-              Export Docs
-            </button>
-            <div className="settings-footnote">{exportStatus || "Markdown, Mermaid, PNG"}</div>
-          </section>
-
           <section className="pane-block">
             <h2>Symbols</h2>
             <div className="search-results">
@@ -678,6 +660,30 @@ function App() {
             <Metric label="Programs" value={counts.programs} />
             <Metric label="Copybooks" value={counts.copybooks} />
             <Metric label="JCL steps" value={counts.steps} />
+          </section>
+
+          <ModelSettingsPanel
+            settings={modelSettings}
+            keyDraft={keyDraft}
+            hasProviderKey={hasProviderKey}
+            message={settingsMessage}
+            onProviderChange={chooseProvider}
+            onSettingsChange={setModelSettings}
+            onKeyDraftChange={setKeyDraft}
+            onSaveKey={saveKey}
+            onClearKey={clearKey}
+            onCheckModel={checkModelReadiness}
+            modelReadiness={modelReadiness}
+            modelCallCount={modelCallCount}
+            bulkTokenEstimate={bulkTokenEstimate}
+          />
+
+          <section className="pane-block">
+            <h2>Export</h2>
+            <button type="button" onClick={exportDocs} disabled={!graph}>
+              Export Docs
+            </button>
+            <div className="settings-footnote">{exportStatus || "Markdown, Mermaid, PNG"}</div>
           </section>
 
           <section className="pane-block">
@@ -730,7 +736,7 @@ function App() {
 
           <section className="chat-panel">
             <div className="panel-title">Inspector</div>
-            <div className="summary-stack">
+            <div className="summary-stack" ref={inspectorBodyRef}>
               <SummaryDock
                 node={selectedNode}
                 graph={graph}
@@ -740,6 +746,14 @@ function App() {
                 bulkStatus={bulkSummaryStatus}
                 onGenerateSelected={generateSelectedSummary}
                 onGenerateAll={generateAllProgramSummaries}
+              />
+              <ChatAnswerPanel
+                status={chatStatus}
+                answer={chatAnswer}
+                error={chatError}
+                node={selectedNode}
+                onAskPreset={askQuestion}
+                onOpenCitation={jumpToCitation}
               />
               <LineageImpactPanel
                 node={selectedNode}
@@ -756,12 +770,6 @@ function App() {
                   }, true);
                 }}
               />
-              <ChatAnswerPanel
-                status={chatStatus}
-                answer={chatAnswer}
-                error={chatError}
-                onOpenCitation={jumpToCitation}
-              />
               <RelationshipDetails selectedEdge={selectedEdge} graph={graph} />
             </div>
             <div className="chat-input" aria-label="Ask a question">
@@ -776,7 +784,7 @@ function App() {
                 }}
                 disabled={!graph || chatStatus === "running"}
               />
-              <button type="button" onClick={askQuestion} disabled={!graph || !chatQuestion.trim() || chatStatus === "running"}>
+              <button type="button" onClick={() => askQuestion()} disabled={!graph || !chatQuestion.trim() || chatStatus === "running"}>
                 {chatStatus === "running" ? "..." : "Ask"}
               </button>
             </div>
@@ -974,16 +982,36 @@ function ChatAnswerPanel({
   status,
   answer,
   error,
+  node,
+  onAskPreset,
   onOpenCitation,
 }: {
   status: ChatStatus;
   answer: ChatAnswer | null;
   error: string;
+  node: GraphNode | null;
+  onAskPreset: (question: string) => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
+  const starterQuestions = suggestedGraphQuestions(node);
+
   return (
     <section className="answer-card">
       <div className="relationship-title">Ask</div>
+      {starterQuestions.length ? (
+        <div className="question-chips" aria-label="Suggested graph questions">
+          {starterQuestions.map((question) => (
+            <button
+              key={question}
+              type="button"
+              onClick={() => onAskPreset(question)}
+              disabled={status === "running"}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {status === "running" ? (
         <p>Thinking...</p>
       ) : status === "error" ? (
@@ -1005,7 +1033,7 @@ function ChatAnswerPanel({
           </div>
         </>
       ) : (
-        <p>Ask where a symbol happens, what depends on it, or where data flows. Graph questions work without AI.</p>
+        <p>Ask where a symbol happens, what depends on it, or where data flows. Graph questions answer instantly without a model.</p>
       )}
     </section>
   );
@@ -1432,6 +1460,16 @@ function typePriority(type: string) {
 
 function isLineageEdge(edge: GraphEdge) {
   return LINEAGE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function suggestedGraphQuestions(node: GraphNode | null) {
+  if (!node) return [];
+  const name = node.name;
+  return [
+    `What depends on ${name}?`,
+    `Where does ${name} happen?`,
+    node.type === "data-item" ? `Where does ${name} flow?` : `What does ${name} call?`,
+  ];
 }
 
 function statusLabel(status: Status) {

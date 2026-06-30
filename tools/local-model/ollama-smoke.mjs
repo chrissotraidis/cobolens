@@ -50,6 +50,38 @@ if (!report.checks[`configured model ${model} is installed`]) {
   report.hints.push(`Cobolens defaults to ${model}; install it with: ollama pull ${model}`);
 }
 
+if (report.checks[`configured model ${model} is installed`]) {
+  try {
+    const response = await fetch(`${baseUrl}/api/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model,
+        prompt: "Reply with one short sentence that says local inference is ready.",
+        stream: false,
+        options: {
+          num_predict: 24,
+          temperature: 0,
+        },
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+    report.checks["local generation completes"] = response.ok;
+    if (response.ok) {
+      const body = await response.json();
+      report.generationBytes = Buffer.byteLength(String(body.response ?? ""));
+      report.checks["local generation returned text"] = report.generationBytes > 0;
+    } else {
+      report.hints.push(`Ollama generation responded with ${response.status}; check the model and server logs.`);
+    }
+  } catch (error) {
+    report.checks["local generation completes"] = false;
+    report.checks["local generation returned text"] = false;
+    report.hints.push("Ollama is reachable, but local generation failed.");
+    report.generationError = error instanceof Error ? error.message : String(error);
+  }
+}
+
 report.ready = Object.values(report.checks).every(Boolean);
 finish(report.ready ? 0 : 1);
 

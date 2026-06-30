@@ -526,11 +526,12 @@ fn parse_cobol_file(
         }
 
         if let Some(program) = call_target(&tokens) {
-            let program_id = format!("prog:{}", normalize_symbol(program));
+            let program_name = clean_symbol(program);
+            let program_id = format!("prog:{}", normalize_symbol(&program_name));
             builder.node(GraphNode {
                 id: program_id.clone(),
                 node_type: "program".to_string(),
-                name: program.to_string(),
+                name: program_name,
                 file: None,
                 lines: None,
                 external: Some(true),
@@ -1262,6 +1263,49 @@ mod tests {
             .nodes
             .iter()
             .any(|node| { node.node_type == "program" && node.name == "EBCDIC" }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn analyzes_quoted_cobol_call_with_citation() {
+        let root = temp_test_dir("call-analyze");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("src").join("CALLER.cbl"),
+            [
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. CALLER.",
+                "       PROCEDURE DIVISION.",
+                "           CALL 'PAYCALC'.",
+                "           STOP RUN.",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        let out = root.join("graph.json");
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out,
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string()],
+            encoding: "utf8".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert!(graph.nodes.iter().any(|node| node.node_type == "program"
+            && node.name == "PAYCALC"
+            && node.external == Some(true)));
+        assert!(graph.edges.iter().any(|edge| {
+            edge.edge_type == "CALLS"
+                && edge.from == "prog:CALLER"
+                && edge.to == "prog:PAYCALC"
+                && edge
+                    .site
+                    .as_ref()
+                    .is_some_and(|site| site.file == "src/CALLER.cbl" && site.line == 4)
+        }));
         fs::remove_dir_all(root).unwrap();
     }
 

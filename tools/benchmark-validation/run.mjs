@@ -148,6 +148,7 @@ function validateGraph(graph, report) {
     "jclSteps",
     "jclDd",
     "db2Tables",
+    "calls",
     "copies",
     "runs",
     "declaresDd",

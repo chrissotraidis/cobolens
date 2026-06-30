@@ -40,8 +40,8 @@
            EXEC CICS LINK PROGRAM('RATEAPI')
                 COMMAREA(WS-RATE)
            END-EXEC.
+           CALL 'RATEAUDIT'.
            MOVE WS-RATE TO REPORT-RATE.
 
        DONE-PARA.
            EXIT.
-

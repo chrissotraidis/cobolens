@@ -118,8 +118,9 @@ Graph-backed Ask check:
 - Typing a broader explanation question changes the submit button from `Ask` to
   `Ask AI`, while graph-only questions keep the normal `Ask` label.
 - `What does LINEAGE call?` now answers only with
-  `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and focused citations;
-  it does not include unrelated copybook, read, write, or define edges.
+  `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
+  `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it
+  does not include unrelated copybook, read, write, or define edges.
 - `What depends on LINEAGE?` now answers with `STEP010 RUNS LINEAGE` at
   `jcl/DAILYLN.jcl:2` and keeps the citation chips scoped to the matched
   program and incoming JCL relationship.

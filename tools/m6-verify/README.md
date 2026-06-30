@@ -8,10 +8,12 @@ This runner verifies the completed M6 surface:
 - frontend production build,
 - graph-grounded documentation export smoke,
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
+- UI contract smoke for the Ask/Inspector shell,
 - model privacy smoke for local/cloud mode invariants,
-- Rust sidecar `cargo check`,
+- Rust sidecar `cargo test`,
 - Tauri shell `cargo test`, including command-level coverage for bundled sample
-  analysis, source snippets, and path traversal rejection.
+  analysis, source snippets, graph-cache reuse/invalidation, and path traversal
+  rejection.
 
 It also runs JVM parser work as advisory checks:
 

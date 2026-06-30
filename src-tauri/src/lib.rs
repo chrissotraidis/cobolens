@@ -830,6 +830,54 @@ mod tests {
     }
 
     #[test]
+    fn analyze_root_returns_matching_cached_graph_before_spawning_sidecar() {
+        let app = tauri::test::mock_app();
+        let root = temp_test_dir("cached-graph-root");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("PROG.cbl"), "       IDENTIFICATION DIVISION.\n").unwrap();
+        let scan = ScanSettings::default();
+        let cache_path = cache_path_for_test(app.handle(), &root, &scan);
+        if let Some(parent) = cache_path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(
+            &cache_path,
+            r#"{"schemaVersion":1,"meta":{"fileCount":99},"nodes":[],"edges":[]}"#,
+        )
+        .unwrap();
+
+        let graph = analyze_root(app.handle(), root.to_string_lossy().to_string(), scan).unwrap();
+
+        assert_eq!(graph["schemaVersion"], 1);
+        assert_eq!(graph["meta"]["fileCount"], 99);
+
+        let _ = fs::remove_file(cache_path);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn graph_cache_path_changes_when_source_manifest_changes() {
+        let app = tauri::test::mock_app();
+        let root = temp_test_dir("cache-invalidates");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("PROG.cbl");
+        fs::write(&source, "       IDENTIFICATION DIVISION.\n").unwrap();
+        let scan = ScanSettings::default();
+        let first = cache_path_for_test(app.handle(), &root, &scan);
+
+        fs::write(
+            &source,
+            "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. PROG.\n",
+        )
+        .unwrap();
+        let second = cache_path_for_test(app.handle(), &root, &scan);
+
+        assert_ne!(first, second);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn analyzer_progress_payload_adds_root_to_progress_json() {
         let root = PathBuf::from("/tmp/cobolens-progress-root");
         let payload =
@@ -919,6 +967,17 @@ mod tests {
             .unwrap()
             .as_nanos();
         env::temp_dir().join(format!("cobolens-{name}-{unique}"))
+    }
+
+    fn cache_path_for_test<R: Runtime>(
+        app: &tauri::AppHandle<R>,
+        root: &Path,
+        scan: &ScanSettings,
+    ) -> PathBuf {
+        let root = root.canonicalize().unwrap();
+        let manifest = source_manifest(&root, &scan.normalized_extensions()).unwrap();
+        let cache_basis = format!("{}\n{}", scan.cache_fingerprint(), manifest);
+        graph_cache_path(app, &root, &cache_basis).unwrap()
     }
 
     fn write_oversized_source(path: &Path) {

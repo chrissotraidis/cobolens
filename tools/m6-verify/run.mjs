@@ -26,6 +26,11 @@ const checks = [
     args: ["tools/m6-verify/export-docs-smoke.mjs"],
   },
   {
+    name: "graph ask smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/graph-ask-smoke.mjs"],
+  },
+  {
     name: "Rust sidecar check",
     command: "cargo",
     args: ["check"],

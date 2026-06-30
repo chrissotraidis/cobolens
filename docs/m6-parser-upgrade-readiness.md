@@ -76,8 +76,30 @@ The mapa `GraphDocument` candidate lives at `sidecar/cobolens-analyze-mapa/bin/c
 npm run m6:mapa-bakeoff
 ```
 
+## Candidate Comparison
+
+Run:
+
+```sh
+npm run m6:compare-candidates
+npm run m6:compare-candidates -- --root samples/mini-bank
+npm run m6:compare-candidates -- --root /path/to/benchmark
+```
+
+The first command compares Rust, ProLeap, and mapa on the strict M6 fixture. The second is only a local smoke sample. The third is the real benchmark-scale gate once the official benchmark suite is present on disk.
+
+## Packaging Readiness
+
+Run:
+
+```sh
+npm run m6:packaging-readiness
+```
+
+The current WSL probe starts all three analyzer candidates and reports sidecar/JDK sizes, but returns `ready: false` because this environment lacks `pkg-config` and the Linux Tauri WebKit/dbus development packages. Do not treat this as Windows packaging validation; Windows/Tauri startup behavior still needs to be checked on a Windows build host before a JVM sidecar is adopted.
+
 Remaining decision work:
 
-1. Compare ProLeap, mapa, and current Rust output on benchmark-scale fixtures.
-2. Validate Windows/Tauri packaging size and startup behavior.
+1. Run `npm run m6:compare-candidates -- --root /path/to/benchmark` once the official benchmark suite is available locally. The checked-in `samples/mini-bank` directory is only a smoke sample.
+2. Resolve packaging readiness findings from `npm run m6:packaging-readiness`, especially missing WSL `pkg-config`/WebKit/dbus development packages and Windows/Tauri startup behavior.
 3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa.

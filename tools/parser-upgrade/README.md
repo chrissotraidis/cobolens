@@ -23,3 +23,21 @@ npm run m6:mapa-bakeoff
 ```
 
 The candidate lives at `sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa`, keeps the same analyzer CLI shape, runs mapa's CSV-producing jars, and maps those records back into the current app graph contract.
+
+Compare the current Rust, ProLeap, and mapa candidates with:
+
+```sh
+npm run m6:compare-candidates
+npm run m6:compare-candidates -- --root samples/mini-bank
+npm run m6:compare-candidates -- --root /path/to/benchmark
+```
+
+The default root is `fixtures/m6-bakeoff`. `samples/mini-bank` is only a bundled smoke sample, not the official PRD benchmark suite.
+
+Check packaging readiness with:
+
+```sh
+npm run m6:packaging-readiness
+```
+
+This reports sidecar artifact sizes, startup smoke timings, and local WSL Tauri Linux prerequisites. It is expected to report `ready: false` when `pkg-config` or WebKit/dbus development packages are missing.

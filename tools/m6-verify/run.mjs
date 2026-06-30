@@ -41,6 +41,15 @@ await runCheck(
   { advisory: true },
 );
 
+await runCheck(
+  {
+    name: "parser candidate comparison",
+    command: process.execPath,
+    args: ["tools/parser-upgrade/compare-candidates.mjs"],
+  },
+  { advisory: true },
+);
+
 const readiness = await runCheck(
   {
     name: "parser upgrade readiness",

@@ -383,6 +383,11 @@ h2,
   font-size: 12px;
 }
 
+.scan-progress {
+  color: #aeb8c3;
+  font-size: 12px;
+}
+
 .settings-footnote.ready {
   color: #b8f0dc;
 }

@@ -8,7 +8,7 @@ use std::{
     process::{Command, Stdio},
     time::UNIX_EPOCH,
 };
-use tauri::{path::BaseDirectory, Manager, Runtime};
+use tauri::{path::BaseDirectory, Emitter, Manager, Runtime};
 
 #[tauri::command]
 fn analyze_codebase(
@@ -128,6 +128,9 @@ fn analyze_root<R: Runtime>(
         for line in reader.lines() {
             let line = line.map_err(|err| err.to_string())?;
             println!("cobolens-analyze: {line}");
+            if let Some(progress) = analyzer_progress_payload(&line, &root_path) {
+                let _ = app.emit("analysis-progress", progress);
+            }
         }
     }
 
@@ -152,6 +155,22 @@ fn source_manifest(root: &Path, extensions: &[String]) -> Result<String, String>
     collect_source_manifest(root, root, extensions, &mut entries)?;
     entries.sort();
     Ok(entries.join("\n"))
+}
+
+fn analyzer_progress_payload(line: &str, root: &Path) -> Option<Value> {
+    let mut payload: Value = serde_json::from_str(line).ok()?;
+    let object = payload.as_object_mut()?;
+    if !(object.contains_key("phase")
+        && object.contains_key("done")
+        && object.contains_key("total"))
+    {
+        return None;
+    }
+    object.insert(
+        "root".to_string(),
+        json!(root.to_string_lossy().to_string()),
+    );
+    Some(payload)
 }
 
 fn collect_source_manifest(
@@ -204,7 +223,10 @@ fn graph_cache_path<R: Runtime>(
     let key = stable_hash(&format!("{}|{}", root.display(), manifest));
     let filename = format!("{key:016x}.json");
     app.path()
-        .resolve(Path::new("graph-cache").join(filename), BaseDirectory::AppCache)
+        .resolve(
+            Path::new("graph-cache").join(filename),
+            BaseDirectory::AppCache,
+        )
         .map_err(|err| err.to_string())
 }
 
@@ -493,16 +515,22 @@ mod tests {
         assert_eq!(graph["meta"]["parsedFileCount"], 4);
         assert!(graph["nodes"].as_array().unwrap().len() >= 20);
         assert!(graph["edges"].as_array().unwrap().len() >= 20);
-        assert!(graph["nodes"].as_array().unwrap().iter().any(|node| {
-            node["type"] == "program" && node["name"] == "ACCTREAD"
-        }));
+        assert!(graph["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|node| { node["type"] == "program" && node["name"] == "ACCTREAD" }));
     }
 
     #[test]
     fn source_snippet_rejects_paths_outside_root() {
         let root = temp_test_dir("snippet-safe-root");
         fs::create_dir_all(&root).unwrap();
-        fs::write(root.join("PROGRAM.cbl"), "       IDENTIFICATION DIVISION.\n").unwrap();
+        fs::write(
+            root.join("PROGRAM.cbl"),
+            "       IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
 
         let result = read_source_snippet(
             root.to_string_lossy().to_string(),
@@ -531,17 +559,25 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .any(|line| line["text"].as_str().unwrap_or_default().contains("READ CUSTOMER")));
+            .any(|line| line["text"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("READ CUSTOMER")));
     }
 
     #[test]
     fn source_manifest_tracks_only_supported_source_files() {
         let root = temp_test_dir("manifest-source-files");
         fs::create_dir_all(root.join("src")).unwrap();
-        fs::write(root.join("src").join("PROG.cbl"), "IDENTIFICATION DIVISION.\n").unwrap();
+        fs::write(
+            root.join("src").join("PROG.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
         fs::write(root.join("notes.txt"), "not source\n").unwrap();
 
-        let manifest = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
+        let manifest =
+            source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
         assert!(manifest.contains("src/PROG.cbl|"));
         assert!(!manifest.contains("notes.txt"));
 
@@ -552,13 +588,20 @@ mod tests {
     fn source_manifest_uses_configured_extensions() {
         let root = temp_test_dir("manifest-custom-extensions");
         fs::create_dir_all(root.join("src")).unwrap();
-        fs::write(root.join("src").join("PROG.cbl"), "IDENTIFICATION DIVISION.\n").unwrap();
-        fs::write(root.join("src").join("PROC.pco"), "IDENTIFICATION DIVISION.\n").unwrap();
+        fs::write(
+            root.join("src").join("PROG.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src").join("PROC.pco"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
 
         let default_manifest =
             source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
-        let custom_manifest =
-            source_manifest(&root, &[".pco".to_string()]).unwrap();
+        let custom_manifest = source_manifest(&root, &[".pco".to_string()]).unwrap();
 
         assert!(default_manifest.contains("src/PROG.cbl|"));
         assert!(!default_manifest.contains("src/PROC.pco|"));
@@ -574,15 +617,41 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         let source = root.join("CUSTOMER.cpy");
         fs::write(&source, "       01 CUSTOMER.\n").unwrap();
-        let first = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
+        let first =
+            source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
 
-        fs::write(&source, "       01 CUSTOMER.\n          05 CUSTOMER-ID PIC X(10).\n").unwrap();
-        let second = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
+        fs::write(
+            &source,
+            "       01 CUSTOMER.\n          05 CUSTOMER-ID PIC X(10).\n",
+        )
+        .unwrap();
+        let second =
+            source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
 
         assert_ne!(first, second);
         assert_ne!(stable_hash(&first), stable_hash(&second));
 
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn analyzer_progress_payload_adds_root_to_progress_json() {
+        let root = PathBuf::from("/tmp/cobolens-progress-root");
+        let payload =
+            analyzer_progress_payload(r#"{"phase":"parse","done":2,"total":4}"#, &root).unwrap();
+
+        assert_eq!(payload["phase"], "parse");
+        assert_eq!(payload["done"], 2);
+        assert_eq!(payload["total"], 4);
+        assert_eq!(payload["root"], "/tmp/cobolens-progress-root");
+    }
+
+    #[test]
+    fn analyzer_progress_payload_ignores_non_progress_lines() {
+        let root = PathBuf::from("/tmp/cobolens-progress-root");
+
+        assert!(analyzer_progress_payload("ordinary log line", &root).is_none());
+        assert!(analyzer_progress_payload(r#"{"phase":"parse"}"#, &root).is_none());
     }
 
     fn temp_test_dir(name: &str) -> PathBuf {

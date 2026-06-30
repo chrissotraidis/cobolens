@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -64,6 +65,12 @@ type ScanSettings = {
   extensions: string;
   encoding: string;
 };
+type AnalysisProgress = {
+  phase: string;
+  done: number;
+  total: number;
+  root?: string;
+};
 
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
@@ -105,6 +112,7 @@ function App() {
   const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [scanSettings, setScanSettings] = useState<ScanSettings>(DEFAULT_SCAN_SETTINGS);
+  const [scanProgress, setScanProgress] = useState<AnalysisProgress | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
   const [error, setError] = useState<string>("");
@@ -194,6 +202,23 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!desktopAvailable) return;
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+    listen<AnalysisProgress>("analysis-progress", (event) => {
+      if (!cancelled) setScanProgress(event.payload);
+    }).then((nextUnlisten) => {
+      if (cancelled) nextUnlisten();
+      else unlisten = nextUnlisten;
+    });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [desktopAvailable]);
 
   useEffect(() => {
     const node = selectedNode;
@@ -371,6 +396,7 @@ function App() {
     setSnippet(null);
     setSelectedEdge(null);
     setSourceFocus(null);
+    setScanProgress(null);
     setError("");
     setStatus("running");
   }
@@ -394,6 +420,7 @@ function App() {
     setChatError("");
     setSourceFocus(null);
     setExportStatus("");
+    setScanProgress(null);
     setStatus("ready");
   }
 
@@ -766,6 +793,7 @@ function App() {
             {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
+            {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
             <ScanSettingsPanel
               settings={scanSettings}
@@ -2017,6 +2045,14 @@ function statusLabel(status: Status) {
   if (status === "ready") return "Graph ready";
   if (status === "error") return "Needs attention";
   return "Idle";
+}
+
+function scanProgressLabel(progress: AnalysisProgress | null) {
+  if (!progress) return "Preparing analyzer";
+  const total = Number.isFinite(progress.total) ? progress.total : 0;
+  const done = Number.isFinite(progress.done) ? progress.done : 0;
+  const phase = progress.phase ? progress.phase[0].toUpperCase() + progress.phase.slice(1) : "Analyzing";
+  return total > 0 ? `${phase} ${Math.min(done, total)}/${total}` : phase;
 }
 
 function padLine(line: number) {

@@ -74,6 +74,9 @@ Scan settings check:
 
 - The Ingest pane now exposes scan format, extension, and encoding controls for
   the desktop scan path.
+- In the desktop shell, analyzer JSON progress lines are forwarded as
+  `analysis-progress` events and shown in the Ingest pane as counts such as
+  `Parse 3/4` while indexing is running.
 - In the browser preview those controls stay disabled because the preview is a
   fixed prebuilt graph JSON, while `Re-scan` reloads the generated fixture graph
   without blanking the current graph view.

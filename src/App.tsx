@@ -1518,7 +1518,7 @@ function ChatAnswerPanel({
   onOpenCitation: (citation: Citation) => void;
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
-  const explainQuestion = node ? `Explain ${node.name} for a new developer.` : "";
+  const explainQuestion = node ? `Explain ${node.name} from the graph.` : "";
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
@@ -1569,9 +1569,9 @@ function ChatAnswerPanel({
               type="button"
               onClick={() => onAskPreset(explainQuestion)}
               disabled={status === "running"}
-              title={`Ask ${PROVIDER_LABELS[settings.provider]} for a cited explanation`}
+              title="Show a cited graph-derived explanation"
             >
-              AI explain {node?.name}
+              Explain {node?.name}
             </button>
           ) : null}
           {starterQuestions.map((question) => (

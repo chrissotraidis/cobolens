@@ -39,6 +39,10 @@ export function graphAnswerFallback(
     `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
   ];
 
+  if (intent === "general") {
+    lines.push("", ...graphBriefLines(graph, matched[0], incoming, outgoing, directEdges));
+  }
+
   if (relevantEdges.length) {
     lines.push("", "Relationships that answer this:");
     for (const edge of relevantEdges) {
@@ -92,7 +96,7 @@ export function graphAnswerFallback(
 }
 
 export function isGraphQuestion(question: string) {
-  return /\b(depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
+  return /\b(explain\w*|summar\w*|overview|purpose|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
 }
@@ -124,6 +128,45 @@ function relevantEdgesForIntent(
   if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge)]);
   if (intent === "flow") return dedupeEdges([...directEdges.filter(isFlowEdge), ...directEdges]);
   return directEdges;
+}
+
+function graphBriefLines(
+  graph: GraphDocument,
+  node: GraphNode,
+  incoming: GraphEdge[],
+  outgoing: GraphEdge[],
+  directEdges: GraphEdge[],
+) {
+  const source = node.file ? ` Source: ${formatNodeLocation(node)}.` : node.external ? " Source: external to this codebase." : "";
+  const lineageEdges = directEdges.filter(isFlowEdge);
+  const callers = uniqueNodeNames(graph, incoming.map((edge) => edge.from));
+  const dependencies = uniqueNodeNames(graph, outgoing.map((edge) => edge.to));
+  const signals = [...new Set(lineageEdges.map((edge) => edge.type.toLocaleLowerCase()))].slice(0, 6);
+  const lines = [
+    "Graph-derived brief:",
+    `- ${node.name} is a ${friendlyNodeType(node.type)}.${source}`,
+    `- The graph records ${incoming.length} incoming and ${outgoing.length} outgoing relationship${incoming.length + outgoing.length === 1 ? "" : "s"}.`,
+  ];
+
+  if (callers.length) {
+    lines.push(`- Used by or reached from: ${callers.join(", ")}.`);
+  }
+  if (dependencies.length) {
+    lines.push(`- Depends on or reaches: ${dependencies.join(", ")}.`);
+  }
+  if (signals.length) {
+    lines.push(`- Lineage signals present: ${signals.join(", ")}.`);
+  }
+
+  return lines;
+}
+
+function uniqueNodeNames(graph: GraphDocument, nodeIds: string[]) {
+  return [...new Set(nodeIds.map((nodeId) => nodeName(graph, nodeId)))].slice(0, 8);
+}
+
+function friendlyNodeType(type: string) {
+  return type.replace(/-/g, " ");
 }
 
 function dependencyScopeForQuestion(question: string, matched?: GraphNode): "incoming" | "outgoing" | "both" {

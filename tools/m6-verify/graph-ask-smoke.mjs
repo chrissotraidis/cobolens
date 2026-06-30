@@ -86,6 +86,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const flowAnswer = graphAnswerFallback(graph, flowQuestion, flowContext);
+  const explainQuestion = "Explain LINEAGE from the graph.";
+  const explainContext = await retrieveQuestionContext({
+    graph,
+    question: explainQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const explainAnswer = graphAnswerFallback(graph, explainQuestion, explainContext);
   const customerMasterQuestion = "What uses the customer master file?";
   const customerMasterContext = await retrieveQuestionContext({
     graph,
@@ -120,6 +127,7 @@ try {
     ["flow question classified as graph-only", isGraphQuestion(flowQuestion)],
     ["where question classified as graph-only", isGraphQuestion(whereQuestion)],
     ["uses question classified as graph-only", isGraphQuestion(usesQuestion)],
+    ["explain question classified as graph-only", isGraphQuestion(explainQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -144,6 +152,9 @@ try {
     ["reports flow source", flowAnswer.text.includes("Flow sources or definitions: CUSTOMER.")],
     ["reports flow destination", flowAnswer.text.includes("Flow destinations: REPORT-ID.")],
     ["cites flow destination", flowAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
+    ["explain answer includes graph-derived brief", explainAnswer.text.includes("Graph-derived brief:")],
+    ["explain answer reports incoming and outgoing counts", explainAnswer.text.includes("1 incoming and 10 outgoing relationships")],
+    ["explain answer cites matched source", explainAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["natural customer master phrase matches physical dataset", customerMasterContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER"],
     ["customer master answer cites JCL DD mapping", customerMasterAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
     ["natural daily report phrase matches physical dataset", dailyReportContext.focusNodes[0]?.name === "BANK.REPORT.DAILY"],

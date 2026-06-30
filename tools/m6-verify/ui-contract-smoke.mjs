@@ -49,6 +49,15 @@ const checks = [
       "canOpenFolder",
     ]) && includesAll(appCss, [".graph-empty-actions", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
   ],
+  [
+    "Graph LOD clusters can drill down by expanding their owner",
+    includesAll(graphViewSource, [
+      "syntheticNodeOwners",
+      "ownerId === focusNodeId",
+      "else if (ownerId) onSelectNode(ownerId)",
+      "expandedNodeIds.has(focusNode.id) ? Number.MAX_SAFE_INTEGER : DIRECT_LIMIT_PER_TYPE",
+    ]) && includesAll(appSource, ["function expandNode(nodeId: string)", "onExpandNode={expandNode}"]),
+  ],
 ];
 
 const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);

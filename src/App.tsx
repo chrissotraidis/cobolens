@@ -508,10 +508,23 @@ function App() {
 
   function toggleExpandFocus() {
     if (!focusNodeId) return;
+    toggleExpandedNode(focusNodeId);
+  }
+
+  function toggleExpandedNode(nodeId: string) {
     setExpandedNodeIds((current) => {
       const next = new Set(current);
-      if (next.has(focusNodeId)) next.delete(focusNodeId);
-      else next.add(focusNodeId);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }
+
+  function expandNode(nodeId: string) {
+    setExpandedNodeIds((current) => {
+      if (current.has(nodeId)) return current;
+      const next = new Set(current);
+      next.add(nodeId);
       return next;
     });
   }
@@ -973,6 +986,7 @@ function App() {
               selectedEdge={selectedEdge}
               onSelectNode={selectNode}
               onSelectEdge={selectEdge}
+              onExpandNode={expandNode}
               canOpenFolder={desktopAvailable}
               onOpenFolder={chooseFolder}
               onOpenSample={openSample}

@@ -32,6 +32,7 @@ type FocusSlice = {
   graph: Graph<NodeAttributes, EdgeAttributes>;
   visibleNodeIds: Set<string>;
   hiddenNeighborCount: number;
+  syntheticNodeOwners: Map<string, string>;
   syntheticNodeIds: Set<string>;
 };
 
@@ -43,6 +44,7 @@ type GraphViewProps = {
   selectedEdge: GraphEdge | null;
   onSelectNode: (nodeId: string) => void;
   onSelectEdge: (edge: GraphEdge | null) => void;
+  onExpandNode: (nodeId: string) => void;
   canOpenFolder: boolean;
   onOpenFolder: () => void;
   onOpenSample: () => void;
@@ -59,6 +61,7 @@ export function GraphView({
   selectedEdge,
   onSelectNode,
   onSelectEdge,
+  onExpandNode,
   canOpenFolder,
   onOpenFolder,
   onOpenSample,
@@ -94,7 +97,13 @@ export function GraphView({
     });
 
     renderer.on("clickNode", ({ node }) => {
-      if (!slice.syntheticNodeIds.has(node)) onSelectNode(node);
+      if (slice.syntheticNodeIds.has(node)) {
+        const ownerId = slice.syntheticNodeOwners.get(node);
+        if (ownerId === focusNodeId) onExpandNode(ownerId);
+        else if (ownerId) onSelectNode(ownerId);
+        return;
+      }
+      onSelectNode(node);
     });
     renderer.on("clickEdge", ({ edge }) => {
       const sourceEdge = slice.graph.getEdgeAttribute(edge, "sourceEdge");
@@ -108,7 +117,7 @@ export function GraphView({
         rendererRef.current = null;
       }
     };
-  }, [onSelectEdge, onSelectNode, slice]);
+  }, [onExpandNode, onSelectEdge, onSelectNode, slice]);
 
   if (!graph) {
     return (
@@ -165,12 +174,17 @@ function buildFocusSlice(
   const visibleNodeIds = new Set<string>();
   const visibleEdgeKeys = new Set<string>();
   const syntheticNodeIds = new Set<string>();
+  const syntheticNodeOwners = new Map<string, string>();
   let hiddenNeighborCount = 0;
 
   const focusNode = nodeById.get(focusNodeId) ?? document.nodes[0];
   visibleNodeIds.add(focusNode.id);
   const focusEdges = incidentEdges(document.edges, focusNode.id);
-  addNeighborGroups(focusEdges, focusNode.id, DIRECT_LIMIT_PER_TYPE);
+  addNeighborGroups(
+    focusEdges,
+    focusNode.id,
+    expandedNodeIds.has(focusNode.id) ? Number.MAX_SAFE_INTEGER : DIRECT_LIMIT_PER_TYPE,
+  );
 
   for (const expandedNodeId of expandedNodeIds) {
     if (!visibleNodeIds.has(expandedNodeId)) continue;
@@ -234,6 +248,7 @@ function buildFocusSlice(
         hiddenNeighborCount += hidden.length;
         const clusterId = `cluster:${ownerId}:${type}:${syntheticIndex++}`;
         syntheticNodeIds.add(clusterId);
+        syntheticNodeOwners.set(clusterId, ownerId);
         visibleNodeIds.add(clusterId);
         nodeById.set(clusterId, {
           id: clusterId,
@@ -255,6 +270,7 @@ function buildFocusSlice(
   return {
     graph,
     hiddenNeighborCount,
+    syntheticNodeOwners,
     syntheticNodeIds,
     visibleNodeIds,
   };

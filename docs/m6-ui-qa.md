@@ -68,6 +68,10 @@ Legend/filter checks:
 - Turning `Copybooks` off changes the graph orientation from `11 visible`,
   `26 indexed`, `0 hidden` to `9 visible`, `26 indexed`, `2 hidden`; turning it
   back on restores the original counts.
+- Level-of-detail cluster nodes in the graph are actionable: clicking a
+  collapsed `+N type` node expands the focused owner or re-centers on a
+  non-focused owner, and expanding the focused node raises the direct-neighbor
+  limit instead of only changing the toolbar label.
 
 Privacy mode checks:
 

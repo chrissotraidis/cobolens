@@ -50,6 +50,7 @@ type ChatAnswer = {
   citations: Citation[];
   source: "graph" | "model";
 };
+type InspectorTab = "ask" | "summary" | "impact" | "relationship";
 type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
   message: string;
@@ -130,6 +131,7 @@ function App() {
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
@@ -279,17 +281,15 @@ function App() {
 
   useEffect(() => {
     if (chatStatus === "ready" || chatStatus === "error") {
+      setInspectorTab("ask");
       inspectorBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [chatAnswer?.question, chatStatus]);
 
   useEffect(() => {
-    const inspector = inspectorBodyRef.current;
-    if (!selectedEdge || !inspector) return;
-    inspector.scrollTo({
-      top: inspector.scrollHeight,
-      behavior: "smooth",
-    });
+    if (selectedEdge) {
+      setInspectorTab("relationship");
+    }
   }, [selectedEdge]);
 
   async function chooseFolder() {
@@ -561,11 +561,13 @@ function App() {
 
   async function generateSelectedSummary() {
     if (!graph || !selectedNode) return;
+    setInspectorTab("summary");
     await generateSummaryForNode(selectedNode);
   }
 
   async function generateAllSummaries() {
     if (!graph || !summaryNodes.length) return;
+    setInspectorTab("summary");
     setBulkSummaryStatus(`0/${summaryNodes.length}`);
     for (let index = 0; index < summaryNodes.length; index += 1) {
       await generateSummaryForNode(summaryNodes[index]);
@@ -787,7 +789,12 @@ function App() {
             <button className={desktopAvailable ? undefined : "primary-action"} type="button" onClick={openSample}>
               Open Sample
             </button>
-            <button type="button" onClick={rescanCurrent} disabled={!graph || status === "running"}>
+            <button
+              type="button"
+              onClick={rescanCurrent}
+              disabled={!desktopAvailable || !graph || status === "running"}
+              title={desktopAvailable ? "Re-scan the current folder" : "Re-scan is available after opening a folder in the desktop app"}
+            >
               Re-scan
             </button>
             {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
@@ -909,47 +916,60 @@ function App() {
               <span>Inspector</span>
               <small>{selectedNode ? `- ${selectedNode.type}` : "- No selection"}</small>
             </div>
+            <InspectorTabs
+              activeTab={inspectorTab}
+              summaryStatus={selectedSummaryState?.status}
+              dependencyCount={selectedNode ? dependencyCounts(selectedNode, graph).total : 0}
+              hasRelationship={Boolean(selectedEdge)}
+              onChange={setInspectorTab}
+            />
             <div className="summary-stack" ref={inspectorBodyRef}>
-              <ChatAnswerPanel
-                status={chatStatus}
-                answer={chatAnswer}
-                error={chatError}
-                node={selectedNode}
-                settings={modelSettings}
-                question={chatQuestion}
-                canAsk={Boolean(graph)}
-                onQuestionChange={setChatQuestion}
-                onAsk={() => askQuestion()}
-                onAskPreset={askQuestion}
-                onOpenCitation={jumpToCitation}
-              />
-              <SummaryDock
-                node={selectedNode}
-                graph={graph}
-                state={selectedSummaryState}
-                settings={modelSettings}
-                summaryUnitCount={summaryNodes.length}
-                bulkStatus={bulkSummaryStatus}
-                onGenerateSelected={generateSelectedSummary}
-                onGenerateAll={generateAllSummaries}
-                onOpenCitation={jumpToCitation}
-              />
-              <LineageImpactPanel
-                node={selectedNode}
-                graph={graph}
-                onFocusNode={focusOnNode}
-                onOpenEdge={(edge) => {
-                  if (!edge.site || !graph) return;
-                  setSelectedEdge(edge);
-                  jumpToCitation({
-                    file: edge.site.file,
-                    line: edge.site.line,
-                    label: edgeLabel(edge, graph),
-                    nodeId: edge.from,
-                  }, true);
-                }}
-              />
-              <RelationshipDetails selectedEdge={selectedEdge} graph={graph} />
+              {inspectorTab === "ask" ? (
+                <ChatAnswerPanel
+                  status={chatStatus}
+                  answer={chatAnswer}
+                  error={chatError}
+                  node={selectedNode}
+                  settings={modelSettings}
+                  question={chatQuestion}
+                  canAsk={Boolean(graph)}
+                  onQuestionChange={setChatQuestion}
+                  onAsk={() => askQuestion()}
+                  onAskPreset={askQuestion}
+                  onOpenCitation={jumpToCitation}
+                />
+              ) : null}
+              {inspectorTab === "summary" ? (
+                <SummaryDock
+                  node={selectedNode}
+                  graph={graph}
+                  state={selectedSummaryState}
+                  settings={modelSettings}
+                  summaryUnitCount={summaryNodes.length}
+                  bulkStatus={bulkSummaryStatus}
+                  onGenerateSelected={generateSelectedSummary}
+                  onGenerateAll={generateAllSummaries}
+                  onOpenCitation={jumpToCitation}
+                />
+              ) : null}
+              {inspectorTab === "impact" ? (
+                <LineageImpactPanel
+                  node={selectedNode}
+                  graph={graph}
+                  onFocusNode={focusOnNode}
+                  onOpenEdge={(edge) => {
+                    if (!edge.site || !graph) return;
+                    setSelectedEdge(edge);
+                    jumpToCitation({
+                      file: edge.site.file,
+                      line: edge.site.line,
+                      label: edgeLabel(edge, graph),
+                      nodeId: edge.from,
+                    }, true);
+                  }}
+                />
+              ) : null}
+              {inspectorTab === "relationship" ? <RelationshipDetails selectedEdge={selectedEdge} graph={graph} /> : null}
             </div>
           </section>
         </aside>
@@ -1180,6 +1200,45 @@ function ModelSettingsPanel({
   );
 }
 
+function InspectorTabs({
+  activeTab,
+  summaryStatus,
+  dependencyCount,
+  hasRelationship,
+  onChange,
+}: {
+  activeTab: InspectorTab;
+  summaryStatus?: SummaryStatus;
+  dependencyCount: number;
+  hasRelationship: boolean;
+  onChange: (tab: InspectorTab) => void;
+}) {
+  const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
+    { id: "ask", label: "Ask" },
+    { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
+    { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
+    { id: "relationship", label: "Rel", badge: hasRelationship ? "1" : undefined },
+  ];
+
+  return (
+    <div className="inspector-tabs" role="tablist" aria-label="Inspector views">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tab.id}
+          className={activeTab === tab.id ? "is-active" : undefined}
+          onClick={() => onChange(tab.id)}
+        >
+          <span>{tab.label}</span>
+          {tab.badge ? <small>{tab.badge}</small> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SummaryDock({
   node,
   graph,
@@ -1253,6 +1312,13 @@ function SummaryDock({
       </div>
     </section>
   );
+}
+
+function dependencyCounts(node: GraphNode, graph: GraphDocument | null) {
+  if (!graph) return { incoming: 0, outgoing: 0, total: 0 };
+  const incoming = graph.edges.filter((edge) => edge.to === node.id).length;
+  const outgoing = graph.edges.filter((edge) => edge.from === node.id).length;
+  return { incoming, outgoing, total: incoming + outgoing };
 }
 
 function ChatAnswerPanel({

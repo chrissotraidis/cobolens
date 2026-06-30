@@ -40,7 +40,8 @@ button:hover {
 }
 
 button:disabled,
-input:disabled {
+input:disabled,
+select:disabled {
   cursor: not-allowed;
   opacity: 0.52;
 }
@@ -533,7 +534,7 @@ h2,
 .code-panel,
 .chat-panel {
   display: grid;
-  grid-template-rows: 38px minmax(0, 1fr);
+  grid-template-rows: 38px auto minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -649,6 +650,52 @@ pre {
 
 .summary-empty p {
   margin: 0;
+}
+
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #20262e;
+  background: #11151a;
+}
+
+.inspector-tabs button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  color: #9aa6b2;
+  text-align: left;
+}
+
+.inspector-tabs button.is-active {
+  color: #d9fff1;
+  border-color: rgba(90, 167, 161, 0.58);
+  background: rgba(90, 167, 161, 0.12);
+}
+
+.inspector-tabs span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-tabs small {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #b8f0dc;
+  background: rgba(90, 167, 161, 0.18);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .error-text {

@@ -65,7 +65,7 @@ type ScanSettings = {
   encoding: string;
 };
 
-const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
   extensions: ".cbl,.cob,.cpy,.jcl",
@@ -297,7 +297,12 @@ function App() {
 
   async function openSample() {
     if (!canUseTauri()) {
-      beginScan("Demo graph: M6 fixture", "/m6-bakeoff-source.json");
+      setRoot("Demo graph: M6 fixture");
+      setSourceBase("/m6-bakeoff-source.json");
+      setSelectedEdge(null);
+      setSourceFocus(null);
+      setError("");
+      setStatus("running");
 
       try {
         const response = await fetch("/m6-bakeoff-graph.json");
@@ -744,18 +749,18 @@ function App() {
           <section className="pane-block">
             <h2>Ingest</h2>
             <button
-              className="primary-action"
+              className={desktopAvailable ? "primary-action" : undefined}
               type="button"
               onClick={chooseFolder}
               disabled={!desktopAvailable}
-              title={desktopAvailable ? "Open a local COBOL codebase" : "Available in the desktop app"}
+              title={desktopAvailable ? "Open a local COBOL codebase" : "Open Folder is available in the desktop app"}
             >
-              {desktopAvailable ? "Open Folder" : "Desktop Only"}
+              Open Folder
             </button>
-            <button type="button" onClick={openSample}>
+            <button className={desktopAvailable ? undefined : "primary-action"} type="button" onClick={openSample}>
               Open Sample
             </button>
-            <button type="button" onClick={rescanCurrent} disabled={!desktopAvailable || !graph || status === "running"}>
+            <button type="button" onClick={rescanCurrent} disabled={!graph || status === "running"}>
               Re-scan
             </button>
             {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
@@ -1281,7 +1286,7 @@ function ChatAnswerPanel({
               disabled={status === "running"}
               title={`Ask ${PROVIDER_LABELS[settings.provider]} for a cited explanation`}
             >
-              Explain {node?.name}
+              AI explain {node?.name}
             </button>
           ) : null}
           {starterQuestions.map((question) => (
@@ -1882,16 +1887,69 @@ function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
   const incoming = graph.edges.filter((edge) => edge.to === node.id);
   const outgoing = graph.edges.filter((edge) => edge.from === node.id);
   const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
+  const bridgeInsight = cobolFileBridgeInsight(node, graph, incoming, outgoing);
   const location = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
   const parts = [
     `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}.`,
     `Source: ${location}.`,
     `${incoming.length} incoming and ${outgoing.length} outgoing relationships are recorded.`,
   ];
+  if (bridgeInsight) {
+    parts.push(bridgeInsight);
+  }
   if (lineage.length) {
     parts.push(`${lineage.length} lineage relationship${lineage.length === 1 ? " is" : "s are"} available for reads, writes, moves, queries, links, or runtime wiring.`);
   }
   return parts.join(" ");
+}
+
+function cobolFileBridgeInsight(
+  node: GraphNode,
+  graph: GraphDocument,
+  incoming: GraphEdge[],
+  outgoing: GraphEdge[],
+) {
+  const nodes = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]));
+  const assignedOut = outgoing.find((edge) => edge.type.toLocaleLowerCase() === "assigned-to");
+  if (assignedOut) {
+    const dd = nodes.get(assignedOut.to);
+    const datasetEdge = graph.edges.find((edge) => edge.from === assignedOut.to && edge.type.toLocaleLowerCase() === "uses-dd");
+    const dataset = datasetEdge ? nodes.get(datasetEdge.to) : null;
+    return dataset && dd
+      ? `COBOL SELECT maps this logical file to DD ${dd.name}, which resolves to dataset ${dataset.name}.`
+      : dd
+        ? `COBOL SELECT maps this logical file to DD ${dd.name}.`
+        : "";
+  }
+
+  const usesOut = outgoing.find((edge) => edge.type.toLocaleLowerCase() === "uses-dd");
+  if (node.type === "jcl-dd" && usesOut) {
+    const dataset = nodes.get(usesOut.to);
+    const logicalFiles = incoming
+      .filter((edge) => edge.type.toLocaleLowerCase() === "assigned-to")
+      .map((edge) => nodes.get(edge.from)?.name)
+      .filter((name): name is string => Boolean(name));
+    if (dataset && logicalFiles.length) {
+      return `This DD bridges COBOL ${logicalFiles.join(", ")} to physical dataset ${dataset.name}.`;
+    }
+    if (dataset) return `This DD resolves to physical dataset ${dataset.name}.`;
+  }
+
+  if (node.type === "dataset") {
+    const ddEdge = incoming.find((edge) => edge.type.toLocaleLowerCase() === "uses-dd");
+    const dd = ddEdge ? nodes.get(ddEdge.from) : null;
+    const logicalFiles = dd
+      ? graph.edges
+          .filter((edge) => edge.to === dd.id && edge.type.toLocaleLowerCase() === "assigned-to")
+          .map((edge) => nodes.get(edge.from)?.name)
+          .filter((name): name is string => Boolean(name))
+      : [];
+    if (dd && logicalFiles.length) {
+      return `JCL DD ${dd.name} connects COBOL ${logicalFiles.join(", ")} to this dataset.`;
+    }
+  }
+
+  return "";
 }
 
 function firstFocusableNode(graph: GraphDocument) {
@@ -1935,10 +1993,22 @@ function isSummaryUnit(node: GraphNode) {
 function suggestedGraphQuestions(node: GraphNode | null) {
   if (!node) return [];
   const name = node.name;
+  if (node.type === "program") {
+    return [`What depends on ${name}?`, `What does ${name} call?`, `Where does ${name} happen?`];
+  }
+  if (node.type === "data-item") {
+    return [`Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
+  }
+  if (node.type === "jcl-dd") {
+    return [`What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
+  }
+  if (node.type === "dataset") {
+    return [`What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
+  }
   return [
-    `What depends on ${name}?`,
+    `What uses ${name}?`,
     `Where does ${name} happen?`,
-    node.type === "data-item" ? `Where does ${name} flow?` : `What does ${name} call?`,
+    `What depends on ${name}?`,
   ];
 }
 

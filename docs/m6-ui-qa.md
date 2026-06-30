@@ -41,7 +41,11 @@ Search-driven checks:
 - `CUSTOMER_TABLE` showed `LINEAGE` as `queries src/LINEAGE.cbl:37`.
 - `RATEAPI` showed `LINK RATEAPI` as `links src/LINEAGE.cbl:40`.
 - `BANK.CUSTOMER.MASTER` showed `CUSTIN` as `uses-dd jcl/DAILYLN.jcl:3`.
-- `CUSTIN` showed `BANK.CUSTOMER.MASTER` under Depends On and `STEP010` under Used By.
+- `CUSTIN` showed `BANK.CUSTOMER.MASTER` under Depends On, `STEP010` under
+  Used By, and `CUSTOMER-FILE assigned-to CUSTIN src/LINEAGE.cbl:6` as the
+  COBOL-to-JCL bridge.
+- `CUSTOMER-FILE` summarized the path as COBOL `SELECT` -> DD `CUSTIN` ->
+  dataset `BANK.CUSTOMER.MASTER`, with cited evidence.
 
 Parse-health checks:
 
@@ -70,8 +74,9 @@ Scan settings check:
 
 - The Ingest pane now exposes scan format, extension, and encoding controls for
   the desktop scan path.
-- In the browser preview those controls and `Re-scan` are disabled because the
-  preview is a fixed prebuilt graph JSON, not a live folder scan.
+- In the browser preview those controls stay disabled because the preview is a
+  fixed prebuilt graph JSON, while `Re-scan` reloads the generated fixture graph
+  without blanking the current graph view.
 
 Relationship-click check:
 
@@ -90,9 +95,12 @@ Export check:
 
 Graph-backed Ask check:
 
-- `Explain LINEAGE` now submits an AI-backed explanation request directly, so
+- `AI explain LINEAGE` now submits an AI-backed explanation request directly, so
   the suggested-question button behaves like the other Ask shortcuts instead of
   looking like a dead control.
+- `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
+  `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
+  states that `CUSTIN` resolves to `BANK.CUSTOMER.MASTER`.
 - Typing a broader explanation question changes the submit button from `Ask` to
   `Ask AI`, while graph-only questions keep the normal `Ask` label.
 - `What does LINEAGE call?` now answers only with

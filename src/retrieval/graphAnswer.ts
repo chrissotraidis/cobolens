@@ -4,7 +4,7 @@ import type { Citation, RetrievedContext } from "./context";
 type GraphQuestionIntent = "dependency" | "call" | "flow" | "where" | "general";
 
 const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
-const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const FLOW_SOURCE_EDGE_TYPES = new Set(["defines", "reads", "uses-dd"]);
 
 export function graphAnswerFallback(

@@ -121,6 +121,10 @@ function validateGraph(graph, options) {
     { label: "write lineage edge", ok: edges.some((edge) => /writes?/i.test(edge.type)) },
     { label: "field move edge", ok: edges.some((edge) => /moves?-to/i.test(edge.type)) },
     { label: "DD dataset usage edge", ok: edges.some((edge) => /uses-dd/i.test(edge.type)) },
+    {
+      label: "COBOL logical file to JCL DD assignment",
+      ok: hasNamedEdge(graph, "CUSTOMER-FILE", "assigned-to", "CUSTIN"),
+    },
   ];
 
   for (const signal of requiredSemanticSignals) {
@@ -128,6 +132,15 @@ function validateGraph(graph, options) {
   }
 
   return failures;
+}
+
+function hasNamedEdge(graph, fromName, type, toName) {
+  const nodesById = new Map((graph.nodes ?? []).map((node) => [node.id, node]));
+  return (graph.edges ?? []).some((edge) => {
+    const from = nodesById.get(edge.from);
+    const to = nodesById.get(edge.to);
+    return from?.name === fromName && edge.type.toLocaleLowerCase() === type.toLocaleLowerCase() && to?.name === toName;
+  });
 }
 
 function printFailure(name, failures) {

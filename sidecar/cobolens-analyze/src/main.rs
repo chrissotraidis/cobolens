@@ -414,6 +414,18 @@ fn parse_cobol_file(
             });
         }
 
+        if let Some((logical_file, dd_name)) = select_assign_target(&tokens) {
+            let logical_file_id =
+                ensure_dataset(builder, logical_file, Some(source_file), Some(line_number));
+            let dd_id = ensure_jcl_dd(builder, dd_name, Some(source_file), Some(line_number));
+            builder.edge(GraphEdge {
+                from: logical_file_id,
+                to: dd_id,
+                edge_type: "assigned-to".to_string(),
+                site: Some(site(source_file, line_number)),
+            });
+        }
+
         if let Some(copybook) = copy_target(&tokens) {
             let copy_id = format!("copy:{}", normalize_symbol(copybook));
             builder.node(GraphNode {
@@ -677,22 +689,9 @@ fn parse_jcl_file(
             let Some(dataset) = jcl_dsn(line) else {
                 continue;
             };
-            let dd_id = format!(
-                "dd:{}/{}",
-                normalize_symbol(&job_name),
-                normalize_symbol(&tokens[0])
-            );
+            let dd_id = ensure_jcl_dd(builder, &tokens[0], Some(source_file), Some(line_number));
             let dataset_id =
                 ensure_dataset(builder, &dataset, Some(source_file), Some(line_number));
-            builder.node(GraphNode {
-                id: dd_id.clone(),
-                node_type: "jcl-dd".to_string(),
-                name: tokens[0].to_string(),
-                file: Some(source_file.rel.clone()),
-                lines: Some([line_number, line_number]),
-                external: None,
-                steps: None,
-            });
             builder.edge(GraphEdge {
                 from: step_id.clone(),
                 to: dd_id.clone(),
@@ -785,6 +784,23 @@ fn perform_target(tokens: &[String]) -> Option<&str> {
         return None;
     }
     Some(target)
+}
+
+fn select_assign_target(tokens: &[String]) -> Option<(&str, &str)> {
+    if !tokens.first()?.eq_ignore_ascii_case("SELECT") {
+        return None;
+    }
+    let logical_file = tokens.get(1)?;
+    let assign_index = tokens
+        .iter()
+        .position(|token| token.eq_ignore_ascii_case("ASSIGN"))?;
+    let to_index = tokens
+        .iter()
+        .enumerate()
+        .skip(assign_index + 1)
+        .find_map(|(index, token)| token.eq_ignore_ascii_case("TO").then_some(index))?;
+    let dd_name = tokens.get(to_index + 1)?;
+    Some((logical_file, dd_name))
 }
 
 fn data_item_definition(tokens: &[String]) -> Option<&str> {
@@ -943,6 +959,25 @@ fn ensure_dataset(
     builder.node(GraphNode {
         id: id.clone(),
         node_type: "dataset".to_string(),
+        name: name.to_string(),
+        file: source_file.map(|file| file.rel.clone()),
+        lines: source_file.and_then(|_| line_number.map(|line| [line, line])),
+        external: source_file.is_none().then_some(true),
+        steps: None,
+    });
+    id
+}
+
+fn ensure_jcl_dd(
+    builder: &mut GraphBuilder,
+    name: &str,
+    source_file: Option<&SourceFile>,
+    line_number: Option<usize>,
+) -> String {
+    let id = format!("dd:{}", normalize_symbol(name));
+    builder.node(GraphNode {
+        id: id.clone(),
+        node_type: "jcl-dd".to_string(),
         name: name.to_string(),
         file: source_file.map(|file| file.rel.clone()),
         lines: source_file.and_then(|_| line_number.map(|line| [line, line])),

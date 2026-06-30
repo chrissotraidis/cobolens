@@ -261,8 +261,7 @@ function convertMapaJcl(rows, files, builder) {
     } else if (row[0] === "JOBSTEPDD") {
       const stepId = stepByUuid.get(row[2]);
       if (!stepId) continue;
-      const ddId = `dd:${normalize(row[2])}/${normalize(row[1])}`;
-      builder.node(node(ddId, "jcl-dd", row[1], null, null, false));
+      const ddId = ensureJclDd(builder, row[1], null, null);
       builder.edge(edge(stepId, ddId, "DECLARES-DD", null));
       if (row[6] && row[5] === "Z") {
         const datasetId = ensureDataset(builder, row[6], null, null);
@@ -284,6 +283,13 @@ async function lexicalEnrich(file, builder) {
     const line = index + 1;
     const tokens = tokenize(lines[index]);
     if (!tokens.length) continue;
+
+    const selectAssign = selectAssignTarget(tokens);
+    if (selectAssign) {
+      const logicalFile = ensureDataset(builder, selectAssign.logicalFile, file.rel, line);
+      const dd = ensureJclDd(builder, selectAssign.ddName, file.rel, line);
+      builder.edge(edge(logicalFile, dd, "assigned-to", site(file.rel, line)));
+    }
 
     const dataItem = dataItemDefinition(tokens);
     if (dataItem) {
@@ -315,6 +321,12 @@ function ensureDataItem(builder, name, file, line) {
 function ensureDataset(builder, name, file, line) {
   const id = `dataset:${normalize(name)}`;
   builder.node(node(id, "dataset", name, file, line ? [line, line] : null, false));
+  return id;
+}
+
+function ensureJclDd(builder, name, file, line) {
+  const id = `dd:${normalize(name)}`;
+  builder.node(node(id, "jcl-dd", name, file, line ? [line, line] : null, false));
   return id;
 }
 
@@ -434,6 +446,13 @@ function moveTargets(tokens) {
   if (!/^MOVE$/i.test(tokens[0] ?? "")) return null;
   const to = indexOf(tokens, "TO");
   return to >= 2 && tokens[to + 1] ? { from: tokens[1], to: tokens[to + 1] } : null;
+}
+
+function selectAssignTarget(tokens) {
+  if (!/^SELECT$/i.test(tokens[0] ?? "")) return null;
+  const assign = indexOf(tokens, "ASSIGN");
+  const to = tokens.findIndex((token, index) => index > assign && /^TO$/i.test(token));
+  return assign >= 2 && to > assign && tokens[to + 1] ? { logicalFile: tokens[1], ddName: tokens[to + 1] } : null;
 }
 
 function targetAfter(tokens, marker) {

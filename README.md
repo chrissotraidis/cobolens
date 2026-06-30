@@ -35,7 +35,9 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
 - Click nodes and relationships to inspect cited source locations.
 - Inspect lineage and impact relationships for semantic graph signals:
   `reads`, `writes`, `moves-to`, `queries`, `updates`, `links`, `xctls`,
-  `uses-dd`, and `executes`.
+  `uses-dd`, `assigned-to`, and `executes`.
+- Trace COBOL `SELECT ... ASSIGN TO` logical files through JCL DD names to
+  physical datasets, with cited source lines.
 - Generate the M6 fixture graph and use the app to answer:
   "what depends on this?" and "where does this data flow?"
 - Validate parser candidates against the strict M6 fixture and the cloned

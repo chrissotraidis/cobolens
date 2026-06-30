@@ -1,4 +1,5 @@
 use keyring::Entry;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
     env, fs,
@@ -10,22 +11,87 @@ use std::{
 use tauri::{path::BaseDirectory, Manager, Runtime};
 
 #[tauri::command]
-fn analyze_codebase(app: tauri::AppHandle, root: String) -> Result<Value, String> {
-    analyze_root(&app, root)
+fn analyze_codebase(
+    app: tauri::AppHandle,
+    root: String,
+    scan: Option<ScanSettings>,
+) -> Result<Value, String> {
+    analyze_root(&app, root, scan.unwrap_or_default())
 }
 
 #[tauri::command]
-fn analyze_sample_codebase(app: tauri::AppHandle) -> Result<Value, String> {
+fn analyze_sample_codebase(
+    app: tauri::AppHandle,
+    scan: Option<ScanSettings>,
+) -> Result<Value, String> {
     let root = sample_root(&app)?.to_string_lossy().to_string();
-    analyze_root(&app, root)
+    analyze_root(&app, root, scan.unwrap_or_default())
 }
 
-fn analyze_root<R: Runtime>(app: &tauri::AppHandle<R>, root: String) -> Result<Value, String> {
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScanSettings {
+    format: String,
+    extensions: String,
+    encoding: String,
+}
+
+impl Default for ScanSettings {
+    fn default() -> Self {
+        Self {
+            format: "auto".to_string(),
+            extensions: ".cbl,.cob,.cpy,.jcl".to_string(),
+            encoding: "utf8".to_string(),
+        }
+    }
+}
+
+impl ScanSettings {
+    fn normalized_extensions(&self) -> Vec<String> {
+        self.extensions
+            .split(',')
+            .map(str::trim)
+            .filter(|item| !item.is_empty())
+            .map(|item| {
+                let lower = item.to_ascii_lowercase();
+                if lower.starts_with('.') {
+                    lower
+                } else {
+                    format!(".{lower}")
+                }
+            })
+            .collect()
+    }
+
+    fn extension_arg(&self) -> String {
+        self.normalized_extensions().join(",")
+    }
+
+    fn cache_fingerprint(&self) -> String {
+        format!(
+            "format={}|ext={}|encoding={}",
+            self.format,
+            self.extension_arg(),
+            self.encoding
+        )
+    }
+}
+
+fn analyze_root<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    root: String,
+    scan: ScanSettings,
+) -> Result<Value, String> {
     let root_path = PathBuf::from(&root)
         .canonicalize()
         .map_err(|err| format!("codebase folder is unavailable: {err}"))?;
-    let manifest = source_manifest(&root_path)?;
-    let cache_path = graph_cache_path(&app, &root_path, &manifest)?;
+    let extensions = scan.normalized_extensions();
+    if extensions.is_empty() {
+        return Err("scan extensions cannot be empty".to_string());
+    }
+    let manifest = source_manifest(&root_path, &extensions)?;
+    let cache_basis = format!("{}\n{}", scan.cache_fingerprint(), manifest);
+    let cache_path = graph_cache_path(&app, &root_path, &cache_basis)?;
     if cache_path.exists() {
         if let Ok(cached) = fs::read_to_string(&cache_path) {
             if let Ok(graph) = serde_json::from_str(&cached) {
@@ -35,9 +101,10 @@ fn analyze_root<R: Runtime>(app: &tauri::AppHandle<R>, root: String) -> Result<V
         let _ = fs::remove_file(&cache_path);
     }
 
-    let cache_key = stable_hash(&format!("{}|{}", root_path.display(), manifest));
+    let cache_key = stable_hash(&format!("{}|{}", root_path.display(), cache_basis));
     let out = env::temp_dir().join(format!("cobolens-graph-{cache_key:016x}.json"));
     let analyzer = analyzer_binary_path(&app)?;
+    let extension_arg = scan.extension_arg();
     let mut child = Command::new(analyzer)
         .args([
             "--root",
@@ -45,11 +112,11 @@ fn analyze_root<R: Runtime>(app: &tauri::AppHandle<R>, root: String) -> Result<V
             "--out",
             out.to_string_lossy().as_ref(),
             "--format",
-            "auto",
+            scan.format.as_str(),
             "--ext",
-            ".cbl,.cob,.cpy,.jcl",
+            extension_arg.as_str(),
             "--encoding",
-            "utf8",
+            scan.encoding.as_str(),
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -80,23 +147,28 @@ fn analyze_root<R: Runtime>(app: &tauri::AppHandle<R>, root: String) -> Result<V
     serde_json::from_str(&json).map_err(|err| err.to_string())
 }
 
-fn source_manifest(root: &Path) -> Result<String, String> {
+fn source_manifest(root: &Path, extensions: &[String]) -> Result<String, String> {
     let mut entries = Vec::new();
-    collect_source_manifest(root, root, &mut entries)?;
+    collect_source_manifest(root, root, extensions, &mut entries)?;
     entries.sort();
     Ok(entries.join("\n"))
 }
 
-fn collect_source_manifest(root: &Path, current: &Path, entries: &mut Vec<String>) -> Result<(), String> {
+fn collect_source_manifest(
+    root: &Path,
+    current: &Path,
+    extensions: &[String],
+    entries: &mut Vec<String>,
+) -> Result<(), String> {
     for entry in fs::read_dir(current).map_err(|err| err.to_string())? {
         let entry = entry.map_err(|err| err.to_string())?;
         let path = entry.path();
         let metadata = entry.metadata().map_err(|err| err.to_string())?;
         if metadata.is_dir() {
-            collect_source_manifest(root, &path, entries)?;
+            collect_source_manifest(root, &path, extensions, entries)?;
             continue;
         }
-        if !metadata.is_file() || !is_source_file(&path) {
+        if !metadata.is_file() || !is_source_file(&path, extensions) {
             continue;
         }
 
@@ -116,13 +188,12 @@ fn collect_source_manifest(root: &Path, current: &Path, entries: &mut Vec<String
     Ok(())
 }
 
-fn is_source_file(path: &Path) -> bool {
-    matches!(
-        path.extension()
-            .and_then(|extension| extension.to_str())
-            .map(|extension| extension.to_ascii_lowercase()),
-        Some(extension) if matches!(extension.as_str(), "cbl" | "cob" | "cpy" | "jcl")
-    )
+fn is_source_file(path: &Path, extensions: &[String]) -> bool {
+    let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+        return false;
+    };
+    let normalized = format!(".{}", extension.to_ascii_lowercase());
+    extensions.iter().any(|allowed| allowed == &normalized)
 }
 
 fn graph_cache_path<R: Runtime>(
@@ -410,7 +481,12 @@ mod tests {
     fn analyze_sample_command_returns_graph() {
         let app = tauri::test::mock_app();
         let root = sample_root(app.handle()).unwrap();
-        let graph = analyze_root(app.handle(), root.to_string_lossy().to_string()).unwrap();
+        let graph = analyze_root(
+            app.handle(),
+            root.to_string_lossy().to_string(),
+            ScanSettings::default(),
+        )
+        .unwrap();
 
         assert_eq!(graph["schemaVersion"], 1);
         assert_eq!(graph["meta"]["fileCount"], 4);
@@ -465,9 +541,29 @@ mod tests {
         fs::write(root.join("src").join("PROG.cbl"), "IDENTIFICATION DIVISION.\n").unwrap();
         fs::write(root.join("notes.txt"), "not source\n").unwrap();
 
-        let manifest = source_manifest(&root).unwrap();
+        let manifest = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
         assert!(manifest.contains("src/PROG.cbl|"));
         assert!(!manifest.contains("notes.txt"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn source_manifest_uses_configured_extensions() {
+        let root = temp_test_dir("manifest-custom-extensions");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src").join("PROG.cbl"), "IDENTIFICATION DIVISION.\n").unwrap();
+        fs::write(root.join("src").join("PROC.pco"), "IDENTIFICATION DIVISION.\n").unwrap();
+
+        let default_manifest =
+            source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
+        let custom_manifest =
+            source_manifest(&root, &[".pco".to_string()]).unwrap();
+
+        assert!(default_manifest.contains("src/PROG.cbl|"));
+        assert!(!default_manifest.contains("src/PROC.pco|"));
+        assert!(!custom_manifest.contains("src/PROG.cbl|"));
+        assert!(custom_manifest.contains("src/PROC.pco|"));
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -478,10 +574,10 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         let source = root.join("CUSTOMER.cpy");
         fs::write(&source, "       01 CUSTOMER.\n").unwrap();
-        let first = source_manifest(&root).unwrap();
+        let first = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
 
         fs::write(&source, "       01 CUSTOMER.\n          05 CUSTOMER-ID PIC X(10).\n").unwrap();
-        let second = source_manifest(&root).unwrap();
+        let second = source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
 
         assert_ne!(first, second);
         assert_ne!(stable_hash(&first), stable_hash(&second));

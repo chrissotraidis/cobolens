@@ -66,6 +66,13 @@ Privacy mode checks:
   and explains that retrieved code context is sent to Anthropic; switching back
   to `Ollama` restores the local-mode indicator.
 
+Scan settings check:
+
+- The Ingest pane now exposes scan format, extension, and encoding controls for
+  the desktop scan path.
+- In the browser preview those controls and `Re-scan` are disabled because the
+  preview is a fixed prebuilt graph JSON, not a live folder scan.
+
 Relationship-click check:
 
 - Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to

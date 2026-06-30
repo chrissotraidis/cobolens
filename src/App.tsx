@@ -58,8 +58,19 @@ type SourceFocus = {
   line: number;
   nodeId?: string;
 };
+type ScanFormat = "auto" | "fixed" | "free";
+type ScanSettings = {
+  format: ScanFormat;
+  extensions: string;
+  encoding: string;
+};
 
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+const DEFAULT_SCAN_SETTINGS: ScanSettings = {
+  format: "auto",
+  extensions: ".cbl,.cob,.cpy,.jcl",
+  encoding: "utf8",
+};
 const LEGEND_NODE_TYPES = [
   ["program", "Programs"],
   ["paragraph", "Paragraphs"],
@@ -93,6 +104,7 @@ function App() {
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
   const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
+  const [scanSettings, setScanSettings] = useState<ScanSettings>(DEFAULT_SCAN_SETTINGS);
   const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
   const [error, setError] = useState<string>("");
@@ -269,18 +281,12 @@ function App() {
     });
     if (typeof selected !== "string") return;
 
-    setRoot(selected);
-    setSourceBase("");
-    setGraph(null);
-    setSnippet(null);
-    setSelectedEdge(null);
-    setSourceFocus(null);
-    setError("");
-    setStatus("running");
+    beginScan(selected);
 
     try {
       const result = await invoke<GraphDocument>("analyze_codebase", {
         root: selected,
+        scan: normalizedScanSettings(scanSettings),
       });
       acceptGraph(result, selected);
     } catch (err) {
@@ -291,8 +297,7 @@ function App() {
 
   async function openSample() {
     if (!canUseTauri()) {
-      setError("");
-      setStatus("running");
+      beginScan("Demo graph: M6 fixture", "/m6-bakeoff-source.json");
 
       try {
         const response = await fetch("/m6-bakeoff-graph.json");
@@ -306,22 +311,63 @@ function App() {
       return;
     }
 
-    setRoot("Bundled sample: Mini Bank");
-    setSourceBase("");
+    beginScan("Bundled sample: Mini Bank");
+
+    try {
+      const result = await invoke<GraphDocument>("analyze_sample_codebase", {
+        scan: normalizedScanSettings(scanSettings),
+      });
+      acceptGraph(result, "Bundled sample: Mini Bank");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus("error");
+    }
+  }
+
+  async function rescanCurrent() {
+    if (!graph) return;
+    if (!canUseTauri()) {
+      await openSample();
+      return;
+    }
+
+    if (root === "Bundled sample: Mini Bank") {
+      beginScan(root);
+      try {
+        const result = await invoke<GraphDocument>("analyze_sample_codebase", {
+          scan: normalizedScanSettings(scanSettings),
+        });
+        acceptGraph(result, root);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setStatus("error");
+      }
+      return;
+    }
+
+    if (!root) return;
+    beginScan(root);
+    try {
+      const result = await invoke<GraphDocument>("analyze_codebase", {
+        root,
+        scan: normalizedScanSettings(scanSettings),
+      });
+      acceptGraph(result, root);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus("error");
+    }
+  }
+
+  function beginScan(nextRoot: string, nextSourceBase = "") {
+    setRoot(nextRoot);
+    setSourceBase(nextSourceBase);
     setGraph(null);
     setSnippet(null);
     setSelectedEdge(null);
     setSourceFocus(null);
     setError("");
     setStatus("running");
-
-    try {
-      const result = await invoke<GraphDocument>("analyze_sample_codebase");
-      acceptGraph(result, "Bundled sample: Mini Bank");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setStatus("error");
-    }
   }
 
   function acceptGraph(nextGraph: GraphDocument, nextRoot: string, nextSourceBase = "") {
@@ -709,10 +755,18 @@ function App() {
             <button type="button" onClick={openSample}>
               Open Sample
             </button>
+            <button type="button" onClick={rescanCurrent} disabled={!desktopAvailable || !graph || status === "running"}>
+              Re-scan
+            </button>
             {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
+            <ScanSettingsPanel
+              settings={scanSettings}
+              disabled={!desktopAvailable || status === "running"}
+              onSettingsChange={setScanSettings}
+            />
           </section>
 
           <section className="pane-block">
@@ -868,6 +922,52 @@ function App() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function ScanSettingsPanel({
+  settings,
+  disabled,
+  onSettingsChange,
+}: {
+  settings: ScanSettings;
+  disabled: boolean;
+  onSettingsChange: (settings: ScanSettings) => void;
+}) {
+  return (
+    <div className="scan-settings" aria-label="Scan settings">
+      <label className="form-row">
+        <span>Format</span>
+        <select
+          value={settings.format}
+          disabled={disabled}
+          onChange={(event) => onSettingsChange({ ...settings, format: event.currentTarget.value as ScanFormat })}
+        >
+          <option value="auto">Auto</option>
+          <option value="fixed">Fixed</option>
+          <option value="free">Free</option>
+        </select>
+      </label>
+      <label className="form-row">
+        <span>Extensions</span>
+        <input
+          value={settings.extensions}
+          disabled={disabled}
+          spellCheck={false}
+          onChange={(event) => onSettingsChange({ ...settings, extensions: event.currentTarget.value })}
+        />
+      </label>
+      <label className="form-row">
+        <span>Encoding</span>
+        <select
+          value={settings.encoding}
+          disabled={disabled}
+          onChange={(event) => onSettingsChange({ ...settings, encoding: event.currentTarget.value })}
+        >
+          <option value="utf8">UTF-8</option>
+        </select>
+      </label>
+    </div>
   );
 }
 
@@ -1598,6 +1698,19 @@ function privacyModeLabel(settings: ModelSettings) {
     return "Local mode: inference uses localhost Ollama; code stays on this machine.";
   }
   return `Cloud mode: retrieved code context is sent to ${PROVIDER_LABELS[settings.provider]}.`;
+}
+
+function normalizedScanSettings(settings: ScanSettings) {
+  return {
+    ...settings,
+    extensions: settings.extensions
+      .split(",")
+      .map((extension) => extension.trim())
+      .filter(Boolean)
+      .map((extension) => extension.toLocaleLowerCase())
+      .map((extension) => (extension.startsWith(".") ? extension : `.${extension}`))
+      .join(","),
+  };
 }
 
 function sourceBaseForGraphUrl(graphUrl: string) {

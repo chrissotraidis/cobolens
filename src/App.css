@@ -340,6 +340,12 @@ h2,
   gap: 9px;
 }
 
+.scan-settings {
+  display: grid;
+  gap: 9px;
+  padding-top: 4px;
+}
+
 .form-row {
   display: grid;
   gap: 5px;

@@ -86,6 +86,27 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const flowAnswer = graphAnswerFallback(graph, flowQuestion, flowContext);
+  const customerMasterQuestion = "What uses the customer master file?";
+  const customerMasterContext = await retrieveQuestionContext({
+    graph,
+    question: customerMasterQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const customerMasterAnswer = graphAnswerFallback(graph, customerMasterQuestion, customerMasterContext);
+  const dailyReportQuestion = "What uses the daily report dataset?";
+  const dailyReportContext = await retrieveQuestionContext({
+    graph,
+    question: dailyReportQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const dailyReportAnswer = graphAnswerFallback(graph, dailyReportQuestion, dailyReportContext);
+  const logicalReportQuestion = "Where does the report file flow?";
+  const logicalReportContext = await retrieveQuestionContext({
+    graph,
+    question: logicalReportQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const logicalReportAnswer = graphAnswerFallback(graph, logicalReportQuestion, logicalReportContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -113,6 +134,12 @@ try {
     ["reports flow source", flowAnswer.text.includes("Flow sources or definitions: CUSTOMER.")],
     ["reports flow destination", flowAnswer.text.includes("Flow destinations: REPORT-ID.")],
     ["cites flow destination", flowAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
+    ["natural customer master phrase matches physical dataset", customerMasterContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER"],
+    ["customer master answer cites JCL DD mapping", customerMasterAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
+    ["natural daily report phrase matches physical dataset", dailyReportContext.focusNodes[0]?.name === "BANK.REPORT.DAILY"],
+    ["daily report answer cites report DD mapping", dailyReportAnswer.text.includes("RPTFILE uses-dd BANK.REPORT.DAILY at jcl/DAILYLN.jcl:4")],
+    ["natural report file phrase matches logical COBOL file", logicalReportContext.focusNodes[0]?.name === "REPORT-FILE"],
+    ["logical report answer cites COBOL to JCL assignment", logicalReportAnswer.text.includes("REPORT-FILE assigned-to RPTFILE at src/LINEAGE.cbl:7")],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

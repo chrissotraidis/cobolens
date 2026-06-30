@@ -101,6 +101,10 @@ Graph-backed Ask check:
 - `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
   `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
   states that `CUSTIN` resolves to `BANK.CUSTOMER.MASTER`.
+- Natural phrases now anchor to graph symbols without requiring exact COBOL/JCL
+  names: `customer master file` matches `BANK.CUSTOMER.MASTER`, `daily report
+  dataset` matches `BANK.REPORT.DAILY`, and `report file` matches the logical
+  COBOL file node `REPORT-FILE`.
 - Typing a broader explanation question changes the submit button from `Ask` to
   `Ask AI`, while graph-only questions keep the normal `Ask` label.
 - `What does LINEAGE call?` now answers only with

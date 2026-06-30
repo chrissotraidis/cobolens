@@ -83,35 +83,133 @@ function rankNodes(graph: GraphDocument, question: string) {
     .toLocaleLowerCase()
     .split(/[^a-z0-9_-]+/i)
     .filter((token) => token.length > 1);
+  const symbolTokens = meaningfulSymbolTokens(question);
 
   return graph.nodes
-    .map((node) => ({ node, score: scoreNode(node, question, tokens) }))
+    .map((node) => ({ node, score: scoreNode(node, question, tokens, symbolTokens) }))
     .filter((entry) => entry.score < 100)
     .sort((left, right) => left.score - right.score)
     .map((entry) => entry.node);
 }
 
-function scoreNode(node: GraphNode, question: string, tokens: string[]) {
+function scoreNode(node: GraphNode, question: string, tokens: string[], symbolTokens: string[]) {
   const name = node.name.toLocaleLowerCase();
   const id = node.id.toLocaleLowerCase();
   const haystack = `${name} ${id} ${node.type}`;
-  if (tokens.some((token) => token === name || id.endsWith(`:${token}`) || id.endsWith(`/${token}`))) {
-    return typePriority(node.type);
+  const nameTokens = tokenizeSymbolText(node.name);
+  if (question.toLocaleLowerCase().includes(name) && (nameTokens.length > 1 || symbolTokens.length <= 1)) {
+    return typePriority(node.type, question);
   }
+  if (
+    symbolTokens.length <= 1 &&
+    tokens.some((token) => token === name || id.endsWith(`:${token}`) || id.endsWith(`/${token}`))
+  ) {
+    return typePriority(node.type, question);
+  }
+
+  if (symbolTokens.length) {
+    const nodeTokens = new Set(tokenizeSymbolText(node.name));
+    const hits = symbolTokens.filter((token) => nodeTokens.has(token) || name.includes(token));
+    if (hits.length) {
+      const misses = symbolTokens.length - new Set(hits).size;
+      return 10 + misses * 12 - hits.length * 3 + typePriority(node.type, question) + nodeNameHint(node, question);
+    }
+  }
+
   if (tokens.some((token) => name.includes(token))) {
-    return 10 + typePriority(node.type);
+    return 40 + typePriority(node.type, question) + nodeNameHint(node, question);
   }
+
   if (matchesFuzzy(haystack, question)) {
-    return 50 + typePriority(node.type);
+    return 50 + typePriority(node.type, question);
   }
   return 100;
 }
 
-function typePriority(type: string) {
+const SYMBOL_STOP_WORDS = new Set([
+  "what",
+  "where",
+  "which",
+  "who",
+  "does",
+  "with",
+  "from",
+  "into",
+  "onto",
+  "that",
+  "this",
+  "the",
+  "and",
+  "uses",
+  "used",
+  "use",
+  "depends",
+  "depend",
+  "impact",
+  "flow",
+  "flows",
+  "happen",
+  "happens",
+  "call",
+  "calls",
+  "read",
+  "reads",
+  "write",
+  "writes",
+  "move",
+  "moves",
+  "query",
+  "queries",
+  "file",
+  "dataset",
+  "table",
+  "program",
+  "copybook",
+  "field",
+  "data",
+  "item",
+]);
+
+function meaningfulSymbolTokens(text: string) {
+  return tokenizeSymbolText(text).filter((token) => !SYMBOL_STOP_WORDS.has(token));
+}
+
+function tokenizeSymbolText(text: string) {
+  return text
+    .toLocaleLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .filter((token) => token.length > 1);
+}
+
+function typePriority(type: string, question = "") {
+  const asksForDataStore = /\b(file|dataset|dd|dsn)\b/i.test(question);
+  const asksForTable = /\b(table|sql|db2)\b/i.test(question);
+  const asksForProgram = /\b(program|job|step|call|run|exec)\b/i.test(question);
+  if (asksForDataStore) {
+    if (type === "dataset") return 0;
+    if (type === "jcl-dd") return 1;
+    return 8 + baseTypePriority(type);
+  }
+  if (asksForTable && type === "db2-table") return 0;
+  if (asksForProgram && type === "program") return 0;
+
+  return baseTypePriority(type);
+}
+
+function baseTypePriority(type: string) {
   if (type === "program") return 0;
   if (type === "paragraph") return 1;
   if (type === "copybook") return 2;
+  if (type === "dataset") return 3;
+  if (type === "jcl-dd") return 4;
   return 4;
+}
+
+function nodeNameHint(node: GraphNode, question: string) {
+  const name = node.name.toLocaleLowerCase();
+  if (/\bfile\b/i.test(question) && name.includes("file")) return -2;
+  if (/\bdd\b/i.test(question) && node.type === "jcl-dd") return -2;
+  return 0;
 }
 
 function dedupeCitations(citations: Citation[]) {

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:sidecar": "cargo build --release --manifest-path sidecar/cobolens-analyze/Cargo.toml",
+    "tauri:before-build": "npm run build && npm run build:sidecar",
     "m6:verify": "node tools/m6-verify/run.mjs",
     "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",

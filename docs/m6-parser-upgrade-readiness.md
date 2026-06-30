@@ -111,6 +111,12 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
   - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
   - `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
   - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
+- The Linux bundles include the production analyzer resource at
+  `usr/lib/Cobolens/cobolens-analyze` and the bundled sample at
+  `usr/lib/Cobolens/samples/mini-bank/`.
+- The packaged analyzer extracted from the AppImage parsed the packaged
+  `mini-bank` sample successfully: 4 parsed files, 25 nodes, 27 edges, and 0
+  parse errors.
 - The Windows host is still not a validated build target: it is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
@@ -118,5 +124,6 @@ The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C
 Remaining decision work:
 
 1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
-2. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
-3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.
+2. Complete a visible packaged-app GUI smoke on a Linux desktop/WSLg host with the WebKit/GStreamer runtime pieces available; the current headless AppImage launch reached the portal stack but stopped on missing `appsink`.
+3. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
+4. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.

@@ -20,8 +20,9 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
 - Production analyzer decision: keep the Rust analyzer as the v1 production
   sidecar. ProLeap and mapa are benchmark-checked candidates, but they are not
   adopted production dependencies yet.
-- Linux packaging from WSL is validated. `npm run tauri build` produced `.deb`,
-  `.rpm`, and `.AppImage` bundles.
+- Linux packaging from WSL is validated. `npm run tauri build` builds the
+  production analyzer sidecar, bundles it with the sample codebase, and
+  produced `.deb`, `.rpm`, and `.AppImage` artifacts.
 - Windows packaging is not a current target and is not validated in this
   checkout.
 
@@ -96,6 +97,13 @@ Build release bundles:
 npm run tauri build
 ```
 
+The release build runs `npm run tauri:before-build`, which compiles the
+frontend and the production Rust analyzer sidecar before Tauri packages the
+app. The Linux bundles include both:
+
+- `usr/lib/Cobolens/cobolens-analyze`
+- `usr/lib/Cobolens/samples/mini-bank/`
+
 Successful Linux builds produce:
 
 - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
@@ -109,6 +117,11 @@ Run the current M6 verification suite:
 ```sh
 npm run m6:verify
 ```
+
+The packaged analyzer/sample smoke used for the current Linux validation ran
+the analyzer extracted from the AppImage against the bundled `mini-bank` sample
+and produced a graph with 4 parsed files, 25 nodes, 27 edges, and 0 parse
+errors.
 
 Run the strict fixture bake-off directly:
 

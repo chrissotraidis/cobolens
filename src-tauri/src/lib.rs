@@ -9,18 +9,19 @@ use std::{
 use tauri::{path::BaseDirectory, Manager};
 
 #[tauri::command]
-fn analyze_codebase(root: String) -> Result<Value, String> {
-    analyze_root(root)
+fn analyze_codebase(app: tauri::AppHandle, root: String) -> Result<Value, String> {
+    analyze_root(app, root)
 }
 
 #[tauri::command]
 fn analyze_sample_codebase(app: tauri::AppHandle) -> Result<Value, String> {
-    analyze_root(sample_root(app)?.to_string_lossy().to_string())
+    let root = sample_root(&app)?.to_string_lossy().to_string();
+    analyze_root(app, root)
 }
 
-fn analyze_root(root: String) -> Result<Value, String> {
+fn analyze_root(app: tauri::AppHandle, root: String) -> Result<Value, String> {
     let out = env::temp_dir().join("cobolens-graph.json");
-    let analyzer = analyzer_binary_path()?;
+    let analyzer = analyzer_binary_path(&app)?;
     let mut child = Command::new(analyzer)
         .args([
             "--root",
@@ -59,7 +60,7 @@ fn analyze_root(root: String) -> Result<Value, String> {
     serde_json::from_str(&json).map_err(|err| err.to_string())
 }
 
-fn sample_root(app: tauri::AppHandle) -> Result<PathBuf, String> {
+fn sample_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if let Ok(path) = app
         .path()
         .resolve("samples/mini-bank", BaseDirectory::Resource)
@@ -254,7 +255,7 @@ fn safe_export_prefix(prefix: &str) -> Result<String, String> {
     Ok(stem)
 }
 
-fn analyzer_binary_path() -> Result<PathBuf, String> {
+fn analyzer_binary_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if let Ok(path) = env::var("COBOLENS_ANALYZE_BIN") {
         return Ok(PathBuf::from(path));
     }
@@ -265,6 +266,12 @@ fn analyzer_binary_path() -> Result<PathBuf, String> {
     } else {
         "cobolens-analyze"
     };
+
+    if let Ok(path) = app.path().resolve(exe_name, BaseDirectory::Resource) {
+        if path.exists() {
+            return Ok(path);
+        }
+    }
 
     for ancestor in current_exe.ancestors() {
         let candidate = ancestor.join(exe_name);

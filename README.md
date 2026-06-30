@@ -53,6 +53,13 @@ Run the app in development:
 npm run tauri dev
 ```
 
+If a Vite dev server is already running on port `1420`, smoke-test only the
+desktop shell against it:
+
+```sh
+npm run desktop:smoke
+```
+
 Generate and load the M6 fixture graph:
 
 ```sh
@@ -130,6 +137,12 @@ If it fails, install Ollama and run:
 
 ```sh
 ollama pull llama3.2
+```
+
+Smoke-test the desktop shell against an already-running Vite server:
+
+```sh
+npm run desktop:smoke
 ```
 
 The packaged analyzer/sample smoke used for the current Linux validation ran

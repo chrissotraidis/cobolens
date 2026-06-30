@@ -32,3 +32,11 @@ every development machine has Ollama installed. Run it explicitly with:
 ```sh
 npm run ollama:check
 ```
+
+Desktop shell startup is also environment-specific because it needs a running
+dev server and a GUI display. With Vite already listening on `127.0.0.1:1420`,
+run:
+
+```sh
+npm run desktop:smoke
+```

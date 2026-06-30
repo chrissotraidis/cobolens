@@ -66,6 +66,7 @@ try {
     ["cites move relationship", answer.text.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
     ["reports JCL users before display limit", lineageAnswer.text.includes("Upstream or used by: STEP010.")],
     ["prioritizes incoming dependency relationship", lineageAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
+    ["cites incoming JCL dependency", lineageAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

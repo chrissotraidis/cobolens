@@ -1,5 +1,5 @@
-import { edgeLabel, type GraphDocument, type GraphNode } from "../lib/graph";
-import type { RetrievedContext } from "./context";
+import { edgeLabel, type GraphDocument, type GraphEdge, type GraphNode } from "../lib/graph";
+import type { Citation, RetrievedContext } from "./context";
 
 export function graphAnswerFallback(
   graph: GraphDocument,
@@ -14,6 +14,7 @@ export function graphAnswerFallback(
   const outgoing = directEdges.filter((edge) => matchedIds.has(edge.from));
   const isDependencyQuestion = question.toLocaleLowerCase().includes("depend");
   const relevantEdges = (isDependencyQuestion ? [...incoming, ...outgoing] : directEdges).slice(0, 8);
+  const citationEdges = isDependencyQuestion ? [...incoming, ...outgoing] : relevantEdges;
 
   if (!matched.length) {
     return {
@@ -52,7 +53,7 @@ export function graphAnswerFallback(
 
   return {
     text: lines.join("\n"),
-    citations: context.citations,
+    citations: graphAnswerCitations(graph, matched, citationEdges, context.citations),
   };
 }
 
@@ -64,6 +65,43 @@ export function isGraphQuestion(question: string) {
 
 function nodeName(graph: GraphDocument, nodeId: string) {
   return graph.nodes.find((node) => node.id === nodeId)?.name ?? nodeId;
+}
+
+function graphAnswerCitations(
+  graph: GraphDocument,
+  matched: GraphNode[],
+  edges: GraphEdge[],
+  fallback: Citation[],
+) {
+  return dedupeCitations([
+    ...matched
+      .filter((node) => node.file)
+      .map((node) => ({
+        file: node.file ?? "",
+        line: node.lines?.[0] ?? 1,
+        label: node.name,
+        nodeId: node.id,
+      })),
+    ...edges
+      .filter((edge) => edge.site)
+      .map((edge) => ({
+        file: edge.site?.file ?? "",
+        line: edge.site?.line ?? 1,
+        label: edgeLabel(edge, graph),
+        nodeId: edge.from,
+      })),
+    ...fallback,
+  ]).filter((citation) => citation.file);
+}
+
+function dedupeCitations(citations: Citation[]) {
+  const seen = new Set<string>();
+  return citations.filter((citation) => {
+    const key = `${citation.file}:${citation.line}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function formatMatchedNode(node: GraphNode) {

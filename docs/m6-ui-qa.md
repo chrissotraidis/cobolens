@@ -68,6 +68,9 @@ Export check:
 
 Graph-backed Ask check:
 
+- `Explain LINEAGE` seeds the Ask composer with
+  `Explain LINEAGE for a new developer.`, enables `Ask`, and does not increment
+  local model calls until the user explicitly submits.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and focused citations;
   it does not include unrelated copybook, read, write, or define edges.

@@ -1106,6 +1106,7 @@ function ChatAnswerPanel({
   onOpenCitation: (citation: Citation) => void;
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
+  const explainQuestion = node ? `Explain ${node.name} for a new developer.` : "";
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const workingWithModel = status === "running" && question.trim() && !isGraphQuestion(question);
   const answerSubtitle =
@@ -1128,6 +1129,16 @@ function ChatAnswerPanel({
       </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested graph questions">
+          {explainQuestion ? (
+            <button
+              type="button"
+              onClick={() => onQuestionChange(explainQuestion)}
+              disabled={status === "running"}
+              title="Seed an explanation question without calling a model yet"
+            >
+              Explain {node?.name}
+            </button>
+          ) : null}
           {starterQuestions.map((question) => (
             <button
               key={question}

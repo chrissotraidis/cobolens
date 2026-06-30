@@ -30,6 +30,7 @@ import {
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
+import type { RetrievedContext } from "./retrieval/context";
 import "./App.css";
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -248,7 +249,7 @@ function App() {
         const response = await fetch("/m6-bakeoff-graph.json");
         if (!response.ok) throw new Error(`Could not load browser demo graph (${response.status}).`);
         const result = (await response.json()) as GraphDocument;
-        acceptGraph(result, "Demo graph: M6 fixture", "/m6-bakeoff-source");
+        acceptGraph(result, "Demo graph: M6 fixture", "/m6-bakeoff-source.json");
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setStatus("error");
@@ -439,13 +440,21 @@ function App() {
     const question = chatQuestion.trim();
     setChatStatus("running");
     setChatError("");
+    let context: RetrievedContext | null = null;
 
     try {
-      const context = await retrieveQuestionContext({
+      context = await retrieveQuestionContext({
         graph,
         question,
         readExcerpt: sourceExcerptForNode,
       });
+      if (isGraphQuestion(question)) {
+        const fallback = graphAnswerFallback(graph, question, context);
+        setChatAnswer({ question, text: fallback.text, citations: fallback.citations });
+        setChatStatus("ready");
+        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+        return;
+      }
       const apiKey = await providerKeyForModel(modelSettings);
       const answer = await generateGroundedAnswer({
         question,
@@ -458,6 +467,13 @@ function App() {
       setChatStatus("ready");
       if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
     } catch (err) {
+      if (context) {
+        const fallback = graphAnswerFallback(graph, question, context, err, modelSettings);
+        setChatAnswer({ question, text: fallback.text, citations: fallback.citations });
+        setChatStatus("ready");
+        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+        return;
+      }
       setChatError(friendlyModelError(err, modelSettings));
       setChatStatus("error");
     }
@@ -568,7 +584,7 @@ function App() {
         <aside className="left-pane" aria-label="Navigator">
           <section className="pane-block">
             <h2>Ingest</h2>
-            <button className="primary-action" type="button" onClick={chooseFolder}>
+            <button className="primary-action" type="button" onClick={chooseFolder} disabled={!canUseTauri()}>
               Open Folder
             </button>
             <button type="button" onClick={openSample}>
@@ -576,6 +592,7 @@ function App() {
             </button>
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
+            {status === "error" && error ? <div className="inline-error">{error}</div> : null}
           </section>
 
           <ModelSettingsPanel
@@ -674,10 +691,11 @@ function App() {
           </section>
 
           <section className="chat-panel">
-            <div className="panel-title">Summary</div>
+            <div className="panel-title">Inspector</div>
             <div className="summary-stack">
               <SummaryDock
                 node={selectedNode}
+                graph={graph}
                 state={selectedSummaryState}
                 settings={modelSettings}
                 programCount={programNodes.length}
@@ -706,12 +724,13 @@ function App() {
                 error={chatError}
                 onOpenCitation={jumpToCitation}
               />
-              <RelationshipDetails status={status} error={error} selectedEdge={selectedEdge} graph={graph} />
+              <RelationshipDetails selectedEdge={selectedEdge} graph={graph} />
             </div>
             <div className="chat-input" aria-label="Ask a question">
               <input
                 type="text"
                 aria-label="Ask about the codebase"
+                placeholder="Ask what depends on CUSTOMER-ID..."
                 value={chatQuestion}
                 onChange={(event) => setChatQuestion(event.currentTarget.value)}
                 onKeyDown={(event) => {
@@ -777,7 +796,7 @@ function ModelSettingsPanel({
 
   return (
     <section className="pane-block model-settings">
-      <h2>Brain</h2>
+      <h2>AI</h2>
       <label className="form-row">
         <span>Provider</span>
         <select
@@ -851,6 +870,7 @@ function ModelSettingsPanel({
 
 function SummaryDock({
   node,
+  graph,
   state,
   settings,
   programCount,
@@ -859,6 +879,7 @@ function SummaryDock({
   onGenerateAll,
 }: {
   node: GraphNode | null;
+  graph: GraphDocument | null;
   state?: SummaryState;
   settings: ModelSettings;
   programCount: number;
@@ -876,7 +897,7 @@ function SummaryDock({
           </span>
         </div>
         <button type="button" onClick={onGenerateSelected} disabled={!node?.file || state?.status === "running"}>
-          {state?.status === "running" ? "Generating" : "Summarize"}
+          {state?.status === "running" ? "Generating" : "AI Summary"}
         </button>
       </div>
       <div className="summary-output">
@@ -884,13 +905,15 @@ function SummaryDock({
           <p>{state.summary.text}</p>
         ) : state?.status === "error" ? (
           <p className="error-text">{state.error}</p>
+        ) : node && graph ? (
+          <p>{nodeGraphOverview(node, graph)}</p>
         ) : (
-          <p>{node?.file ? "No summary yet." : "Select a source-backed symbol."}</p>
+          <p>Select a graph node to inspect its source, relationships, and graph-derived summary.</p>
         )}
       </div>
       <div className="summary-meta">
         <button type="button" onClick={onGenerateAll} disabled={!programCount || state?.status === "running"}>
-          Summarize Programs
+          AI Summaries
         </button>
         <span>{bulkStatus || `${programCount} source programs`}</span>
       </div>
@@ -933,7 +956,7 @@ function ChatAnswerPanel({
           </div>
         </>
       ) : (
-        <p>Ask where a symbol happens or what depends on it.</p>
+        <p>Ask where a symbol happens, what depends on it, or where data flows. Graph questions work without AI.</p>
       )}
     </section>
   );
@@ -980,7 +1003,7 @@ function LineageImpactPanel({
         <small>{node.type}</small>
       </div>
       <RelationshipList
-        title="Depends On"
+        title={node.type === "data-item" ? "Flows To" : "Depends On"}
         empty="No outgoing dependencies."
         edges={relationships.dependencies}
         graph={graph}
@@ -990,7 +1013,7 @@ function LineageImpactPanel({
         onOpenEdge={onOpenEdge}
       />
       <RelationshipList
-        title="Used By"
+        title={node.type === "data-item" ? "Defined / Used By" : "Used By"}
         empty="No incoming dependents."
         edges={relationships.dependents}
         graph={graph}
@@ -1067,27 +1090,21 @@ function RelationshipList({
 }
 
 function RelationshipDetails({
-  status,
-  error,
   selectedEdge,
   graph,
 }: {
-  status: Status;
-  error: string;
   selectedEdge: GraphEdge | null;
   graph: GraphDocument | null;
 }) {
   return (
     <section className="relationship-card">
       <div className="relationship-title">Relationship</div>
-      {status === "error" ? (
-        <p className="error-text">{error}</p>
-      ) : selectedEdge && graph ? (
+      {selectedEdge && graph ? (
         <EdgeExplanation edge={selectedEdge} graph={graph} />
       ) : graph?.meta.parseErrors.length ? (
         <ParseErrorSummary graph={graph} />
       ) : (
-        <p>{graph ? "No edge selected." : "Open a folder to inspect relationships."}</p>
+        <p>{graph ? "Select a relationship to see its cited source line." : "Open a folder to inspect relationships."}</p>
       )}
     </section>
   );
@@ -1154,7 +1171,7 @@ function canUseTauri() {
 }
 
 function sourceBaseForGraphUrl(graphUrl: string) {
-  return graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source" : "";
+  return graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source.json" : "";
 }
 
 async function providerKeyForModel(settings: ModelSettings) {
@@ -1233,6 +1250,15 @@ async function readSourceExcerpt(
 }
 
 async function fetchSourceText(sourceBase: string, file: string) {
+  if (sourceBase.endsWith(".json")) {
+    const bundle = await fetchSourceBundle(sourceBase);
+    const text = bundle[file];
+    if (text == null) {
+      throw new Error(`Source file ${file} is not available in this browser demo.`);
+    }
+    return text;
+  }
+
   const base = sourceBase.replace(/\/$/, "");
   const path = file
     .split("/")
@@ -1246,6 +1272,20 @@ async function fetchSourceText(sourceBase: string, file: string) {
   return response.text();
 }
 
+const sourceBundleCache = new Map<string, Promise<Record<string, string>>>();
+
+function fetchSourceBundle(sourceBase: string) {
+  let bundle = sourceBundleCache.get(sourceBase);
+  if (!bundle) {
+    bundle = fetch(sourceBase).then(async (response) => {
+      if (!response.ok) throw new Error(`Source bundle ${sourceBase} is not available.`);
+      return (await response.json()) as Record<string, string>;
+    });
+    sourceBundleCache.set(sourceBase, bundle);
+  }
+  return bundle;
+}
+
 function friendlyModelError(err: unknown, settings: ModelSettings) {
   const message = err instanceof Error ? err.message : String(err);
   if (message === "Failed to fetch" && settings.provider === "ollama") {
@@ -1255,6 +1295,90 @@ function friendlyModelError(err: unknown, settings: ModelSettings) {
     return `Could not reach ${PROVIDER_LABELS[settings.provider]}. Check the provider settings and try again.`;
   }
   return message;
+}
+
+function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
+  const incoming = graph.edges.filter((edge) => edge.to === node.id);
+  const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+  const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
+  const location = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+  const parts = [
+    `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}.`,
+    `Source: ${location}.`,
+    `${incoming.length} incoming and ${outgoing.length} outgoing relationships are recorded.`,
+  ];
+  if (lineage.length) {
+    parts.push(`${lineage.length} lineage relationship${lineage.length === 1 ? " is" : "s are"} available for reads, writes, moves, queries, links, or runtime wiring.`);
+  }
+  return parts.join(" ");
+}
+
+function graphAnswerFallback(
+  graph: GraphDocument,
+  question: string,
+  context: RetrievedContext,
+  err?: unknown,
+  settings?: ModelSettings,
+) {
+  const modelNote = err && settings ? friendlyModelError(err, settings) : "";
+  const matched = context.focusNodes.slice(0, 3);
+  const matchedIds = new Set(matched.map((node) => node.id));
+  const relevantEdges = context.edges
+    .filter((edge) => matchedIds.has(edge.from) || matchedIds.has(edge.to))
+    .slice(0, 8);
+
+  if (!matched.length) {
+    return {
+      text: [
+        "I could not match that question to a symbol in the graph.",
+        ...(modelNote ? ["", `Model note: ${modelNote}`] : []),
+      ].join("\n"),
+      citations: context.citations,
+    };
+  }
+
+  const lines = [
+    "Graph answer, no model required:",
+    `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
+  ];
+
+  if (relevantEdges.length) {
+    lines.push("", "Relevant relationships:");
+    for (const edge of relevantEdges) {
+      const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
+      lines.push(`- ${edgeLabel(edge, graph)}${site}`);
+    }
+  } else {
+    lines.push("", "I did not find direct relationships for the matched symbol.");
+  }
+
+  if (question.toLocaleLowerCase().includes("depend")) {
+    const incoming = relevantEdges.filter((edge) => matchedIds.has(edge.to));
+    const outgoing = relevantEdges.filter((edge) => matchedIds.has(edge.from));
+    lines.push(
+      "",
+      `Upstream or used by: ${incoming.length ? incoming.map((edge) => graph.nodes.find((node) => node.id === edge.from)?.name ?? edge.from).join(", ") : "none recorded"}.`,
+      `Downstream impact: ${outgoing.length ? outgoing.map((edge) => graph.nodes.find((node) => node.id === edge.to)?.name ?? edge.to).join(", ") : "none recorded"}.`,
+    );
+  }
+
+  if (modelNote) lines.push("", `Model note: ${modelNote}`);
+
+  return {
+    text: lines.join("\n"),
+    citations: context.citations,
+  };
+}
+
+function isGraphQuestion(question: string) {
+  return /\b(depend|impact|where|happen|flow|used by|uses|read|write|move|call|copy|query|link|xctl|dataset|table|file)\b/i.test(
+    question,
+  );
+}
+
+function formatMatchedNode(node: GraphNode) {
+  const location = node.file ? ` at ${node.file}:${node.lines?.[0] ?? 1}` : "";
+  return `${node.name} (${node.type})${location}`;
 }
 
 function firstFocusableNode(graph: GraphDocument) {

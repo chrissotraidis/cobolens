@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -9,6 +9,7 @@ const analyzer = resolve(repoRoot, "sidecar", "cobolens-analyze", "target", "deb
 const fixtureRoot = resolve(repoRoot, "fixtures", "m6-bakeoff");
 const out = resolve(repoRoot, "public", "m6-bakeoff-graph.json");
 const sourceOut = resolve(repoRoot, "public", "m6-bakeoff-source");
+const sourceBundleOut = resolve(repoRoot, "public", "m6-bakeoff-source.json");
 
 await mkdir(dirname(out), { recursive: true });
 await rm(sourceOut, { recursive: true, force: true });
@@ -18,10 +19,23 @@ await Promise.all(
     cp(resolve(fixtureRoot, directory), resolve(sourceOut, directory), { recursive: true }),
   ),
 );
+await writeFile(sourceBundleOut, JSON.stringify(await sourceBundle(), null, 2));
 
 const code = await runAnalyzer();
 if (code !== 0) {
   process.exit(code);
+}
+
+async function sourceBundle() {
+  const files = [
+    "copybook/CUSTOMER.cpy",
+    "copybook/REPORT.cpy",
+    "jcl/DAILYLN.jcl",
+    "src/LINEAGE.cbl",
+  ];
+  return Object.fromEntries(
+    await Promise.all(files.map(async (file) => [file, await readFile(resolve(fixtureRoot, file), "utf8")])),
+  );
 }
 
 console.log(`wrote ${out}`);

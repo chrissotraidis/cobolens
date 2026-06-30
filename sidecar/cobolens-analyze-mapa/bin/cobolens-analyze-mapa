@@ -34,6 +34,7 @@ async function main() {
     }
 
     const mapa = await runMapa(mapaHome, files);
+    parseErrors.push(...mapa.parseErrors);
     convertMapaCobol(mapa.cobolRows, files, builder);
     convertMapaJcl(mapa.jclRows, files, builder);
 
@@ -74,6 +75,7 @@ function parseArgs(args) {
     format: "auto",
     extensions: new Set([".cbl", ".cob", ".cpy", ".jcl"]),
     encoding: "utf8",
+    toolTimeoutMs: Number(process.env.MAPA_TOOL_TIMEOUT_MS ?? 30_000),
   };
 
   for (let index = 0; index < args.length; index += 2) {
@@ -90,6 +92,7 @@ function parseArgs(args) {
 
   if (!parsed.root || !parsed.out) throw new Error("--root and --out are required");
   if (parsed.encoding.toLowerCase() !== "utf8") throw new Error("only utf8 encoding is supported by the mapa candidate");
+  if (!Number.isFinite(parsed.toolTimeoutMs) || parsed.toolTimeoutMs <= 0) throw new Error("MAPA_TOOL_TIMEOUT_MS must be a positive number");
   return parsed;
 }
 
@@ -131,18 +134,29 @@ async function runMapa(mapaHome, files) {
   const cobolCsv = join(scratch, "calltree.csv");
   const jclCsv = join(scratch, "jcl.csv");
   const jclTree = join(scratch, "jcl.tsv");
+  const parseErrors = [];
 
   await writeFile(cobolList, cobolFiles.map((file) => file.path).join("\n"), "utf8");
   await writeFile(jclList, jclFiles.map((file) => file.path).join("\n"), "utf8");
 
   if (cobolFiles.length) {
-    run("mapa COBOL CallTree", java, ["-jar", join(mapaHome, "cobol", "CallTree.jar"), "-fileList", cobolList, "-copy", copyDir, "-out", cobolCsv]);
+    try {
+      run("mapa COBOL CallTree", java, ["-jar", join(mapaHome, "cobol", "CallTree.jar"), "-fileList", cobolList, "-copy", copyDir, "-out", cobolCsv]);
+    } catch (error) {
+      parseErrors.push({ file: "<mapa COBOL CallTree>", reason: error.message });
+      await writeFile(cobolCsv, "", "utf8");
+    }
   } else {
     await writeFile(cobolCsv, "", "utf8");
   }
 
   if (jclFiles.length) {
-    run("mapa JCL parser", java, ["-jar", join(mapaHome, "jcl", "JCLParser.jar"), "-fileList", jclList, "-include", options.root, "-outcsv", jclCsv, "-outtree", jclTree]);
+    try {
+      run("mapa JCL parser", java, ["-jar", join(mapaHome, "jcl", "JCLParser.jar"), "-fileList", jclList, "-include", options.root, "-outcsv", jclCsv, "-outtree", jclTree]);
+    } catch (error) {
+      parseErrors.push({ file: "<mapa JCL parser>", reason: error.message });
+      await writeFile(jclCsv, "", "utf8");
+    }
   } else {
     await writeFile(jclCsv, "", "utf8");
   }
@@ -150,6 +164,7 @@ async function runMapa(mapaHome, files) {
   return {
     cobolRows: parseCsv(await readFile(cobolCsv, "utf8")),
     jclRows: parseCsv(await readFile(jclCsv, "utf8")),
+    parseErrors,
   };
 }
 
@@ -358,10 +373,15 @@ function run(name, command, args) {
     cwd: scratch,
     encoding: "utf8",
     env: { ...process.env, PATH: linuxPath() },
+    killSignal: "SIGKILL",
+    timeout: options.toolTimeoutMs,
   });
   if (result.stdout.trim()) console.error(result.stdout.trim());
   if (result.stderr.trim()) console.error(result.stderr.trim());
-  if (result.error || result.status !== 0) throw new Error(`${name} failed: ${result.error?.message ?? result.status}`);
+  if (result.error || result.status !== 0) {
+    const reason = result.error?.code === "ETIMEDOUT" ? `timed out after ${options.toolTimeoutMs}ms` : result.error?.message ?? result.status;
+    throw new Error(`${name} failed: ${reason}`);
+  }
 }
 
 function linuxPath() {

@@ -35,6 +35,8 @@ npm run m6:compare-candidates -- --root /path/to/benchmark --timeout-ms 60000
 
 The default root is `fixtures/m6-bakeoff`. `samples/mini-bank` is only a bundled smoke sample, not the official PRD benchmark suite. `--timeout-ms` caps each candidate so a parser hang is reported as a failed candidate instead of blocking the comparison run.
 
+The mapa candidate also has an internal per-jar timeout. Set `MAPA_TOOL_TIMEOUT_MS=60000` to tune it; the default is 30000ms. When an upstream mapa jar times out, the candidate records a parse error and still emits the graph contract using lexical and any successful JCL output.
+
 Check packaging readiness with:
 
 ```sh

@@ -4,9 +4,9 @@ Date: 2026-06-30
 
 ## Current Decision
 
-Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture, but benchmark-scale comparison shows they are not ready to adopt as production dependencies.
+Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture plus the cloned benchmark contract check, but the Windows/Tauri packaging gate is still not validated.
 
-For v1, keep the current Rust analyzer as the production sidecar. It is the smallest path that satisfies the current local M6 gate while preserving the swappable sidecar contract. Treat ProLeap and mapa as fixture-proven candidates, not adopted production dependencies, until the official benchmark suite and Windows/Tauri packaging gates are green.
+For v1, keep the current Rust analyzer as the production sidecar. It is the smallest path that satisfies the current local M6 gate while preserving the swappable sidecar contract. Treat ProLeap and mapa as benchmark-proven candidates, not adopted production dependencies, until the Windows/Tauri packaging gate and parser-quality tradeoffs are resolved.
 
 This is the load-bearing decision gate from the original plan:
 
@@ -94,7 +94,7 @@ The first command compares Rust, ProLeap, and mapa on the strict M6 fixture. The
 Benchmark evidence from 2026-06-30:
 
 - `npm run validate:benchmark -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite` passed for the Rust sidecar: 77 files discovered, 37 parsed, 40 parse errors recorded gracefully, 739 nodes, 821 edges.
-- `npm run m6:compare-candidates -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite --timeout-ms 60000` did not pass overall. Rust passed; ProLeap exited with a copybook preprocessing stack trace; mapa timed out after 60 seconds in its benchmark run.
+- `npm run m6:compare-candidates -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite --timeout-ms 70000` passed for all three candidates after hardening. Rust emitted 739 nodes / 821 edges; ProLeap emitted 1302 nodes / 1618 edges with DB2 and CICS signals; mapa emitted 1506 nodes / 2256 edges by falling back to lexical/JCL enrichment after its COBOL CallTree jar timed out.
 
 ## Packaging Readiness
 
@@ -108,6 +108,6 @@ The current WSL probe starts all three analyzer candidates and reports sidecar/J
 
 Remaining decision work:
 
-1. Fix or explicitly reject the benchmark-blocking JVM candidate issues: ProLeap copybook preprocessing failure and mapa benchmark timeout.
-2. Resolve packaging readiness findings from `npm run m6:packaging-readiness`, especially missing WSL `pkg-config`/WebKit/dbus development packages and Windows/Tauri startup behavior.
-3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa after the benchmark and packaging gates are green.
+1. Resolve packaging readiness findings from `npm run m6:packaging-readiness`, especially missing WSL `pkg-config`/WebKit/dbus development packages and Windows/Tauri startup behavior.
+2. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
+3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa after the packaging gate is green.

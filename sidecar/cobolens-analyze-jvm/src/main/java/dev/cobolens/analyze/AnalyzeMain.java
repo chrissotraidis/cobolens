@@ -26,8 +26,8 @@ public final class AnalyzeMain {
       Options options = Options.parse(args);
       GraphDocument graph = analyze(options);
       writeGraph(graph, options.out);
-    } catch (Exception error) {
-      System.err.println(error.getMessage());
+    } catch (Throwable error) {
+      System.err.println(errorSummary(error));
       System.exit(1);
     }
   }
@@ -51,8 +51,8 @@ public final class AnalyzeMain {
       try {
         parseFile(source, options, builder);
         parsed += 1;
-      } catch (Exception error) {
-        parseErrors.add(new ParseError(source.rel, error.getMessage()));
+      } catch (Throwable error) {
+        parseErrors.add(new ParseError(source.rel, errorSummary(error)));
       }
     }
     System.out.println(GSON.toJson(new Progress("parse", files.size(), files.size())));
@@ -373,6 +373,15 @@ public final class AnalyzeMain {
 
   private static String normalize(String value) {
     return clean(value).toUpperCase(Locale.ROOT);
+  }
+
+  private static String errorSummary(Throwable error) {
+    String message = error.getMessage();
+    String type = error.getClass().getSimpleName();
+    if (message == null || message.isBlank()) {
+      return type;
+    }
+    return type + ": " + message;
   }
 
   private static SourceSite site(SourceFile source, int line) {

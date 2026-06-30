@@ -55,7 +55,10 @@ const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "u
 
 declare global {
   interface Window {
-    __cobolensLoadGraph?: (graph: GraphDocument, root?: string) => void;
+    __TAURI_INTERNALS__?: {
+      invoke?: unknown;
+    };
+    __cobolensLoadGraph?: (graph: GraphDocument, root?: string, sourceBase?: string) => void;
   }
 }
 
@@ -63,6 +66,7 @@ function App() {
   const [status, setStatus] = useState<Status>("idle");
   const [root, setRoot] = useState<string>("");
   const [graph, setGraph] = useState<GraphDocument | null>(null);
+  const [sourceBase, setSourceBase] = useState("");
   const [focusNodeId, setFocusNodeId] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null);
@@ -138,7 +142,7 @@ function App() {
     fetch(graphUrl)
       .then((response) => response.json() as Promise<GraphDocument>)
       .then((loadedGraph) => {
-        if (!cancelled) acceptGraph(loadedGraph, "");
+        if (!cancelled) acceptGraph(loadedGraph, "Demo graph: M6 fixture", sourceBaseForGraphUrl(graphUrl));
       })
       .catch((err) => {
         if (!cancelled) {
@@ -155,17 +159,13 @@ function App() {
   useEffect(() => {
     const node = selectedNode;
     const target = sourceFocus ?? (node?.file ? { file: node.file, line: node.lines?.[0] ?? 1, nodeId: node.id } : null);
-    if (!root || !target) {
+    if ((!root && !sourceBase) || !target) {
       setSnippet(null);
       return;
     }
 
     let cancelled = false;
-    invoke<SourceSnippet>("read_source_snippet", {
-      root,
-      file: target.file,
-      line: target.line,
-    })
+    readSourceSnippet(root, sourceBase, target.file, target.line)
       .then((result) => {
         if (!cancelled) setSnippet(result);
       })
@@ -176,7 +176,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [root, selectedNode, sourceFocus]);
+  }, [root, selectedNode, sourceBase, sourceFocus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,6 +184,11 @@ function App() {
     setSettingsMessage("");
     if (!isCloudProvider(modelSettings.provider)) {
       setHasProviderKey(false);
+      return;
+    }
+    if (!canUseTauri()) {
+      setHasProviderKey(false);
+      setSettingsMessage("Keychain is available in the desktop app.");
       return;
     }
 
@@ -201,6 +206,12 @@ function App() {
   }, [modelSettings.provider]);
 
   async function chooseFolder() {
+    if (!canUseTauri()) {
+      setError("Open Folder is available in the desktop app. Use Open Sample to explore the browser demo.");
+      setStatus("error");
+      return;
+    }
+
     const selected = await open({
       directory: true,
       multiple: false,
@@ -209,6 +220,7 @@ function App() {
     if (typeof selected !== "string") return;
 
     setRoot(selected);
+    setSourceBase("");
     setGraph(null);
     setSnippet(null);
     setSelectedEdge(null);
@@ -228,7 +240,24 @@ function App() {
   }
 
   async function openSample() {
+    if (!canUseTauri()) {
+      setError("");
+      setStatus("running");
+
+      try {
+        const response = await fetch("/m6-bakeoff-graph.json");
+        if (!response.ok) throw new Error(`Could not load browser demo graph (${response.status}).`);
+        const result = (await response.json()) as GraphDocument;
+        acceptGraph(result, "Demo graph: M6 fixture", "/m6-bakeoff-source");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setStatus("error");
+      }
+      return;
+    }
+
     setRoot("Bundled sample: Mini Bank");
+    setSourceBase("");
     setGraph(null);
     setSnippet(null);
     setSelectedEdge(null);
@@ -245,9 +274,10 @@ function App() {
     }
   }
 
-  function acceptGraph(nextGraph: GraphDocument, nextRoot: string) {
+  function acceptGraph(nextGraph: GraphDocument, nextRoot: string, nextSourceBase = "") {
     const initialFocus = firstFocusableNode(nextGraph);
     setRoot(nextRoot);
+    setSourceBase(nextSourceBase);
     setGraph(nextGraph);
     setFocusNodeId(initialFocus);
     setSelectedNodeId(initialFocus);
@@ -316,6 +346,10 @@ function App() {
 
   async function saveKey() {
     if (!isCloudProvider(modelSettings.provider) || !keyDraft.trim()) return;
+    if (!canUseTauri()) {
+      setSettingsMessage("Keychain is available in the desktop app.");
+      return;
+    }
     try {
       await invoke("save_provider_key", {
         provider: modelSettings.provider,
@@ -331,6 +365,10 @@ function App() {
 
   async function clearKey() {
     if (!isCloudProvider(modelSettings.provider)) return;
+    if (!canUseTauri()) {
+      setSettingsMessage("Keychain is available in the desktop app.");
+      return;
+    }
     try {
       await invoke("clear_provider_key", { provider: modelSettings.provider });
       setHasProviderKey(false);
@@ -363,9 +401,7 @@ function App() {
 
     try {
       const excerpt = await sourceExcerptForNode(node);
-      const apiKey = isCloudProvider(modelSettings.provider)
-        ? await invoke<string>("read_provider_key", { provider: modelSettings.provider })
-        : undefined;
+      const apiKey = await providerKeyForModel(modelSettings);
       const summary = await generateUnitSummary({
         graph,
         node,
@@ -381,24 +417,21 @@ function App() {
     } catch (err) {
       setSummaries((current) => ({
         ...current,
-        [node.id]: { status: "error", error: err instanceof Error ? err.message : String(err) },
+        [node.id]: { status: "error", error: friendlyModelError(err, modelSettings) },
       }));
     }
   }
 
   async function sourceExcerptForNode(node: GraphNode) {
-    if (!root || !node.file) {
+    if (!node.file) {
       throw new Error("Open a codebase from the desktop app before using model features.");
+    }
+    if (!root && !sourceBase) {
+      throw new Error("Open Sample or open a desktop codebase before using model features.");
     }
     const startLine = node.lines?.[0] ?? 1;
     const endLine = node.lines?.[1] ?? startLine;
-    return invoke<SourceExcerpt>("read_source_excerpt", {
-      root,
-      file: node.file,
-      startLine,
-      endLine,
-      maxLines: 220,
-    });
+    return readSourceExcerpt(root, sourceBase, node.file, startLine, endLine, 220);
   }
 
   async function askQuestion() {
@@ -413,9 +446,7 @@ function App() {
         question,
         readExcerpt: sourceExcerptForNode,
       });
-      const apiKey = isCloudProvider(modelSettings.provider)
-        ? await invoke<string>("read_provider_key", { provider: modelSettings.provider })
-        : undefined;
+      const apiKey = await providerKeyForModel(modelSettings);
       const answer = await generateGroundedAnswer({
         question,
         context,
@@ -427,7 +458,7 @@ function App() {
       setChatStatus("ready");
       if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
     } catch (err) {
-      setChatError(err instanceof Error ? err.message : String(err));
+      setChatError(friendlyModelError(err, modelSettings));
       setChatStatus("error");
     }
   }
@@ -456,6 +487,11 @@ function App() {
     setExportStatus("Exporting");
     try {
       const docs = buildDocumentationExport(graph, summaries, focusNodeId);
+      if (!canUseTauri()) {
+        await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+        setExportStatus("Exported Markdown, Mermaid, PNG");
+        return;
+      }
       const prefix = documentationExportPrefix(docs);
       const selected = await open({
         directory: true,
@@ -489,8 +525,8 @@ function App() {
     }
   }
 
-  window.__cobolensLoadGraph = (nextGraph, nextRoot = "") => {
-    acceptGraph(nextGraph, nextRoot);
+  window.__cobolensLoadGraph = (nextGraph, nextRoot = "", nextSourceBase = "") => {
+    acceptGraph(nextGraph, nextRoot, nextSourceBase);
   };
 
   return (
@@ -655,12 +691,13 @@ function App() {
                 onFocusNode={focusOnNode}
                 onOpenEdge={(edge) => {
                   if (!edge.site || !graph) return;
+                  setSelectedEdge(edge);
                   jumpToCitation({
                     file: edge.site.file,
                     line: edge.site.line,
                     label: edgeLabel(edge, graph),
                     nodeId: edge.from,
-                  });
+                  }, true);
                 }}
               />
               <ChatAnswerPanel
@@ -1077,7 +1114,7 @@ function CodeSnippet({ node, snippet }: { node: GraphNode; snippet: SourceSnippe
             ? snippet.lines
                 .map((line) => `${line.number === snippet.highlightLine ? ">" : " "} ${padLine(line.number)} ${line.text}`)
                 .join("\n")
-            : "Source snippet unavailable in this runtime."}
+            : "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."}
         </code>
       </pre>
     </div>
@@ -1110,6 +1147,114 @@ function ParseErrorSummary({ graph }: { graph: GraphDocument }) {
       ))}
     </ul>
   );
+}
+
+function canUseTauri() {
+  return typeof window !== "undefined" && typeof window.__TAURI_INTERNALS__?.invoke === "function";
+}
+
+function sourceBaseForGraphUrl(graphUrl: string) {
+  return graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source" : "";
+}
+
+async function providerKeyForModel(settings: ModelSettings) {
+  if (!isCloudProvider(settings.provider)) return undefined;
+  if (!canUseTauri()) {
+    throw new Error("Cloud API keys are stored in the desktop keychain. Use the desktop app to call cloud providers.");
+  }
+  return invoke<string>("read_provider_key", { provider: settings.provider });
+}
+
+async function readSourceSnippet(root: string, sourceBase: string, file: string, line: number): Promise<SourceSnippet> {
+  if (root && canUseTauri()) {
+    return invoke<SourceSnippet>("read_source_snippet", {
+      root,
+      file,
+      line,
+    });
+  }
+
+  if (!sourceBase) {
+    throw new Error("Source is unavailable for this graph. Open Sample or open the codebase in the desktop app.");
+  }
+
+  const text = await fetchSourceText(sourceBase, file);
+  const lines = text.split(/\r?\n/);
+  const startLine = Math.max(1, line - 6);
+  const endLine = Math.min(lines.length, line + 8);
+  return {
+    file,
+    startLine,
+    highlightLine: line,
+    lines: lines.slice(startLine - 1, endLine).map((sourceLine, index) => ({
+      number: startLine + index,
+      text: sourceLine,
+    })),
+  };
+}
+
+async function readSourceExcerpt(
+  root: string,
+  sourceBase: string,
+  file: string,
+  startLine: number,
+  endLine: number,
+  maxLines: number,
+): Promise<SourceExcerpt> {
+  if (root && canUseTauri()) {
+    return invoke<SourceExcerpt>("read_source_excerpt", {
+      root,
+      file,
+      startLine,
+      endLine,
+      maxLines,
+    });
+  }
+
+  if (!sourceBase) {
+    throw new Error("Source is unavailable for this graph. Open Sample or open the codebase in the desktop app.");
+  }
+
+  const text = await fetchSourceText(sourceBase, file);
+  const lines = text.split(/\r?\n/);
+  const safeStart = Math.max(1, startLine);
+  const safeEnd = Math.min(lines.length, Math.max(safeStart, endLine));
+  const cappedEnd = Math.min(safeEnd, safeStart + maxLines - 1);
+  return {
+    file,
+    startLine: safeStart,
+    endLine: cappedEnd,
+    truncated: cappedEnd < safeEnd,
+    text: lines
+      .slice(safeStart - 1, cappedEnd)
+      .map((sourceLine, index) => `${padLine(safeStart + index)} ${sourceLine}`)
+      .join("\n"),
+  };
+}
+
+async function fetchSourceText(sourceBase: string, file: string) {
+  const base = sourceBase.replace(/\/$/, "");
+  const path = file
+    .split("/")
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  const response = await fetch(`${base}/${path}`);
+  if (!response.ok) {
+    throw new Error(`Source file ${file} is not available in this browser demo.`);
+  }
+  return response.text();
+}
+
+function friendlyModelError(err: unknown, settings: ModelSettings) {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message === "Failed to fetch" && settings.provider === "ollama") {
+    return `Could not reach Ollama at ${settings.baseUrl}. Start Ollama, check the host, or switch providers.`;
+  }
+  if (message === "Failed to fetch") {
+    return `Could not reach ${PROVIDER_LABELS[settings.provider]}. Check the provider settings and try again.`;
+  }
+  return message;
 }
 
 function firstFocusableNode(graph: GraphDocument) {

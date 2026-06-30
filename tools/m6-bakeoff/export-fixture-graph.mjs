@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -8,8 +8,16 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const analyzer = resolve(repoRoot, "sidecar", "cobolens-analyze", "target", "debug", process.platform === "win32" ? "cobolens-analyze.exe" : "cobolens-analyze");
 const fixtureRoot = resolve(repoRoot, "fixtures", "m6-bakeoff");
 const out = resolve(repoRoot, "public", "m6-bakeoff-graph.json");
+const sourceOut = resolve(repoRoot, "public", "m6-bakeoff-source");
 
 await mkdir(dirname(out), { recursive: true });
+await rm(sourceOut, { recursive: true, force: true });
+await mkdir(sourceOut, { recursive: true });
+await Promise.all(
+  ["copybook", "jcl", "src"].map((directory) =>
+    cp(resolve(fixtureRoot, directory), resolve(sourceOut, directory), { recursive: true }),
+  ),
+);
 
 const code = await runAnalyzer();
 if (code !== 0) {

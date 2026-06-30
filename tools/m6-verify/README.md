@@ -7,6 +7,7 @@ This runner verifies the completed M6 surface:
 - frontend production build,
 - graph-grounded documentation export smoke,
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
+- model privacy smoke for local/cloud mode invariants,
 - Rust sidecar `cargo check`,
 - Tauri shell `cargo test`.
 

@@ -31,6 +31,11 @@ const checks = [
     args: ["tools/m6-verify/graph-ask-smoke.mjs"],
   },
   {
+    name: "model privacy smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/model-privacy-smoke.mjs"],
+  },
+  {
     name: "Rust sidecar check",
     command: "cargo",
     args: ["check"],

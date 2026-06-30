@@ -102,6 +102,10 @@ function App() {
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
   const selectedNode = nodeById.get(selectedNodeId) ?? focusedNode;
+  const breadcrumbNodeIds = useMemo(
+    () => history.filter((nodeId) => nodeId !== focusNodeId && nodeById.has(nodeId)).slice(-2),
+    [focusNodeId, history, nodeById],
+  );
   const selectedSummaryState = selectedNode ? summaries[selectedNode.id] : undefined;
   const programNodes = useMemo(
     () => graph?.nodes.filter((node) => node.type === "program" && !node.external && node.file) ?? [],
@@ -355,7 +359,19 @@ function App() {
 
   function goHome() {
     if (!graph) return;
-    focusOnNode(firstFocusableNode(graph));
+    const homeNodeId = firstFocusableNode(graph);
+    if (!homeNodeId) return;
+    setFocusNodeId(homeNodeId);
+    setSelectedNodeId(homeNodeId);
+    setSelectedEdge(null);
+    setSourceFocus(null);
+    setExpandedNodeIds(new Set());
+    setQuery("");
+    setChatQuestion("");
+    setChatAnswer(null);
+    setChatStatus("idle");
+    setChatError("");
+    setHistory([homeNodeId]);
   }
 
   function chooseProvider(provider: ModelProvider) {
@@ -612,11 +628,16 @@ function App() {
           <button type="button" onClick={goHome} disabled={!graph}>
             Home
           </button>
-          {history.slice(-3).map((nodeId) => (
+          {breadcrumbNodeIds.map((nodeId) => (
             <button key={nodeId} type="button" onClick={() => focusOnNode(nodeId)}>
               {nodeById.get(nodeId)?.name ?? nodeId}
             </button>
           ))}
+          {focusedNode ? (
+            <span className="current-crumb" aria-current="page" title={focusedNode.name}>
+              {focusedNode.name}
+            </span>
+          ) : null}
         </nav>
 
         <div className={`mode-indicator ${modelSettings.privacyMode}`} aria-label="Privacy mode">

@@ -132,6 +132,21 @@ select:focus {
   white-space: nowrap;
 }
 
+.current-crumb {
+  display: inline-flex;
+  align-items: center;
+  max-width: 150px;
+  height: 30px;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 1px solid rgba(90, 167, 161, 0.28);
+  border-radius: 6px;
+  color: #b8f0dc;
+  background: rgba(90, 167, 161, 0.08);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mode-indicator {
   height: 28px;
   padding: 0 10px;

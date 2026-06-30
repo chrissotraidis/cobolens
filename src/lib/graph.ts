@@ -84,6 +84,14 @@ export function edgeLabel(edge: GraphEdge, graph: GraphDocument) {
   return `${from} ${edge.type} ${to}`;
 }
 
+export function potentiallyUnreferencedSourceUnits(graph: GraphDocument) {
+  const incomingNodeIds = new Set(graph.edges.map((edge) => edge.to));
+  return graph.nodes
+    .filter((node) => isSourceUnit(node))
+    .filter((node) => !incomingNodeIds.has(node.id))
+    .sort((left, right) => sourceUnitSortKey(left).localeCompare(sourceUnitSortKey(right)));
+}
+
 export function matchesFuzzy(value: string, query: string) {
   const text = value.toLocaleLowerCase();
   const needle = query.trim().toLocaleLowerCase();
@@ -96,4 +104,12 @@ export function matchesFuzzy(value: string, query: string) {
     cursor += 1;
   }
   return true;
+}
+
+function isSourceUnit(node: GraphNode) {
+  return Boolean(node.file && !node.external && ["program", "copybook", "paragraph"].includes(node.type));
+}
+
+function sourceUnitSortKey(node: GraphNode) {
+  return `${node.type}:${node.name}:${node.file ?? ""}`;
 }

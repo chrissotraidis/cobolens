@@ -19,6 +19,7 @@ import {
   edgeLabel,
   matchesFuzzy,
   nodeColor,
+  potentiallyUnreferencedSourceUnits,
 } from "./lib/graph";
 import {
   DEFAULT_MODELS,
@@ -195,6 +196,10 @@ function App() {
       .slice(0, 12);
   }, [graph, query]);
   const codebaseGroups = useMemo(() => sourceTreeGroups(graph), [graph]);
+  const unreferencedSourceUnits = useMemo(
+    () => (graph ? potentiallyUnreferencedSourceUnits(graph).slice(0, 8) : []),
+    [graph],
+  );
   const focusExpansion = useMemo(
     () => graphExpansionState(graph, focusNodeId, hiddenNodeTypes),
     [focusNodeId, graph, hiddenNodeTypes],
@@ -956,6 +961,12 @@ function App() {
 
           <ParseHealth graph={graph} />
 
+          <GraphHints
+            graph={graph}
+            unreferencedSourceUnits={unreferencedSourceUnits}
+            onFocusNode={focusOnNode}
+          />
+
           <ModelSettingsPanel
             settings={modelSettings}
             keyDraft={keyDraft}
@@ -1206,6 +1217,46 @@ function ParseHealth({ graph }: { graph: GraphDocument | null }) {
         </ul>
       ) : (
         <div className="settings-footnote">Open a folder or sample to see parse coverage.</div>
+      )}
+    </section>
+  );
+}
+
+function GraphHints({
+  graph,
+  unreferencedSourceUnits,
+  onFocusNode,
+}: {
+  graph: GraphDocument | null;
+  unreferencedSourceUnits: GraphNode[];
+  onFocusNode: (nodeId: string) => void;
+}) {
+  return (
+    <section className="pane-block graph-hints" aria-label="Graph hints">
+      <h2>Graph Hints</h2>
+      {graph ? (
+        <>
+          <div className="metric-row">
+            <span>Potentially unreferenced</span>
+            <strong>{unreferencedSourceUnits.length}</strong>
+          </div>
+          {unreferencedSourceUnits.length ? (
+            <div className="hint-list">
+              {unreferencedSourceUnits.map((node) => (
+                <button key={node.id} type="button" onClick={() => onFocusNode(node.id)}>
+                  <span className="swatch" style={{ background: nodeColor(node.type) }} />
+                  <span title={node.name}>{node.name}</span>
+                  <small>{node.type}</small>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="settings-footnote ready">No unreferenced source units recorded.</div>
+          )}
+          <div className="settings-footnote">Based on recorded incoming graph edges; external schedulers may still call entry programs.</div>
+        </>
+      ) : (
+        <div className="empty-copy">Open a folder or sample to see graph hints.</div>
       )}
     </section>
   );

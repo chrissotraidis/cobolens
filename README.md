@@ -45,6 +45,8 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   `uses-dd`, `assigned-to`, and `executes`.
 - Trace COBOL `SELECT ... ASSIGN TO` logical files through JCL DD names to
   physical datasets, with cited source lines.
+- Flag source units with no recorded incoming graph edges as potentially
+  unreferenced, both in the UI and exported Markdown.
 - Generate the M6 fixture graph and use the app to answer:
   "what depends on this?" and "where does this data flow?"
 - Preflight local/cloud model readiness for AI Ask and summaries, with Stop

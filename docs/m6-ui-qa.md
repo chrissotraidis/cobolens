@@ -64,6 +64,9 @@ Parse-health checks:
 - Parse Health also shows the analyzer's lightweight dialect/features guess,
   such as fixed/free-format COBOL, copybooks, JCL, `EXEC SQL`, `EXEC CICS`, and
   compiler directives when those signals are present.
+- Graph Hints reports source-backed programs, copybooks, and paragraphs with no
+  recorded incoming graph edges as potentially unreferenced. The wording stays
+  cautious because external schedulers may still call entry programs.
 - Loading a minimal warning graph through the `?graph=` URL shows `1/3 parsed`
   and lists file/reason rows such as `bad/UNSUPPORTED.cbl` with
   `unsupported preprocessor directive near line 12`.

@@ -42,6 +42,20 @@ try {
   const { buildDocumentationExport } = require(resolve(tempRoot, "export", "docs.js"));
   const graph = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-graph.json"), "utf8"));
   const docs = buildDocumentationExport(graph, {}, "prog:LINEAGE");
+  const orphanGraph = {
+    ...graph,
+    nodes: [
+      ...graph.nodes,
+      {
+        id: "prog:ORPHAN",
+        type: "program",
+        name: "ORPHAN",
+        file: "src/ORPHAN.cbl",
+        lines: [1, 8],
+      },
+    ],
+  };
+  const orphanDocs = buildDocumentationExport(orphanGraph, {}, "prog:ORPHAN");
   const assertions = [
     ["graph-derived summaries", docs.markdown.includes("Summary: graph-derived, no model required")],
     ["source ranges are exported", docs.markdown.includes("- Source: src/LINEAGE.cbl:1-47")],
@@ -51,6 +65,8 @@ try {
     ["navigable table of contents", docs.markdown.includes("## Table of Contents")],
     ["links to focused program summary", docs.markdown.includes("- [LINEAGE summary](#summary-lineage)")],
     ["links to lineage section", docs.markdown.includes("- [CUSTOMER-ID lineage](#lineage-customer-id)")],
+    ["graph hints section", docs.markdown.includes("## Graph Hints")],
+    ["unreferenced source units are exported", orphanDocs.markdown.includes("- ORPHAN (program) at src/ORPHAN.cbl:1-8")],
     ["mermaid diagram", docs.mermaid.includes("flowchart LR")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);

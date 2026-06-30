@@ -282,6 +282,36 @@ select:focus {
   color: #e7ebef;
 }
 
+.graph-hints {
+  gap: 9px;
+}
+
+.hint-list {
+  display: grid;
+  gap: 5px;
+}
+
+.hint-list button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.hint-list span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint-list small {
+  color: #7d8996;
+  font-size: 11px;
+}
+
 .search-results {
   display: grid;
   gap: 6px;

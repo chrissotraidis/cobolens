@@ -1,4 +1,4 @@
-import { edgeLabel } from "../lib/graph";
+import { edgeLabel, potentiallyUnreferencedSourceUnits } from "../lib/graph";
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import type { UnitSummary } from "../model/summaries";
 
@@ -50,6 +50,16 @@ export function buildDocumentationExport(
   const parseErrors = graph.meta.parseErrors.length
     ? graph.meta.parseErrors.map((error) => `- ${error.file}: ${error.reason}`).join("\n")
     : "- None";
+  const unreferencedSourceUnits = potentiallyUnreferencedSourceUnits(graph);
+  const graphHints = unreferencedSourceUnits.length
+    ? [
+        "Potentially unreferenced source units (no recorded incoming graph edges):",
+        "",
+        ...unreferencedSourceUnits
+          .slice(0, 40)
+          .map((node) => `- ${node.name} (${node.type}) at ${sourceLocation(node)}`),
+      ].join("\n")
+    : "No unreferenced source units were recorded.";
   const summaryNodes = graph.nodes
     .filter((node) => node.type === "program" || node.type === "copybook" || node.type === "paragraph")
     .slice(0, 120);
@@ -66,6 +76,7 @@ export function buildDocumentationExport(
       .map((node) => `  - [${node.name} diagram](#${markdownAnchor(`Diagram: ${node.name}`)})`),
     "- [Lineage and Impact](#lineage-and-impact)",
     ...lineageNodes.slice(0, 12).map((node) => `  - [${node.name} lineage](#${markdownAnchor(`Lineage: ${node.name}`)})`),
+    "- [Graph Hints](#graph-hints)",
     "- [Summaries](#summaries)",
     ...summaryNodes.slice(0, 12).map((node) => `  - [${node.name} summary](#${markdownAnchor(`Summary: ${node.name}`)})`),
     "- [Parse Errors](#parse-errors)",
@@ -129,6 +140,10 @@ export function buildDocumentationExport(
       "## Lineage and Impact",
       "",
       lineageRows || "No lineage-backed nodes were indexed.",
+      "",
+      "## Graph Hints",
+      "",
+      graphHints,
       "",
       "## Summaries",
       "",

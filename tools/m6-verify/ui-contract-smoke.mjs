@@ -72,6 +72,15 @@ const checks = [
     "Parse health surfaces analyzer dialect metadata",
     includesAll(appSource, ["Dialect: {graph.meta.dialectGuess || \"unknown\"}", "function ParseHealth"]),
   ],
+  [
+    "Graph hints expose potentially unreferenced source units",
+    includesAll(appSource, [
+      "function GraphHints",
+      'aria-label="Graph hints"',
+      "Potentially unreferenced",
+      "potentiallyUnreferencedSourceUnits",
+    ]) && includesAll(appCss, [".graph-hints", ".hint-list button"]),
+  ],
 ];
 
 const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);

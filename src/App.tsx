@@ -788,6 +788,7 @@ function App() {
                 bulkStatus={bulkSummaryStatus}
                 onGenerateSelected={generateSelectedSummary}
                 onGenerateAll={generateAllProgramSummaries}
+                onOpenCitation={jumpToCitation}
               />
               <LineageImpactPanel
                 node={selectedNode}
@@ -968,6 +969,7 @@ function SummaryDock({
   bulkStatus,
   onGenerateSelected,
   onGenerateAll,
+  onOpenCitation,
 }: {
   node: GraphNode | null;
   graph: GraphDocument | null;
@@ -977,8 +979,10 @@ function SummaryDock({
   bulkStatus: string;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
+  onOpenCitation: (citation: Citation) => void;
 }) {
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
+  const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
 
   return (
     <section className="summary-card">
@@ -1000,7 +1004,10 @@ function SummaryDock({
       </div>
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
-          <p>{state.summary.text}</p>
+          <>
+            <p>{state.summary.text}</p>
+            <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
+          </>
         ) : state?.status === "running" ? (
           <ProgressNote
             label="Generating grounded summary"
@@ -1010,7 +1017,10 @@ function SummaryDock({
         ) : state?.status === "error" ? (
           <p className="error-text">{state.error}</p>
         ) : node && graph ? (
-          <p>{nodeGraphOverview(node, graph)}</p>
+          <>
+            <p>{nodeGraphOverview(node, graph)}</p>
+            <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
+          </>
         ) : (
           <p>Select a graph node to inspect its source, relationships, and graph-derived summary.</p>
         )}
@@ -1079,22 +1089,57 @@ function ChatAnswerPanel({
         <>
           <div className="answer-question">{answer.question}</div>
           <p>{answer.text}</p>
-          <div className="citation-list">
-            {answer.citations.slice(0, 8).map((citation) => (
-              <button
-                key={`${citation.file}:${citation.line}:${citation.label}`}
-                type="button"
-                onClick={() => onOpenCitation(citation)}
-              >
-                {citation.file}:{citation.line}
-              </button>
-            ))}
-          </div>
+          <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
         </>
       ) : (
         <p>Ask where a symbol happens, what depends on it, or where data flows. Graph questions answer instantly without a model.</p>
       )}
     </section>
+  );
+}
+
+function EvidenceList({
+  citations,
+  onOpenCitation,
+}: {
+  citations: Citation[];
+  onOpenCitation: (citation: Citation) => void;
+}) {
+  if (!citations.length) return null;
+
+  return (
+    <div className="evidence-block">
+      <span>Evidence</span>
+      <CitationList citations={citations} onOpenCitation={onOpenCitation} />
+    </div>
+  );
+}
+
+function CitationList({
+  citations,
+  onOpenCitation,
+}: {
+  citations: Citation[];
+  onOpenCitation: (citation: Citation) => void;
+}) {
+  if (!citations.length) return null;
+
+  return (
+    <div className="citation-list">
+      {citations.map((citation) => (
+        <button
+          key={`${citation.file}:${citation.line}:${citation.label}`}
+          type="button"
+          onClick={() => onOpenCitation(citation)}
+          title={`${citation.label} - ${citation.file}:${citation.line}`}
+        >
+          <span className="citation-label">{citation.label}</span>
+          <span className="citation-site">
+            {citation.file}:{citation.line}
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -1152,6 +1197,42 @@ function aiProgressDetail(settings: ModelSettings, elapsedSeconds: number) {
   return elapsedSeconds >= 8
     ? `Waiting on ${PROVIDER_LABELS[settings.provider]}; only the retrieved code slice was sent.`
     : `Using ${PROVIDER_LABELS[settings.provider]} with cited graph context.`;
+}
+
+function summaryEvidenceCitations(node: GraphNode, graph: GraphDocument) {
+  const citations: Citation[] = [];
+  if (node.file) {
+    citations.push({
+      file: node.file,
+      line: node.lines?.[0] ?? 1,
+      label: `${node.name} source`,
+      nodeId: node.id,
+    });
+  }
+
+  for (const edge of graph.edges) {
+    if (edge.from !== node.id && edge.to !== node.id) continue;
+    if (!edge.site) continue;
+    citations.push({
+      file: edge.site.file,
+      line: edge.site.line,
+      label: edgeLabel(edge, graph),
+      nodeId: edge.from,
+    });
+    if (citations.length >= 7) break;
+  }
+
+  return dedupeCitations(citations).slice(0, 6);
+}
+
+function dedupeCitations(citations: Citation[]) {
+  const seen = new Set<string>();
+  return citations.filter((citation) => {
+    const key = `${citation.file}:${citation.line}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function LineageImpactPanel({

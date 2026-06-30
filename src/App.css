@@ -677,6 +677,10 @@ pre {
   line-height: 1.55;
 }
 
+.summary-output > * + * {
+  margin-top: 10px;
+}
+
 .summary-output p,
 .answer-card p,
 .relationship-card p {
@@ -883,17 +887,46 @@ pre {
 }
 
 .citation-list button {
+  display: grid;
+  gap: 1px;
   max-width: 100%;
-  height: 26px;
-  padding: 0 8px;
+  min-height: 36px;
+  padding: 5px 8px;
   overflow: hidden;
   color: #b8f0dc;
   border-color: rgba(90, 167, 161, 0.36);
   background: rgba(90, 167, 161, 0.1);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
+  text-align: left;
+}
+
+.citation-label,
+.citation-site {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.citation-label {
+  color: #d8eee8;
+  font-size: 12px;
+}
+
+.citation-site {
+  color: #8fb6b0;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+}
+
+.evidence-block {
+  display: grid;
+  gap: 6px;
+}
+
+.evidence-block > span {
+  color: #7d8996;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .summary-meta {

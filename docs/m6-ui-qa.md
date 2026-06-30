@@ -49,4 +49,10 @@ Relationship-click check:
   the `Relationship` detail, shows `LINEAGE COPIES CUSTOMER`, and highlights
   `COPY CUSTOMER.` at `src/LINEAGE.cbl:11` in the code pane.
 
+Export check:
+
+- Clicking `Export Docs` in the browser demo reports the concrete generated
+  artifact names: `cobolens-lineage.md`, `cobolens-lineage.mmd`, and
+  `cobolens-lineage.png`.
+
 This verifies the current UI can answer "what depends on this?" and "where does this data flow?" from the `GraphDocument` alone.

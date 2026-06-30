@@ -10,6 +10,12 @@ export type DocumentationExport = {
   diagramTitle: string;
 };
 
+export type DocumentationExportFiles = {
+  markdown: string;
+  mermaid: string;
+  png: string;
+};
+
 export function buildDocumentationExport(
   graph: GraphDocument,
   summaries: SummaryExportState,
@@ -141,12 +147,18 @@ export async function downloadBuiltDocumentationExport(
   graph: GraphDocument,
   focusNodeId: string,
   docs: DocumentationExport,
-) {
+): Promise<DocumentationExportFiles> {
   const prefix = documentationExportPrefix(docs);
-  downloadBlob(`${prefix}.md`, new Blob([docs.markdown], { type: "text/markdown;charset=utf-8" }));
-  downloadBlob(`${prefix}.mmd`, new Blob([docs.mermaid], { type: "text/plain;charset=utf-8" }));
+  const files = {
+    markdown: `${prefix}.md`,
+    mermaid: `${prefix}.mmd`,
+    png: `${prefix}.png`,
+  };
+  downloadBlob(files.markdown, new Blob([docs.markdown], { type: "text/markdown;charset=utf-8" }));
+  downloadBlob(files.mermaid, new Blob([docs.mermaid], { type: "text/plain;charset=utf-8" }));
   const png = await diagramPngBlob(graph, focusNodeId, docs.diagramTitle);
-  downloadBlob(`${prefix}.png`, png);
+  downloadBlob(files.png, png);
+  return files;
 }
 
 export function documentationExportPrefix(docs: DocumentationExport) {
@@ -208,7 +220,10 @@ function downloadBlob(filename: string, blob: Blob) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
   link.click();
+  link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 

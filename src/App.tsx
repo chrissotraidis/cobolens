@@ -578,8 +578,8 @@ function App() {
     try {
       const docs = buildDocumentationExport(graph, summaries, focusNodeId);
       if (!canUseTauri()) {
-        await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
-        setExportStatus("Exported Markdown, Mermaid, PNG");
+        const files = await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+        setExportStatus(`Downloaded ${Object.values(files).join(", ")}`);
         return;
       }
       const prefix = documentationExportPrefix(docs);
@@ -602,13 +602,13 @@ function App() {
         return;
       }
 
-      await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
-      setExportStatus("Exported Markdown, Mermaid, PNG");
+      const files = await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+      setExportStatus(`Downloaded ${Object.values(files).join(", ")}`);
     } catch {
       try {
         const docs = buildDocumentationExport(graph, summaries, focusNodeId);
-        await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
-        setExportStatus("Exported Markdown, Mermaid, PNG");
+        const files = await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+        setExportStatus(`Downloaded ${Object.values(files).join(", ")}`);
       } catch (fallbackErr) {
         setExportStatus(fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
       }

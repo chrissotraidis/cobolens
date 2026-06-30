@@ -20,8 +20,9 @@ export function graphAnswerFallback(
   const incoming = directEdges.filter((edge) => matchedIds.has(edge.to));
   const outgoing = directEdges.filter((edge) => matchedIds.has(edge.from));
   const intent = graphQuestionIntent(question);
-  const relevantEdges = relevantEdgesForIntent(intent, directEdges, incoming, outgoing).slice(0, 8);
-  const citationEdges = intent === "dependency" ? [...incoming, ...outgoing] : relevantEdges;
+  const dependencyScope = dependencyScopeForQuestion(question, matched[0]);
+  const relevantEdges = relevantEdgesForIntent(intent, dependencyScope, directEdges, incoming, outgoing).slice(0, 8);
+  const includeFallbackCitations = intent === "general";
 
   if (!matched.length) {
     return {
@@ -39,21 +40,25 @@ export function graphAnswerFallback(
   ];
 
   if (relevantEdges.length) {
-    lines.push("", "Relevant relationships:");
+    lines.push("", "Relationships that answer this:");
     for (const edge of relevantEdges) {
       const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
       lines.push(`- ${edgeLabel(edge, graph)}${site}`);
     }
+  } else if (intent === "call") {
+    lines.push("", "I did not find direct call or runtime-transfer relationships for the matched symbol.");
   } else {
     lines.push("", "I did not find direct relationships for the matched symbol.");
   }
 
   if (intent === "dependency") {
-    lines.push(
-      "",
-      `Upstream or used by: ${incoming.length ? incoming.map((edge) => nodeName(graph, edge.from)).join(", ") : "none recorded"}.`,
-      `Downstream impact: ${outgoing.length ? outgoing.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`,
-    );
+    lines.push("");
+    if (dependencyScope !== "outgoing") {
+      lines.push(`Upstream or used by: ${incoming.length ? incoming.map((edge) => nodeName(graph, edge.from)).join(", ") : "none recorded"}.`);
+    }
+    if (dependencyScope !== "incoming") {
+      lines.push(`Downstream impact: ${outgoing.length ? outgoing.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
+    }
   }
 
   if (intent === "call") {
@@ -82,7 +87,7 @@ export function graphAnswerFallback(
 
   return {
     text: lines.join("\n"),
-    citations: graphAnswerCitations(graph, matched, citationEdges, context.citations),
+    citations: graphAnswerCitations(graph, matched, relevantEdges, includeFallbackCitations ? context.citations : []),
   };
 }
 
@@ -106,14 +111,29 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
 
 function relevantEdgesForIntent(
   intent: GraphQuestionIntent,
+  dependencyScope: "incoming" | "outgoing" | "both",
   directEdges: GraphEdge[],
   incoming: GraphEdge[],
   outgoing: GraphEdge[],
 ) {
-  if (intent === "dependency") return dedupeEdges([...incoming, ...outgoing]);
-  if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge), ...outgoing, ...incoming]);
+  if (intent === "dependency") {
+    if (dependencyScope === "incoming") return dedupeEdges(incoming);
+    if (dependencyScope === "outgoing") return dedupeEdges(outgoing);
+    return dedupeEdges([...incoming, ...outgoing]);
+  }
+  if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge)]);
   if (intent === "flow") return dedupeEdges([...directEdges.filter(isFlowEdge), ...directEdges]);
   return directEdges;
+}
+
+function dependencyScopeForQuestion(question: string, matched?: GraphNode): "incoming" | "outgoing" | "both" {
+  if (/\b(who|what)\s+(uses?|calls?|runs?|depends on)\b/i.test(question) || /\bused by\b/i.test(question)) {
+    return matched?.type === "program" ? "incoming" : "both";
+  }
+  if (/\bwhat\s+does\b.+\b(depend on|use|call|run)\b/i.test(question) || /\bdownstream|impact\w*\b/i.test(question)) {
+    return "outgoing";
+  }
+  return "both";
 }
 
 function isCallEdge(edge: GraphEdge) {

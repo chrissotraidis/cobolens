@@ -54,6 +54,21 @@ Export check:
 - Clicking `Export Docs` in the browser demo reports the concrete generated
   artifact names: `cobolens-lineage.md`, `cobolens-lineage.mmd`, and
   `cobolens-lineage.png`.
+- After navigating to `CUSTOMER`, clicking `Export Docs` reports
+  `cobolens-customer.md`, `cobolens-customer.mmd`, and
+  `cobolens-customer.png`.
+
+Graph-backed Ask check:
+
+- `What does LINEAGE call?` now answers only with
+  `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and focused citations;
+  it does not include unrelated copybook, read, write, or define edges.
+- `What depends on LINEAGE?` now answers with `STEP010 RUNS LINEAGE` at
+  `jcl/DAILYLN.jcl:2` and keeps the citation chips scoped to the matched
+  program and incoming JCL relationship.
+- Selecting `CUSTOMER` from search after a `LINEAGE` Ask clears the old answer,
+  resets the composer, and shows `CUSTOMER` suggested questions instead of a
+  stale `LINEAGE` response.
 
 Model-backed Ask check:
 
@@ -62,5 +77,14 @@ Model-backed Ask check:
   response as an `Ollama answer with cited graph context`, increments the local
   call counter, cites `src/LINEAGE.cbl:1` plus relationship lines, and does not
   explain `LINEAGE` as a generic compiler concept.
+
+Model-backed Summary check:
+
+- Generating a `LINEAGE` summary with local Ollama cites `src/LINEAGE.cbl:1`
+  plus relationship lines, avoids generic preamble text, and does not explain
+  `LINEAGE` as a generic compiler concept.
+- Generating a `CUSTOMER` summary cites `copybook/CUSTOMER.cpy:1` plus
+  `DEFINES` relationship lines, increments the local call counter, and preserves
+  model line breaks in the Summary panel.
 
 This verifies the current UI can answer "what depends on this?" and "where does this data flow?" from the `GraphDocument` alone.

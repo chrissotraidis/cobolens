@@ -333,7 +333,7 @@ function App() {
     setStatus("ready");
   }
 
-  function focusOnNode(nodeId: string) {
+  function focusOnNode(nodeId: string, options: { preserveChat?: boolean } = {}) {
     if (!nodeById.has(nodeId)) return;
     setFocusNodeId(nodeId);
     setSelectedNodeId(nodeId);
@@ -341,6 +341,12 @@ function App() {
     setSourceFocus(null);
     setExpandedNodeIds(new Set());
     setHistory((current) => [...current.filter((id) => id !== nodeId), nodeId].slice(-8));
+    if (!options.preserveChat) {
+      setChatQuestion("");
+      setChatAnswer(null);
+      setChatStatus("idle");
+      setChatError("");
+    }
   }
 
   function selectNode(nodeId: string) {
@@ -527,7 +533,7 @@ function App() {
         const fallback = graphAnswerFallback(graph, question, context);
         setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
         setChatStatus("ready");
-        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
         return;
       }
       const apiKey = await providerKeyForModel(modelSettings);
@@ -540,13 +546,13 @@ function App() {
       setModelCallCount((count) => count + 1);
       setChatAnswer({ question, text: answer.text, citations: context.citations, source: "model" });
       setChatStatus("ready");
-      if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+      if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
     } catch (err) {
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
         setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
         setChatStatus("ready");
-        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id);
+        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
         return;
       }
       setChatError(friendlyModelError(err, modelSettings));

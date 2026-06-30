@@ -27,7 +27,7 @@ export async function generateUnitSummary({
     model: createLanguageModel(settings, apiKey),
     system: summarySystemPrompt(settings.rosettaLanguage),
     prompt: summaryUserPrompt(graph, node, excerpt),
-    temperature: 0.2,
+    temperature: 0.1,
     maxOutputTokens: 420,
   });
 
@@ -43,17 +43,22 @@ function summarySystemPrompt(rosettaLanguage: string) {
   return [
     "You explain a COBOL codebase to an engineer who may not know COBOL.",
     "Use only the provided graph facts and source excerpt.",
+    "Treat unit and symbol names as codebase artifacts, not as generic computing terms.",
+    "Do not infer business purpose, business rules, or technical meaning from names alone.",
     "Cite file:line for every concrete claim.",
     "If the excerpt is insufficient, say what is missing.",
-    `When useful, translate COBOL constructs into ${rosettaLanguage} terms.`,
+    `When the source shows a COBOL construct, you may translate that construct into ${rosettaLanguage} terms.`,
   ].join(" ");
 }
 
 function summaryUserPrompt(graph: GraphDocument, node: GraphNode, excerpt: SourceExcerpt) {
   return [
-    "Summarize this unit in 2-4 sentences.",
-    "Include purpose, important inputs/outputs, and any visible business rules.",
-    "Keep it grounded; do not invent dependencies.",
+    "Summarize this unit in 2-4 direct sentences.",
+    "Start with what the graph proves about this unit: type, source location, and cited relationships.",
+    "When Graph facts list relationships, mention at least one relationship with its exact file:line citation.",
+    "Include inputs, outputs, calls, datasets, tables, or visible rules only when present in the graph facts or source excerpt.",
+    "Do not include a preamble such as 'Here is a summary'.",
+    "Do not invent dependencies, business purpose, or business rules.",
     "",
     `Unit: ${node.name}`,
     `Type: ${node.type}`,

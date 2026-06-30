@@ -67,10 +67,15 @@ try {
     "summary returned text": summary.text.length > 0,
     "summary used Ollama provider": summary.provider === "ollama",
     "summary used requested model": summary.model === (process.argv[2] ?? DEFAULT_MODEL_SETTINGS.model),
+    "summary cites matched source line": /src\/LINEAGE\.cbl:1/i.test(summary.text),
+    "summary cites relationship line": /src\/LINEAGE\.cbl:(11|13|21|26|37|40)/i.test(summary.text),
+    "summary avoids generic preamble": !/^here is\b/i.test(summary.text.trim()),
+    "summary avoids generic compiler hallucination": !/\b(compiler optimization|recompil\w*)\b/i.test(summary.text),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {
     console.error(`Ollama app summary smoke failed: ${failed.join(", ")}`);
+    console.error(summary.text);
     process.exit(1);
   }
 

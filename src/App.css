@@ -716,6 +716,7 @@ pre {
   margin: 0;
 }
 
+.summary-output p,
 .answer-card p {
   white-space: pre-line;
 }

@@ -58,6 +58,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const lineageAnswer = graphAnswerFallback(graph, lineageQuestion, lineageContext);
+  const whereQuestion = "Where does LINEAGE happen?";
+  const whereContext = await retrieveQuestionContext({
+    graph,
+    question: whereQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const whereAnswer = graphAnswerFallback(graph, whereQuestion, whereContext);
   const callQuestion = "What does LINEAGE call?";
   const callContext = await retrieveQuestionContext({
     graph,
@@ -76,6 +83,7 @@ try {
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
     ["flow question classified as graph-only", isGraphQuestion(flowQuestion)],
+    ["where question classified as graph-only", isGraphQuestion(whereQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -83,6 +91,8 @@ try {
     ["reports JCL users before display limit", lineageAnswer.text.includes("Upstream or used by: STEP010.")],
     ["prioritizes incoming dependency relationship", lineageAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
     ["cites incoming JCL dependency", lineageAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
+    ["reports recorded locations", whereAnswer.text.includes("Recorded locations: src/LINEAGE.cbl:1")],
+    ["cites matched location", whereAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["reports runtime transfer answer", callAnswer.text.includes("Calls or runtime transfers: LINK RATEAPI.")],
     ["prioritizes runtime transfer relationship", callAnswer.text.includes("- LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40")],
     ["cites runtime transfer", callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 40)],

@@ -72,6 +72,11 @@ export function graphAnswerFallback(
     );
   }
 
+  if (intent === "where") {
+    const locations = graphAnswerLocations(matched, relevantEdges);
+    lines.push("", `Recorded locations: ${locations.length ? locations.join(", ") : "none recorded"}.`);
+  }
+
   if (modelNote) lines.push("", `Model note: ${modelNote}`);
 
   return {
@@ -157,6 +162,18 @@ function graphAnswerCitations(
       })),
     ...fallback,
   ]).filter((citation) => citation.file);
+}
+
+function graphAnswerLocations(matched: GraphNode[], edges: GraphEdge[]) {
+  const locations = [
+    ...matched
+      .filter((node) => node.file)
+      .map((node) => `${node.file}:${node.lines?.[0] ?? 1}`),
+    ...edges
+      .filter((edge) => edge.site)
+      .map((edge) => `${edge.site?.file ?? ""}:${edge.site?.line ?? 1}`),
+  ];
+  return [...new Set(locations.filter(Boolean))].slice(0, 8);
 }
 
 function dedupeCitations(citations: Citation[]) {

@@ -70,6 +70,7 @@ declare global {
 }
 
 function App() {
+  const desktopAvailable = canUseTauri();
   const [status, setStatus] = useState<Status>("idle");
   const [root, setRoot] = useState<string>("");
   const [graph, setGraph] = useState<GraphDocument | null>(null);
@@ -600,6 +601,7 @@ function App() {
           <input
             type="search"
             aria-label="Search symbols"
+            placeholder="Search symbols"
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
             disabled={!graph}
@@ -626,12 +628,19 @@ function App() {
         <aside className="left-pane" aria-label="Navigator">
           <section className="pane-block">
             <h2>Ingest</h2>
-            <button className="primary-action" type="button" onClick={chooseFolder} disabled={!canUseTauri()}>
-              Open Folder
+            <button
+              className="primary-action"
+              type="button"
+              onClick={chooseFolder}
+              disabled={!desktopAvailable}
+              title={desktopAvailable ? "Open a local COBOL codebase" : "Available in the desktop app"}
+            >
+              {desktopAvailable ? "Open Folder" : "Desktop Only"}
             </button>
             <button type="button" onClick={openSample}>
               Open Sample
             </button>
+            {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
@@ -735,8 +744,19 @@ function App() {
           </section>
 
           <section className="chat-panel">
-            <div className="panel-title">Inspector</div>
+            <div className="panel-title panel-title-row">
+              <span>Inspector</span>
+              <small>{selectedNode ? `- ${selectedNode.type}` : "- No selection"}</small>
+            </div>
             <div className="summary-stack" ref={inspectorBodyRef}>
+              <ChatAnswerPanel
+                status={chatStatus}
+                answer={chatAnswer}
+                error={chatError}
+                node={selectedNode}
+                onAskPreset={askQuestion}
+                onOpenCitation={jumpToCitation}
+              />
               <SummaryDock
                 node={selectedNode}
                 graph={graph}
@@ -746,14 +766,6 @@ function App() {
                 bulkStatus={bulkSummaryStatus}
                 onGenerateSelected={generateSelectedSummary}
                 onGenerateAll={generateAllProgramSummaries}
-              />
-              <ChatAnswerPanel
-                status={chatStatus}
-                answer={chatAnswer}
-                error={chatError}
-                node={selectedNode}
-                onAskPreset={askQuestion}
-                onOpenCitation={jumpToCitation}
               />
               <LineageImpactPanel
                 node={selectedNode}
@@ -776,7 +788,7 @@ function App() {
               <input
                 type="text"
                 aria-label="Ask about the codebase"
-                placeholder="Ask what depends on CUSTOMER-ID..."
+                placeholder="Ask about dependencies, data flow, or a source line..."
                 value={chatQuestion}
                 onChange={(event) => setChatQuestion(event.currentTarget.value)}
                 onKeyDown={(event) => {
@@ -948,13 +960,18 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>{node ? node.name : "No symbol"}</strong>
+          <strong>Summary</strong>
           <span>
-            {PROVIDER_LABELS[settings.provider]} / {settings.model}
+            {node ? node.name : "No symbol"} - {PROVIDER_LABELS[settings.provider]} / {settings.model}
           </span>
         </div>
-        <button type="button" onClick={onGenerateSelected} disabled={!node?.file || state?.status === "running"}>
-          {state?.status === "running" ? "Generating" : "AI Summary"}
+        <button
+          type="button"
+          onClick={onGenerateSelected}
+          disabled={!node?.file || state?.status === "running"}
+          title={!node?.file ? "Select a symbol with source to summarize" : "Generate an AI summary for this symbol"}
+        >
+          {state?.status === "running" ? "Generating" : "Generate"}
         </button>
       </div>
       <div className="summary-output">
@@ -970,7 +987,7 @@ function SummaryDock({
       </div>
       <div className="summary-meta">
         <button type="button" onClick={onGenerateAll} disabled={!programCount || state?.status === "running"}>
-          AI Summaries
+          Summarize All
         </button>
         <span>{bulkStatus || `${programCount} source programs`}</span>
       </div>
@@ -996,8 +1013,13 @@ function ChatAnswerPanel({
   const starterQuestions = suggestedGraphQuestions(node);
 
   return (
-    <section className="answer-card">
-      <div className="relationship-title">Ask</div>
+    <section className="answer-card" aria-live="polite">
+      <div className="answer-header">
+        <div>
+          <strong>Ask Codebase</strong>
+          <span>{status === "running" ? "Working from graph context" : "Cited answers from the graph"}</span>
+        </div>
+      </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested graph questions">
           {starterQuestions.map((question) => (

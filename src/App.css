@@ -45,6 +45,10 @@ input:disabled {
   opacity: 0.52;
 }
 
+button:disabled:hover {
+  border-color: #313944;
+}
+
 input,
 select {
   min-width: 0;
@@ -179,6 +183,13 @@ select:focus {
   border-color: #66c2a5;
   background: #66c2a5;
   font-weight: 700;
+}
+
+.primary-action:disabled {
+  color: #8a96a3;
+  border-color: #303843;
+  background: #151a20;
+  opacity: 1;
 }
 
 .path-label {
@@ -496,6 +507,21 @@ h2,
   background: #141920;
 }
 
+.panel-title-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title-row small {
+  overflow: hidden;
+  color: #7d8996;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
 pre {
   margin: 0;
   padding: 16px;
@@ -647,11 +673,32 @@ pre {
 }
 
 .answer-card {
-  padding-top: 12px;
-  border-top: 1px solid #20262e;
+  padding: 12px;
+  border: 1px solid #20262e;
+  border-radius: 8px;
   color: #b7c2cd;
+  background: #101419;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.answer-header {
+  display: grid;
+  gap: 3px;
+}
+
+.answer-header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.answer-header strong {
+  color: #e7ebef;
+}
+
+.answer-header span {
+  color: #7d8996;
+  font-size: 12px;
 }
 
 .answer-question {
@@ -791,6 +838,11 @@ pre {
   align-items: center;
 }
 
+.summary-card {
+  padding-top: 12px;
+  border-top: 1px solid #20262e;
+}
+
 .relationship-card {
   padding-top: 12px;
   border-top: 1px solid #20262e;
@@ -798,19 +850,20 @@ pre {
 
 .chat-input {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) 72px;
   gap: 8px;
   align-items: center;
   padding: 10px;
   border-top: 1px solid #20262e;
+  background: #11151a;
 }
 
 .chat-input input,
 .chat-input button {
-  height: 34px;
+  height: 36px;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 900px) {
   .topbar {
     grid-template-columns: minmax(126px, auto) minmax(160px, 1fr) auto;
     gap: 10px;

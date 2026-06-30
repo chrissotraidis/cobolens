@@ -139,6 +139,7 @@ function App() {
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle");
   const [chatAnswer, setChatAnswer] = useState<ChatAnswer | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatAnswer[]>([]);
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
@@ -491,6 +492,7 @@ function App() {
     setSummaries({});
     setBulkSummaryStatus("");
     setChatAnswer(null);
+    setChatHistory([]);
     setChatQuestion("");
     setChatStatus("idle");
     setChatError("");
@@ -751,7 +753,9 @@ function App() {
       });
       if (isGraphQuestion(question)) {
         const fallback = graphAnswerFallback(graph, question, context);
-        setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
+        const graphAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph" };
+        setChatAnswer(graphAnswer);
+        rememberChatAnswer(graphAnswer);
         setChatStatus("ready");
         if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
         return;
@@ -768,13 +772,17 @@ function App() {
         }),
       );
       setModelCallCount((count) => count + 1);
-      setChatAnswer({ question, text: answer.text, citations: answerContext.citations, source: "model" });
+      const modelAnswer: ChatAnswer = { question, text: answer.text, citations: answerContext.citations, source: "model" };
+      setChatAnswer(modelAnswer);
+      rememberChatAnswer(modelAnswer);
       setChatStatus("ready");
       if (answerContext.focusNodes[0]) focusOnNode(answerContext.focusNodes[0].id, { preserveChat: true });
     } catch (err) {
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
-        setChatAnswer({ question, text: fallback.text, citations: fallback.citations, source: "graph" });
+        const fallbackAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph" };
+        setChatAnswer(fallbackAnswer);
+        rememberChatAnswer(fallbackAnswer);
         setChatStatus("ready");
         if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
         return;
@@ -782,6 +790,29 @@ function App() {
       setChatError(friendlyModelError(err, modelSettings));
       setChatStatus("error");
     }
+  }
+
+  function rememberChatAnswer(answer: ChatAnswer) {
+    setChatHistory((current) => [
+      answer,
+      ...current.filter((item) => item.question !== answer.question || item.text !== answer.text),
+    ].slice(0, 6));
+  }
+
+  function restoreChatAnswer(answer: ChatAnswer) {
+    setChatQuestion(answer.question);
+    setChatAnswer(answer);
+    setChatStatus("ready");
+    setChatError("");
+    setInspectorTab("ask");
+  }
+
+  function clearChatHistory() {
+    setChatHistory([]);
+    setChatAnswer(null);
+    setChatQuestion("");
+    setChatStatus("idle");
+    setChatError("");
   }
 
   function cancelAsk() {
@@ -1086,6 +1117,7 @@ function App() {
                 <ChatAnswerPanel
                   status={chatStatus}
                   answer={chatAnswer}
+                  history={chatHistory}
                   error={chatError}
                   node={selectedNode}
                   settings={modelSettings}
@@ -1095,6 +1127,8 @@ function App() {
                   onAsk={() => askQuestion()}
                   onCancel={cancelAsk}
                   onAskPreset={askQuestion}
+                  onRestoreAnswer={restoreChatAnswer}
+                  onClearHistory={clearChatHistory}
                   onOpenCitation={jumpToCitation}
                 />
               ) : null}
@@ -1618,6 +1652,7 @@ function graphExpansionState(graph: GraphDocument | null, focusNodeId: string, h
 function ChatAnswerPanel({
   status,
   answer,
+  history,
   error,
   node,
   settings,
@@ -1627,10 +1662,13 @@ function ChatAnswerPanel({
   onAsk,
   onCancel,
   onAskPreset,
+  onRestoreAnswer,
+  onClearHistory,
   onOpenCitation,
 }: {
   status: ChatStatus;
   answer: ChatAnswer | null;
+  history: ChatAnswer[];
   error: string;
   node: GraphNode | null;
   settings: ModelSettings;
@@ -1640,6 +1678,8 @@ function ChatAnswerPanel({
   onAsk: () => void;
   onCancel: () => void;
   onAskPreset: (question: string) => void;
+  onRestoreAnswer: (answer: ChatAnswer) => void;
+  onClearHistory: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
@@ -1659,6 +1699,7 @@ function ChatAnswerPanel({
           : "Graph shortcuts answer without a model";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : "Ask";
+  const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
 
   return (
     <section className="answer-card" aria-live="polite">
@@ -1731,6 +1772,33 @@ function ChatAnswerPanel({
           {askButtonLabel}
         </button>
       </div>
+      {previousAnswers.length ? (
+        <div className="answer-history" aria-label="Recent Ask answers">
+          <div className="answer-history-heading">
+            <span>Recent answers</span>
+            <button type="button" onClick={onClearHistory} disabled={status === "running"}>
+              Clear
+            </button>
+          </div>
+          <div className="answer-history-list">
+            {previousAnswers.map((item, index) => (
+              <button
+                key={`${item.question}:${index}`}
+                type="button"
+                onClick={() => onRestoreAnswer(item)}
+                disabled={status === "running"}
+                title={item.question}
+              >
+                <span>{item.question}</span>
+                <small>
+                  {item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
+                  {item.citations.length === 1 ? "" : "s"}
+                </small>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

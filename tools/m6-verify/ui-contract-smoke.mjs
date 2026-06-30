@@ -33,6 +33,16 @@ const checks = [
       includesAll(appCss, [".message-text", ".message-text ul"]),
   ],
   [
+    "Ask keeps a bounded recent-answer trail with citations",
+    includesAll(appSource, [
+      "const [chatHistory, setChatHistory] = useState<ChatAnswer[]>([])",
+      "function rememberChatAnswer(answer: ChatAnswer)",
+      "function restoreChatAnswer(answer: ChatAnswer)",
+      'aria-label="Recent Ask answers"',
+      "item.citations.length",
+    ]) && includesAll(appCss, [".answer-history", ".answer-history-list button"]),
+  ],
+  [
     "Inspector tabs reserve enough width for Summary and Impact",
     includesAll(appSource, ['label: "Links"']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),

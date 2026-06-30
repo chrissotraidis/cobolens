@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+jar="$here/target/cobolens-analyze-jvm-0.1.0.jar"
+local_jvm_home="${COBOLENS_JVM_HOME:-$HOME/.local/codex-jvm}"
+
+if [ -z "${JAVA_HOME:-}" ] && [ -x "$local_jvm_home/jdk-17/bin/java" ]; then
+  export JAVA_HOME="$local_jvm_home/jdk-17"
+fi
+
+if [ -n "${JAVA_HOME:-}" ]; then
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+if [ -x "$local_jvm_home/maven/bin/mvn" ]; then
+  export PATH="$local_jvm_home/maven/bin:$PATH"
+fi
+
+if [ ! -f "$jar" ]; then
+  mvn -q -f "$here/pom.xml" -DskipTests package
+fi
+
+exec java -jar "$jar" "$@"

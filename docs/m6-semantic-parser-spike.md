@@ -22,7 +22,7 @@ The M5 sidecar already emits programs, paragraphs, copybooks, JCL jobs, JCL step
 
 ## Primary Sources Reviewed
 
-- ProLeap COBOL parser: ANTLR4 parser that generates AST and ASG, with semantic analysis exposing data/control-flow information and variable access. It is MIT licensed and publishes Maven coordinates under `io.github.uwol:proleap-cobol-parser:4.0.0`. Source: https://github.com/uwol/proleap-cobol-parser
+- ProLeap COBOL parser: ANTLR4 parser that generates AST and ASG, with semantic analysis exposing data/control-flow information and variable access. It is MIT licensed. The README lists `io.github.uwol:proleap-cobol-parser:4.0.0`, but that coordinate did not resolve during the spike; the checked-in candidate uses JitPack coordinate `com.github.uwol:proleap-cobol-parser:2.3.0`. Source: https://github.com/uwol/proleap-cobol-parser
 - ProLeap grammar notes: the grammar reports NIST coverage and banking/insurance usage, and depends on its preprocessor for COPY/REPLACE handling. Source: https://github.com/uwol/proleap-cobol-parser/blob/main/src/main/antlr4/io/proleap/cobol/Cobol.g4
 - mapa: MIT-licensed mainframe application portfolio analysis repository with ANTLR grammars and Java code for COBOL, CICS, DB2z, SQL/PL, IMS interfaces, and JCL. Its README frames the exact portfolio questions M6 targets: impact analysis, call relationships, inputs/outputs, and JCL analogs. Source: https://github.com/cschneid-the-elder/mapa
 
@@ -82,4 +82,3 @@ Do not replace the current Rust sidecar until a bake-off branch proves:
 - lineage and impact edges are source-grounded,
 - the sidecar can be packaged or invoked predictably on Windows,
 - parser failures degrade into `meta.parseErrors[]` instead of blocking the whole scan.
-

@@ -4,7 +4,7 @@ Date: 2026-06-30
 
 ## Current Decision
 
-Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes, but the final PRD path still needs a JVM parser bake-off before adopting ProLeap + mapa.
+Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate now also emits the same `GraphDocument` contract and passes the strict M6 fixture, but the final PRD path still needs mapa coverage, packaging validation, and benchmark-scale comparison before adopting a JVM analyzer.
 
 This is the load-bearing decision gate from the original plan:
 
@@ -15,7 +15,7 @@ This is the load-bearing decision gate from the original plan:
 
 ## Source Refresh
 
-- ProLeap's README describes an ANTLR4 COBOL parser that emits AST and ASG, with semantic analysis for data/control flow and variable access. It also extracts EXEC SQL, EXEC SQLIMS, and EXEC CICS statements as ASG text, exposes Maven coordinates `io.github.uwol:proleap-cobol-parser:4.0.0`, and says builds require Maven plus JDK 17. Source: https://github.com/uwol/proleap-cobol-parser
+- ProLeap's README describes an ANTLR4 COBOL parser that emits AST and ASG, with semantic analysis for data/control flow and variable access. It also extracts EXEC SQL, EXEC SQLIMS, and EXEC CICS statements as ASG text, and says builds require Maven plus JDK 17. The README's `io.github.uwol:proleap-cobol-parser:4.0.0` coordinate did not resolve in this environment; the checked-in spike uses the JitPack artifact `com.github.uwol:proleap-cobol-parser:2.3.0`. Source: https://github.com/uwol/proleap-cobol-parser
 - mapa's README describes ANTLR grammars and Java code for COBOL, CICS APIs/SPIs, DB2z SQL, SQL/PL, IMS interfaces, and JCL. It specifically targets impact-analysis questions, call relationships, program inputs/outputs, and analogous JCL analysis. Source: https://github.com/cschneid-the-elder/mapa
 - GraalVM Native Image remains the packaging candidate if a JVM sidecar makes the desktop footprint too heavy. It compiles Java code ahead-of-time into a native executable, supports Maven/Gradle workflows, and has platform toolchain prerequisites. Source: https://www.graalvm.org/latest/reference-manual/native-image/
 
@@ -38,15 +38,25 @@ Useful before packaging decisions:
 - `gradle`
 - `native-image`
 
-As of this note, the current WSL environment does not have Java, Maven, Gradle, or GraalVM Native Image available. That blocks compiling a ProLeap/mapa sidecar here, but it does not block further UI work or validation against the current Rust sidecar.
+This workspace has a user-local JDK 17 and Maven install under `$HOME/.local/codex-jvm`. `tools/parser-upgrade/readiness.mjs` detects that location automatically, or a different location can be supplied with `COBOLENS_JVM_HOME`.
 
-## Next Spike Once Ready
+## JVM Candidate
 
-1. Create a temporary JVM analyzer under `sidecar/cobolens-analyze-jvm/`.
-2. Implement the existing CLI shape exactly:
+The ProLeap candidate lives under `sidecar/cobolens-analyze-jvm/`. It is intentionally still a spike, not the production sidecar.
+
+It implements the existing CLI shape exactly:
    `--root`, `--out`, `--format`, `--ext`, `--encoding`.
-3. Emit schema-compatible `GraphDocument` JSON only; do not add UI parser coupling.
-4. Run `node tools/m6-bakeoff/run.mjs --candidate jvm=sidecar/cobolens-analyze-jvm/...`.
-5. Compare output against the current Rust sidecar and the M6 strict fixture.
-6. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa.
+It emits schema-compatible `GraphDocument` JSON only; there is no UI parser coupling.
 
+Run:
+
+```sh
+node tools/m6-bakeoff/run.mjs --candidate jvm=sidecar/cobolens-analyze-jvm/bin/cobolens-analyze-jvm
+```
+
+Remaining decision work:
+
+1. Spike mapa for JCL/CICS/DB2/IMS portfolio coverage.
+2. Compare ProLeap, mapa, and current Rust output on benchmark-scale fixtures.
+3. Validate Windows/Tauri packaging size and startup behavior.
+4. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa.

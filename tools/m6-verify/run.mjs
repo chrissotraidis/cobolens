@@ -32,6 +32,15 @@ for (const check of checks) {
   await runCheck(check);
 }
 
+await runCheck(
+  {
+    name: "mapa analyzer candidate",
+    command: process.execPath,
+    args: ["tools/m6-bakeoff/run.mjs", "--candidate", "mapa=sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa"],
+  },
+  { advisory: true },
+);
+
 const readiness = await runCheck(
   {
     name: "parser upgrade readiness",
@@ -77,4 +86,3 @@ function spawnCheck(check) {
 function npmCommand() {
   return process.platform === "win32" ? "npm.cmd" : "npm";
 }
-

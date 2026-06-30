@@ -43,14 +43,20 @@ Use a Java semantic analyzer sidecar behind the existing `analyze_codebase` comm
 
 The bake-off should decide whether M6 uses ProLeap plus mapa together, mapa only, or ProLeap first with mapa reserved for JCL/CICS/DB2 enrichment.
 
-## mapa Probe Result
+## mapa Candidate Result
 
 `npm run m6:mapa-probe` runs mapa's checked-in `CallTree.jar` and `JCLParser.jar` against the strict M6 fixture. The probe confirms mapa extracts:
 
 - COBOL program, copybook, CICS LINK, DD open-mode, and DB2 table records.
 - JCL job, step, and DD dataset records.
 
-The probe requires JDK 21 because mapa's checked-in jars are compiled for class-file version 65. It does not replace the production Rust sidecar or emit `GraphDocument` yet; the next step is a mapa CSV-to-graph adapter behind the same analyzer CLI.
+The probe requires JDK 21 because mapa's checked-in jars are compiled for class-file version 65. `sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa` wraps those jars, maps the CSV records back into `GraphDocument`, adds the narrow lexical data-item/move enrichment needed by the current fixture, and passes:
+
+```sh
+npm run m6:mapa-bakeoff
+```
+
+This does not replace the production Rust sidecar yet; it gives M6 a second swappable candidate for benchmark and packaging comparison.
 
 ## Contract Extensions
 

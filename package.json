@@ -9,6 +9,7 @@
     "m6:verify": "node tools/m6-verify/run.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",
     "m6:mapa-probe": "node tools/parser-upgrade/mapa-probe.mjs",
+    "m6:mapa-bakeoff": "node tools/m6-bakeoff/run.mjs --candidate mapa=sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa",
     "validate:benchmark": "node tools/benchmark-validation/run.mjs",
     "preview": "vite preview",
     "tauri": "tauri"

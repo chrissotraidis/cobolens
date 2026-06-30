@@ -4,7 +4,7 @@ Date: 2026-06-30
 
 ## Current Decision
 
-Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate now also emits the same `GraphDocument` contract and passes the strict M6 fixture. mapa's COBOL and JCL analyzers now run against the same fixture and extract the portfolio facts M6 needs, but the final PRD path still needs a mapa-to-graph adapter, packaging validation, and benchmark-scale comparison before adopting a JVM analyzer.
+Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture, but the final PRD path still needs packaging validation and benchmark-scale comparison before adopting a JVM analyzer.
 
 This is the load-bearing decision gate from the original plan:
 
@@ -70,9 +70,14 @@ The probe validates:
 
 It also tightened the M6 fixture to use a legal 8-character JCL job name (`DAILYLN`); mapa rejected the previous 9-character `DAILYLINE` name.
 
+The mapa `GraphDocument` candidate lives at `sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa` and can be run with:
+
+```sh
+npm run m6:mapa-bakeoff
+```
+
 Remaining decision work:
 
-1. Convert mapa CSV records into schema-compatible `GraphDocument` output behind the same CLI shape.
-2. Compare ProLeap, mapa, and current Rust output on benchmark-scale fixtures.
-3. Validate Windows/Tauri packaging size and startup behavior.
-4. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa.
+1. Compare ProLeap, mapa, and current Rust output on benchmark-scale fixtures.
+2. Validate Windows/Tauri packaging size and startup behavior.
+3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa.

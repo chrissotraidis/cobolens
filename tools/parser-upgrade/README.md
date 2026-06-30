@@ -15,3 +15,11 @@ npm run m6:mapa-probe
 ```
 
 The probe uses mapa's checked-in `CallTree.jar` and `JCLParser.jar` against `fixtures/m6-bakeoff`. It requires JDK 21 for those jars. By default it clones mapa into `.cache/parser-upgrade/mapa`; set `MAPA_HOME=/path/to/mapa` or pass `-- --mapa-home /path/to/mapa` to use an existing checkout.
+
+Run the mapa `GraphDocument` candidate with:
+
+```sh
+npm run m6:mapa-bakeoff
+```
+
+The candidate lives at `sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa`, keeps the same analyzer CLI shape, runs mapa's CSV-producing jars, and maps those records back into the current app graph contract.

@@ -1,0 +1,462 @@
+#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const mapaRepo = "https://github.com/cschneid-the-elder/mapa.git";
+
+let options;
+let java;
+let scratch;
+
+async function main() {
+  options = parseArgs(process.argv.slice(2));
+  java = findJava21();
+  if (!java) {
+    console.error("JDK 21 is required for the mapa analyzer candidate.");
+    process.exit(1);
+  }
+
+  scratch = await mkdtemp(join(tmpdir(), "cobolens-analyze-mapa-"));
+
+  try {
+    const files = await discoverFiles(options.root, options.extensions);
+    const builder = new GraphBuilder();
+    const parseErrors = [];
+    const mapaHome = ensureMapaHome();
+
+    for (let index = 0; index < files.length; index += 1) {
+      console.log(JSON.stringify({ phase: "parse", done: index, total: files.length }));
+    }
+
+    const mapa = await runMapa(mapaHome, files);
+    convertMapaCobol(mapa.cobolRows, files, builder);
+    convertMapaJcl(mapa.jclRows, files, builder);
+
+    for (const file of files) {
+      try {
+        await lexicalEnrich(file, builder);
+      } catch (error) {
+        parseErrors.push({ file: file.rel, reason: error.message });
+      }
+    }
+
+    console.log(JSON.stringify({ phase: "parse", done: files.length, total: files.length }));
+
+    const graph = {
+      schemaVersion: 1,
+      meta: {
+        scannedAt: `unix:${Math.floor(Date.now() / 1000)}`,
+        dialectGuess: "unknown",
+        fileCount: files.length,
+        parsedFileCount: files.length - parseErrors.length,
+        parseErrors,
+      },
+      nodes: [...builder.nodes.values()],
+      edges: [...builder.edges.values()],
+    };
+
+    await mkdir(dirname(options.out), { recursive: true });
+    await writeFile(options.out, JSON.stringify(graph, null, 2), "utf8");
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
+
+function parseArgs(args) {
+  const parsed = {
+    root: null,
+    out: null,
+    format: "auto",
+    extensions: new Set([".cbl", ".cob", ".cpy", ".jcl"]),
+    encoding: "utf8",
+  };
+
+  for (let index = 0; index < args.length; index += 2) {
+    const key = args[index];
+    const value = args[index + 1];
+    if (!value) throw new Error(`missing value for ${key}`);
+    if (key === "--root") parsed.root = resolve(value);
+    else if (key === "--out") parsed.out = resolve(value);
+    else if (key === "--format") parsed.format = value;
+    else if (key === "--encoding") parsed.encoding = value;
+    else if (key === "--ext") parsed.extensions = new Set(value.split(",").map((ext) => ext.trim().toLowerCase()).filter(Boolean));
+    else throw new Error(`unknown argument: ${key}`);
+  }
+
+  if (!parsed.root || !parsed.out) throw new Error("--root and --out are required");
+  if (parsed.encoding.toLowerCase() !== "utf8") throw new Error("only utf8 encoding is supported by the mapa candidate");
+  return parsed;
+}
+
+async function discoverFiles(root, extensions) {
+  const found = [];
+  await walk(root, found, extensions);
+  found.sort((left, right) => left.rel.localeCompare(right.rel));
+  return found;
+}
+
+async function walk(dir, found, extensions) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walk(path, found, extensions);
+    } else if (entry.isFile() && extensions.has(extname(entry.name).toLowerCase())) {
+      found.push({
+        path,
+        rel: relative(options.root, path).replaceAll("\\", "/"),
+        kind: kind(path),
+      });
+    }
+  }
+}
+
+function kind(path) {
+  const ext = extname(path).toLowerCase();
+  if (ext === ".jcl") return "jcl";
+  if (ext === ".cpy") return "copybook";
+  return "cobol";
+}
+
+async function runMapa(mapaHome, files) {
+  const cobolFiles = files.filter((file) => file.kind === "cobol");
+  const jclFiles = files.filter((file) => file.kind === "jcl");
+  const copyDir = await normalizedCopybookDir(files);
+  const cobolList = join(scratch, "cobol-files.txt");
+  const jclList = join(scratch, "jcl-files.txt");
+  const cobolCsv = join(scratch, "calltree.csv");
+  const jclCsv = join(scratch, "jcl.csv");
+  const jclTree = join(scratch, "jcl.tsv");
+
+  await writeFile(cobolList, cobolFiles.map((file) => file.path).join("\n"), "utf8");
+  await writeFile(jclList, jclFiles.map((file) => file.path).join("\n"), "utf8");
+
+  if (cobolFiles.length) {
+    run("mapa COBOL CallTree", java, ["-jar", join(mapaHome, "cobol", "CallTree.jar"), "-fileList", cobolList, "-copy", copyDir, "-out", cobolCsv]);
+  } else {
+    await writeFile(cobolCsv, "", "utf8");
+  }
+
+  if (jclFiles.length) {
+    run("mapa JCL parser", java, ["-jar", join(mapaHome, "jcl", "JCLParser.jar"), "-fileList", jclList, "-include", options.root, "-outcsv", jclCsv, "-outtree", jclTree]);
+  } else {
+    await writeFile(jclCsv, "", "utf8");
+  }
+
+  return {
+    cobolRows: parseCsv(await readFile(cobolCsv, "utf8")),
+    jclRows: parseCsv(await readFile(jclCsv, "utf8")),
+  };
+}
+
+async function normalizedCopybookDir(files) {
+  const targetDir = join(scratch, "copybook");
+  await mkdir(targetDir, { recursive: true });
+  for (const file of files.filter((entry) => entry.kind === "copybook")) {
+    await copyFile(file.path, join(targetDir, basename(file.path, extname(file.path))));
+  }
+  return targetDir;
+}
+
+function convertMapaCobol(rows, files, builder) {
+  const fileByUuid = new Map();
+  const programByUuid = new Map();
+  const programByFileUuid = new Map();
+  const copybookByName = new Map(files.filter((file) => file.kind === "copybook").map((file) => [normalize(stem(file.path)), file]));
+
+  for (const row of rows) {
+    if (row[0] === "FILE") fileByUuid.set(row[1], relFor(row[2], files));
+    if (row[0] === "PGM") {
+      const id = `prog:${normalize(row[3])}`;
+      const file = fileByUuid.get(row[2]) ?? null;
+      builder.node(node(id, "program", row[3], file, null, false));
+      programByUuid.set(row[1], id);
+      programByFileUuid.set(row[2], id);
+    }
+  }
+
+  for (const row of rows) {
+    if (row[0] === "COPY") {
+      const copyName = row[3];
+      const copyFile = copybookByName.get(normalize(copyName));
+      const copyId = `copy:${normalize(copyName)}`;
+      builder.node(node(copyId, "copybook", copyName, copyFile?.rel ?? null, null, !copyFile));
+      const owner = programByFileUuid.get(row[2]);
+      if (owner) builder.edge(edge(owner, copyId, "COPIES", null));
+    } else if (row[0] === "CALL") {
+      const owner = programByUuid.get(row[2]) ?? `prog:${normalize(row[3])}`;
+      const target = row[5];
+      const targetId = `prog:${normalize(target)}`;
+      builder.node(node(targetId, "program", target, null, null, true));
+      if (row[4]?.startsWith("CICS")) {
+        const commandId = `cics:${normalize(row[3])}/${normalize(target)}`;
+        builder.node(node(commandId, "cics-command", `LINK ${target}`, null, null, false));
+        builder.edge(edge(owner, commandId, "executes", null));
+        builder.edge(edge(commandId, targetId, "links", null));
+      } else {
+        builder.edge(edge(owner, targetId, "CALLS", null));
+      }
+    } else if (row[0] === "DD") {
+      const owner = programByUuid.get(row[2]);
+      if (!owner) continue;
+      const datasetId = ensureDataset(builder, row[4], null, null);
+      if (Number(row[5]) > 0) builder.edge(edge(owner, datasetId, "reads", null));
+      if (Number(row[6]) > 0 || Number(row[7]) > 0 || Number(row[8]) > 0) builder.edge(edge(owner, datasetId, "writes", null));
+    } else if (row[0] === "DB2TABLE") {
+      const owner = programByUuid.get(row[2]);
+      if (!owner) continue;
+      const tableId = `db2:${normalize(row[3])}`;
+      builder.node(node(tableId, "db2-table", row[3], null, null, true));
+      builder.edge(edge(owner, tableId, /insert|update|delete/i.test(row[4] ?? "") ? "updates" : "queries", null));
+    }
+  }
+}
+
+function convertMapaJcl(rows, files, builder) {
+  const fileByUuid = new Map();
+  const jobByUuid = new Map();
+  const stepByUuid = new Map();
+
+  for (const row of rows) {
+    if (row[0] === "FILE") fileByUuid.set(row[3], relFor(row[1], files));
+    if (row[0] === "JOB") {
+      const jobId = `job:${normalize(row[1])}`;
+      const file = fileByUuid.get(row[3]) ?? null;
+      builder.node({ ...node(jobId, "jcl-job", row[1], file, null, false), steps: [] });
+      jobByUuid.set(row[4], jobId);
+    }
+  }
+
+  for (const row of rows) {
+    if (row[0] === "JOBSTEP") {
+      const jobId = jobByUuid.get(row[3]);
+      const stepId = `step:${normalize(jobId ?? "JOB")}/${normalize(row[1])}`;
+      stepByUuid.set(row[4], stepId);
+      builder.node(node(stepId, "jcl-step", row[1], null, null, false));
+      if (jobId) builder.edge(edge(jobId, stepId, "CONTAINS", null));
+      if (row[5] === "PGM") {
+        const programId = `prog:${normalize(row[6])}`;
+        builder.node(node(programId, "program", row[6], null, null, true));
+        builder.edge(edge(stepId, programId, "RUNS", null));
+      }
+    } else if (row[0] === "JOBSTEPDD") {
+      const stepId = stepByUuid.get(row[2]);
+      if (!stepId) continue;
+      const ddId = `dd:${normalize(row[2])}/${normalize(row[1])}`;
+      builder.node(node(ddId, "jcl-dd", row[1], null, null, false));
+      builder.edge(edge(stepId, ddId, "DECLARES-DD", null));
+      if (row[6] && row[5] === "Z") {
+        const datasetId = ensureDataset(builder, row[6], null, null);
+        builder.edge(edge(ddId, datasetId, "uses-dd", null));
+      }
+    }
+  }
+}
+
+async function lexicalEnrich(file, builder) {
+  const lines = (await readFile(file.path, "utf8")).split(/\r?\n/);
+  if (file.kind === "jcl") return;
+
+  const ownerName = file.kind === "copybook" ? stem(file.path) : findProgramName(lines, stem(file.path));
+  const ownerId = `${file.kind === "copybook" ? "copy" : "prog"}:${normalize(ownerName)}`;
+  builder.node(node(ownerId, file.kind === "copybook" ? "copybook" : "program", ownerName, file.rel, [1, Math.max(1, lines.length)], false));
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = index + 1;
+    const tokens = tokenize(lines[index]);
+    if (!tokens.length) continue;
+
+    const dataItem = dataItemDefinition(tokens);
+    if (dataItem) {
+      const id = ensureDataItem(builder, dataItem, file.rel, line);
+      builder.edge(edge(ownerId, id, "DEFINES", site(file.rel, line)));
+    }
+
+    const move = moveTargets(tokens);
+    if (move) {
+      const from = ensureDataItem(builder, move.from, file.rel, line);
+      const to = ensureDataItem(builder, move.to, file.rel, line);
+      builder.edge(edge(from, to, "moves-to", site(file.rel, line)));
+    }
+
+    const readTarget = targetAfter(tokens, "READ");
+    if (readTarget) builder.edge(edge(ownerId, ensureDataset(builder, readTarget, file.rel, line), "reads", site(file.rel, line)));
+
+    const writeTarget = targetAfter(tokens, "WRITE");
+    if (writeTarget) builder.edge(edge(ownerId, ensureDataItem(builder, writeTarget, file.rel, line), "writes", site(file.rel, line)));
+  }
+}
+
+function ensureDataItem(builder, name, file, line) {
+  const id = `data:${normalize(name)}`;
+  builder.node(node(id, "data-item", name, file, line ? [line, line] : null, false));
+  return id;
+}
+
+function ensureDataset(builder, name, file, line) {
+  const id = `dataset:${normalize(name)}`;
+  builder.node(node(id, "dataset", name, file, line ? [line, line] : null, false));
+  return id;
+}
+
+function node(id, type, name, file, lines, external) {
+  return { id, type, name, file, lines, external: external || undefined };
+}
+
+function edge(from, to, type, sourceSite) {
+  return { from, to, type, site: sourceSite };
+}
+
+function site(file, line) {
+  return { file, line };
+}
+
+function GraphBuilder() {
+  this.nodes = new Map();
+  this.edges = new Map();
+}
+
+GraphBuilder.prototype.node = function addNode(value) {
+  const existing = this.nodes.get(value.id);
+  if (!existing || (!existing.file && value.file) || (existing.external && !value.external)) {
+    this.nodes.set(value.id, value);
+  }
+};
+
+GraphBuilder.prototype.edge = function addEdge(value) {
+  const siteKey = value.site ? `${value.site.file}:${value.site.line}` : "-";
+  this.edges.set(`${value.from}|${value.to}|${value.type}|${siteKey}`, value);
+};
+
+function findJava21() {
+  const localJvmHome = process.env.COBOLENS_JVM_HOME ?? join(homedir(), ".local", "codex-jvm");
+  const candidates = [join(localJvmHome, "jdk-21", "bin", "java"), process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin", "java") : "", "java"].filter(Boolean);
+  for (const candidate of candidates) {
+    const result = spawnSync(candidate, ["-version"], { encoding: "utf8" });
+    const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+    const match = output.match(/version "(\d+)/);
+    if (!result.error && result.status === 0 && match && Number.parseInt(match[1], 10) >= 21) return candidate;
+  }
+  return null;
+}
+
+function ensureMapaHome() {
+  const home = process.env.MAPA_HOME ? resolve(process.env.MAPA_HOME) : resolve(repoRoot, ".cache", "parser-upgrade", "mapa");
+  if (existsSync(join(home, "cobol", "CallTree.jar")) && existsSync(join(home, "jcl", "JCLParser.jar"))) return home;
+  if (process.env.MAPA_HOME) throw new Error(`MAPA_HOME does not contain expected jars: ${home}`);
+  spawnSync("mkdir", ["-p", dirname(home)], { encoding: "utf8" });
+  run("clone mapa", "git", ["clone", "--depth", "1", mapaRepo, home]);
+  return home;
+}
+
+function run(name, command, args) {
+  const result = spawnSync(command, args, {
+    cwd: scratch,
+    encoding: "utf8",
+    env: { ...process.env, PATH: linuxPath() },
+  });
+  if (result.stdout.trim()) console.error(result.stdout.trim());
+  if (result.stderr.trim()) console.error(result.stderr.trim());
+  if (result.error || result.status !== 0) throw new Error(`${name} failed: ${result.error?.message ?? result.status}`);
+}
+
+function linuxPath() {
+  const localJvmHome = process.env.COBOLENS_JVM_HOME ?? join(homedir(), ".local", "codex-jvm");
+  return [
+    join(localJvmHome, "jdk-21", "bin"),
+    join(localJvmHome, "jdk-17", "bin"),
+    join(localJvmHome, "maven", "bin"),
+    join(homedir(), ".local", "codex-node", "node-v24.14.0-linux-x64", "bin"),
+    "/usr/local/sbin",
+    "/usr/local/bin",
+    "/usr/sbin",
+    "/usr/bin",
+    "/sbin",
+    "/bin",
+  ].join(":");
+}
+
+function parseCsv(text) {
+  return text.split(/\r?\n/).filter((line) => line.trim()).map(parseCsvLine);
+}
+
+function parseCsvLine(line) {
+  const fields = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const ch = line[index];
+    if (ch === '"' && line[index + 1] === '"') {
+      field += '"';
+      index += 1;
+    } else if (ch === '"') {
+      quoted = !quoted;
+    } else if (ch === "," && !quoted) {
+      fields.push(field);
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+  fields.push(field);
+  return fields;
+}
+
+function dataItemDefinition(tokens) {
+  return tokens.length >= 2 && /^\d+$/.test(tokens[0]) && !/^FILLER$/i.test(tokens[1]) ? tokens[1] : null;
+}
+
+function moveTargets(tokens) {
+  if (!/^MOVE$/i.test(tokens[0] ?? "")) return null;
+  const to = indexOf(tokens, "TO");
+  return to >= 2 && tokens[to + 1] ? { from: tokens[1], to: tokens[to + 1] } : null;
+}
+
+function targetAfter(tokens, marker) {
+  const index = indexOf(tokens, marker);
+  return index >= 0 ? tokens[index + 1] : null;
+}
+
+function findProgramName(lines, fallback) {
+  for (const line of lines) {
+    const tokens = tokenize(line);
+    for (let index = 0; index + 2 < tokens.length; index += 1) {
+      if (/^PROGRAM$/i.test(tokens[index]) && /^ID$/i.test(tokens[index + 1])) return tokens[index + 2];
+    }
+  }
+  return fallback;
+}
+
+function tokenize(line) {
+  return line
+    .split(/[^A-Za-z0-9_=$#@-]+/)
+    .map(clean)
+    .filter(Boolean);
+}
+
+function indexOf(tokens, needle) {
+  return tokens.findIndex((token) => token.toUpperCase() === needle.toUpperCase());
+}
+
+function clean(value) {
+  return value.replace(/^[.'"(),;=]+|[.'"(),;=]+$/g, "");
+}
+
+function normalize(value) {
+  return clean(value).toUpperCase();
+}
+
+function stem(path) {
+  return basename(path, extname(path));
+}
+
+function relFor(path, files) {
+  const resolved = resolve(path);
+  return files.find((file) => file.path === resolved)?.rel ?? relative(options.root, resolved).replaceAll("\\", "/");
+}
+
+await main();

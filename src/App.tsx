@@ -51,6 +51,8 @@ type SourceFocus = {
   nodeId?: string;
 };
 
+const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+
 declare global {
   interface Window {
     __cobolensLoadGraph?: (graph: GraphDocument, root?: string) => void;
@@ -647,6 +649,20 @@ function App() {
                 onGenerateSelected={generateSelectedSummary}
                 onGenerateAll={generateAllProgramSummaries}
               />
+              <LineageImpactPanel
+                node={selectedNode}
+                graph={graph}
+                onFocusNode={focusOnNode}
+                onOpenEdge={(edge) => {
+                  if (!edge.site || !graph) return;
+                  jumpToCitation({
+                    file: edge.site.file,
+                    line: edge.site.line,
+                    label: edgeLabel(edge, graph),
+                    nodeId: edge.from,
+                  });
+                }}
+              />
               <ChatAnswerPanel
                 status={chatStatus}
                 answer={chatAnswer}
@@ -886,6 +902,133 @@ function ChatAnswerPanel({
   );
 }
 
+function LineageImpactPanel({
+  node,
+  graph,
+  onFocusNode,
+  onOpenEdge,
+}: {
+  node: GraphNode | null;
+  graph: GraphDocument | null;
+  onFocusNode: (nodeId: string) => void;
+  onOpenEdge: (edge: GraphEdge) => void;
+}) {
+  const relationships = useMemo(() => {
+    if (!node || !graph) return null;
+    const incoming = graph.edges.filter((edge) => edge.to === node.id);
+    const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+    const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
+    return {
+      dependents: incoming,
+      dependencies: outgoing,
+      lineage,
+    };
+  }, [graph, node]);
+
+  if (!node || !graph || !relationships) {
+    return (
+      <section className="lineage-card">
+        <div className="relationship-title">Impact</div>
+        <p>Select a graph node to inspect dependencies and lineage.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="lineage-card">
+      <div className="relationship-title">Impact</div>
+      <div className="lineage-focus">
+        <span className="swatch" style={{ background: nodeColor(node.type) }} />
+        <strong>{node.name}</strong>
+        <small>{node.type}</small>
+      </div>
+      <RelationshipList
+        title="Depends On"
+        empty="No outgoing dependencies."
+        edges={relationships.dependencies}
+        graph={graph}
+        selectedNodeId={node.id}
+        direction="out"
+        onFocusNode={onFocusNode}
+        onOpenEdge={onOpenEdge}
+      />
+      <RelationshipList
+        title="Used By"
+        empty="No incoming dependents."
+        edges={relationships.dependents}
+        graph={graph}
+        selectedNodeId={node.id}
+        direction="in"
+        onFocusNode={onFocusNode}
+        onOpenEdge={onOpenEdge}
+      />
+      <RelationshipList
+        title="Lineage"
+        empty="No semantic lineage edges for this node."
+        edges={relationships.lineage}
+        graph={graph}
+        selectedNodeId={node.id}
+        direction="either"
+        onFocusNode={onFocusNode}
+        onOpenEdge={onOpenEdge}
+      />
+    </section>
+  );
+}
+
+function RelationshipList({
+  title,
+  empty,
+  edges,
+  graph,
+  selectedNodeId,
+  direction,
+  onFocusNode,
+  onOpenEdge,
+}: {
+  title: string;
+  empty: string;
+  edges: GraphEdge[];
+  graph: GraphDocument;
+  selectedNodeId: string;
+  direction: "in" | "out" | "either";
+  onFocusNode: (nodeId: string) => void;
+  onOpenEdge: (edge: GraphEdge) => void;
+}) {
+  const nodes = useMemo(() => new Map(graph.nodes.map((candidate) => [candidate.id, candidate])), [graph]);
+
+  return (
+    <div className="lineage-group">
+      <div className="lineage-heading">
+        <span>{title}</span>
+        <strong>{edges.length}</strong>
+      </div>
+      {edges.length ? (
+        <div className="lineage-list">
+          {edges.slice(0, 8).map((edge) => {
+            const relatedId = direction === "in" ? edge.from : direction === "out" ? edge.to : edge.from === selectedNodeId ? edge.to : edge.from;
+            const related = nodes.get(relatedId);
+            return (
+              <div key={`${edge.from}:${edge.to}:${edge.type}:${edge.site?.file ?? ""}:${edge.site?.line ?? 0}`} className="lineage-row">
+                <button type="button" className="lineage-node" onClick={() => onFocusNode(relatedId)}>
+                  <span className="swatch" style={{ background: nodeColor(related?.type ?? "") }} />
+                  <span>{related?.name ?? relatedId}</span>
+                </button>
+                <button type="button" className="lineage-edge" onClick={() => onOpenEdge(edge)} disabled={!edge.site}>
+                  {edge.type}
+                  {edge.site ? ` ${edge.site.file}:${edge.site.line}` : ""}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p>{empty}</p>
+      )}
+    </div>
+  );
+}
+
 function RelationshipDetails({
   status,
   error,
@@ -997,6 +1140,10 @@ function typePriority(type: string) {
   if (type === "jcl-job") return 3;
   if (type === "jcl-step") return 4;
   return 5;
+}
+
+function isLineageEdge(edge: GraphEdge) {
+  return LINEAGE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
 }
 
 function statusLabel(status: Status) {

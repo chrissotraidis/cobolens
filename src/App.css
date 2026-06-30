@@ -564,7 +564,8 @@ pre {
 
 .summary-card,
 .answer-card,
-.relationship-card {
+.relationship-card,
+.lineage-card {
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -627,6 +628,91 @@ pre {
   color: #7d8996;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
+}
+
+.lineage-card {
+  padding-top: 12px;
+  border-top: 1px solid #20262e;
+  color: #b7c2cd;
+  font-size: 13px;
+}
+
+.lineage-card p {
+  margin: 0;
+}
+
+.lineage-focus {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.lineage-focus strong,
+.lineage-node span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineage-focus small {
+  color: #7d8996;
+  font-size: 11px;
+}
+
+.lineage-group {
+  display: grid;
+  gap: 7px;
+}
+
+.lineage-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: #9aa6b2;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lineage-heading strong {
+  color: #e7ebef;
+}
+
+.lineage-list {
+  display: grid;
+  gap: 6px;
+}
+
+.lineage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+}
+
+.lineage-node,
+.lineage-edge {
+  display: grid;
+  align-items: center;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.lineage-node {
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.lineage-edge {
+  color: #9aa6b2;
+  border-color: rgba(125, 137, 150, 0.22);
+  background: rgba(125, 137, 150, 0.08);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
 }
 
 .citation-list {

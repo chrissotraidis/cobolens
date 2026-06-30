@@ -233,6 +233,15 @@ function App() {
     }
   }, [chatAnswer?.question, chatStatus]);
 
+  useEffect(() => {
+    const inspector = inspectorBodyRef.current;
+    if (!selectedEdge || !inspector) return;
+    inspector.scrollTo({
+      top: inspector.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [selectedEdge]);
+
   async function chooseFolder() {
     if (!canUseTauri()) {
       setError("Open Folder is available in the desktop app. Use Open Sample to explore the browser demo.");

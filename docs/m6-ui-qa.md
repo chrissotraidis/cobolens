@@ -43,4 +43,10 @@ Search-driven checks:
 - `BANK.CUSTOMER.MASTER` showed `CUSTIN` as `uses-dd jcl/DAILYLN.jcl:3`.
 - `CUSTIN` showed `BANK.CUSTOMER.MASTER` under Depends On and `STEP010` under Used By.
 
+Relationship-click check:
+
+- Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to
+  the `Relationship` detail, shows `LINEAGE COPIES CUSTOMER`, and highlights
+  `COPY CUSTOMER.` at `src/LINEAGE.cbl:11` in the code pane.
+
 This verifies the current UI can answer "what depends on this?" and "where does this data flow?" from the `GraphDocument` alone.

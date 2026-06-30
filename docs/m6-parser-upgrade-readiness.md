@@ -4,9 +4,9 @@ Date: 2026-06-30
 
 ## Current Decision
 
-Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture plus the cloned benchmark contract check, but the Windows/Tauri packaging gate is still not validated.
+Do not replace the Rust sidecar yet. The UI now has lineage and impact inspection on top of the current `GraphDocument`, and the strict M6 fixture passes. A ProLeap-backed JVM candidate and a mapa-backed candidate now both emit the same `GraphDocument` contract and pass the strict M6 fixture plus the cloned benchmark contract check. The Linux/Tauri packaging gate is now validated for the Rust production sidecar.
 
-For v1, keep the current Rust analyzer as the production sidecar. It is the smallest path that satisfies the current local M6 gate while preserving the swappable sidecar contract. Treat ProLeap and mapa as benchmark-proven candidates, not adopted production dependencies, until the Windows/Tauri packaging gate and parser-quality tradeoffs are resolved.
+For v1, keep the current Rust analyzer as the production sidecar. It is the smallest path that satisfies the current local M6 gate while preserving the swappable sidecar contract. Treat ProLeap and mapa as benchmark-proven candidates, not adopted production dependencies, until parser-quality tradeoffs and JVM packaging implications are worth the extra footprint.
 
 This is the load-bearing decision gate from the original plan:
 
@@ -104,15 +104,19 @@ Run:
 npm run m6:packaging-readiness
 ```
 
-The current probe starts all three analyzer candidates and reports sidecar/JDK sizes, WSL Linux prerequisites, and Windows host prerequisites. It returns `ready: false` in this workspace:
+The current probe starts all three analyzer candidates and reports sidecar/JDK sizes, WSL Linux prerequisites, and Windows host prerequisites. After installing the WSL Linux Tauri packages on 2026-06-30, it returns `ready: true` for the Linux build path:
 
-- WSL Linux packaging prerequisites are missing: `pkg-config`, `dbus-1`, `webkit2gtk-4.1`, `javascriptcoregtk-4.1`, and `libsoup-3.0`.
-- The Windows host is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
+- WSL Linux packaging prerequisites are present: `pkg-config`, `dbus-1`, `webkit2gtk-4.1`, `javascriptcoregtk-4.1`, and `libsoup-3.0`.
+- `npm run tauri build` completed and produced Linux bundles:
+  - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
+  - `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
+  - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
+- The Windows host is still not a validated build target: it is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
 
 Remaining decision work:
 
-1. Resolve packaging readiness findings from `npm run m6:packaging-readiness`: either install the WSL Linux Tauri development packages or validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
-2. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
-3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa after the packaging gate is green.
+1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
+2. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
+3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.

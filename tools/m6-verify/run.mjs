@@ -21,6 +21,11 @@ const checks = [
     args: ["run", "build"],
   },
   {
+    name: "export documentation smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/export-docs-smoke.mjs"],
+  },
+  {
     name: "Rust sidecar check",
     command: "cargo",
     args: ["check"],

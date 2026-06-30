@@ -42,6 +42,11 @@ coverage, external-node count, parse-error counts by reason, and parse-error
 samples. This records what the current analyzer understands and where it
 degrades on the primary PRD corpus.
 
+`parseCoverage` means the analyzer completed its lightweight graph scan for
+that share of files. `parseErrors` can still list files where tree-sitter saw
+dialect syntax errors; those are syntax-fidelity warnings, not necessarily
+total file drops.
+
 Use the M6 comparison runner when evaluating parser candidates:
 
 ```sh

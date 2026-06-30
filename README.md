@@ -173,10 +173,10 @@ run the shortcut:
 npm run validate:benchmark:local
 ```
 
-The benchmark report records parse coverage, listed parse failures, node/edge
-type counts, citation coverage, and the semantic signals needed for v1 graph
-understanding. The local benchmark checkout and reports live under `.cache/`
-and are intentionally ignored.
+The benchmark report records lightweight scan coverage, listed syntax warnings
+or parse failures, node/edge type counts, citation coverage, and the semantic
+signals needed for v1 graph understanding. The local benchmark checkout and
+reports live under `.cache/` and are intentionally ignored.
 
 ## Parser Notes
 

@@ -269,7 +269,15 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
     for (index, source_file) in files.iter().enumerate() {
         emit_progress(&mut progress, "parse", index, total)?;
         match parse_file(source_file, options.format, &mut builder) {
-            Ok(()) => parsed_file_count += 1,
+            Ok(warning) => {
+                parsed_file_count += 1;
+                if let Some(reason) = warning {
+                    parse_errors.push(ParseError {
+                        file: source_file.rel.clone(),
+                        reason,
+                    });
+                }
+            }
             Err(reason) => parse_errors.push(ParseError {
                 file: source_file.rel.clone(),
                 reason,
@@ -306,7 +314,7 @@ fn parse_file(
     source_file: &SourceFile,
     format: SourceFormat,
     builder: &mut GraphBuilder,
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
     let content = fs::read_to_string(&source_file.path).map_err(|err| err.to_string())?;
     let logical_lines = match source_file.kind {
         FileKind::Jcl => content.lines().map(ToOwned::to_owned).collect(),
@@ -315,10 +323,16 @@ fn parse_file(
 
     match source_file.kind {
         FileKind::Cobol | FileKind::Copybook => {
-            verify_tree_sitter_parse(&content)?;
-            parse_cobol_file(source_file, &logical_lines, builder)
+            let parse_warning = verify_tree_sitter_parse(&content)
+                .err()
+                .map(|reason| format!("{reason}; lightweight scan completed"));
+            parse_cobol_file(source_file, &logical_lines, builder)?;
+            Ok(parse_warning)
         }
-        FileKind::Jcl => parse_jcl_file(source_file, &logical_lines, builder),
+        FileKind::Jcl => {
+            parse_jcl_file(source_file, &logical_lines, builder)?;
+            Ok(None)
+        }
     }
 }
 

@@ -58,8 +58,16 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const lineageAnswer = graphAnswerFallback(graph, lineageQuestion, lineageContext);
+  const callQuestion = "What does LINEAGE call?";
+  const callContext = await retrieveQuestionContext({
+    graph,
+    question: callQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const callAnswer = graphAnswerFallback(graph, callQuestion, callContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
+    ["call question classified as graph-only", isGraphQuestion(callQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -67,6 +75,9 @@ try {
     ["reports JCL users before display limit", lineageAnswer.text.includes("Upstream or used by: STEP010.")],
     ["prioritizes incoming dependency relationship", lineageAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
     ["cites incoming JCL dependency", lineageAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
+    ["reports runtime transfer answer", callAnswer.text.includes("Calls or runtime transfers: LINK RATEAPI.")],
+    ["prioritizes runtime transfer relationship", callAnswer.text.includes("- LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40")],
+    ["cites runtime transfer", callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 40)],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

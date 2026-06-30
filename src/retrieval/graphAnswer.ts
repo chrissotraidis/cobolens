@@ -1,6 +1,11 @@
 import { edgeLabel, type GraphDocument, type GraphEdge, type GraphNode } from "../lib/graph";
 import type { Citation, RetrievedContext } from "./context";
 
+type GraphQuestionIntent = "dependency" | "call" | "flow" | "where" | "general";
+
+const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
+const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+
 export function graphAnswerFallback(
   graph: GraphDocument,
   question: string,
@@ -12,9 +17,9 @@ export function graphAnswerFallback(
   const directEdges = context.edges.filter((edge) => matchedIds.has(edge.from) || matchedIds.has(edge.to));
   const incoming = directEdges.filter((edge) => matchedIds.has(edge.to));
   const outgoing = directEdges.filter((edge) => matchedIds.has(edge.from));
-  const isDependencyQuestion = question.toLocaleLowerCase().includes("depend");
-  const relevantEdges = (isDependencyQuestion ? [...incoming, ...outgoing] : directEdges).slice(0, 8);
-  const citationEdges = isDependencyQuestion ? [...incoming, ...outgoing] : relevantEdges;
+  const intent = graphQuestionIntent(question);
+  const relevantEdges = relevantEdgesForIntent(intent, directEdges, incoming, outgoing).slice(0, 8);
+  const citationEdges = intent === "dependency" ? [...incoming, ...outgoing] : relevantEdges;
 
   if (!matched.length) {
     return {
@@ -41,12 +46,22 @@ export function graphAnswerFallback(
     lines.push("", "I did not find direct relationships for the matched symbol.");
   }
 
-  if (isDependencyQuestion) {
+  if (intent === "dependency") {
     lines.push(
       "",
       `Upstream or used by: ${incoming.length ? incoming.map((edge) => nodeName(graph, edge.from)).join(", ") : "none recorded"}.`,
       `Downstream impact: ${outgoing.length ? outgoing.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`,
     );
+  }
+
+  if (intent === "call") {
+    const callEdges = outgoing.filter(isCallEdge);
+    lines.push("", `Calls or runtime transfers: ${callEdges.length ? callEdges.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
+  }
+
+  if (intent === "flow") {
+    const flowEdges = directEdges.filter(isFlowEdge);
+    lines.push("", `Flow and lineage: ${flowEdges.length ? flowEdges.map((edge) => edgeLabel(edge, graph)).join("; ") : "none recorded"}.`);
   }
 
   if (modelNote) lines.push("", `Model note: ${modelNote}`);
@@ -65,6 +80,44 @@ export function isGraphQuestion(question: string) {
 
 function nodeName(graph: GraphDocument, nodeId: string) {
   return graph.nodes.find((node) => node.id === nodeId)?.name ?? nodeId;
+}
+
+function graphQuestionIntent(question: string): GraphQuestionIntent {
+  if (/\b(depend\w*|impact\w*|used by)\b/i.test(question)) return "dependency";
+  if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
+  if (/\b(flow\w*|read\w*|writ\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
+  if (/\b(where|happen\w*)\b/i.test(question)) return "where";
+  return "general";
+}
+
+function relevantEdgesForIntent(
+  intent: GraphQuestionIntent,
+  directEdges: GraphEdge[],
+  incoming: GraphEdge[],
+  outgoing: GraphEdge[],
+) {
+  if (intent === "dependency") return dedupeEdges([...incoming, ...outgoing]);
+  if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge), ...outgoing, ...incoming]);
+  if (intent === "flow") return dedupeEdges([...directEdges.filter(isFlowEdge), ...directEdges]);
+  return directEdges;
+}
+
+function isCallEdge(edge: GraphEdge) {
+  return CALL_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function isFlowEdge(edge: GraphEdge) {
+  return FLOW_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function dedupeEdges(edges: GraphEdge[]) {
+  const seen = new Set<string>();
+  return edges.filter((edge) => {
+    const key = `${edge.from}:${edge.to}:${edge.type}:${edge.site?.file ?? ""}:${edge.site?.line ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function graphAnswerCitations(

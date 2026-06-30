@@ -4,6 +4,7 @@ import { edgeLabel, matchesFuzzy } from "../lib/graph";
 export type Citation = {
   file: string;
   line: number;
+  endLine?: number;
   label: string;
   nodeId?: string;
 };
@@ -40,6 +41,7 @@ export async function retrieveQuestionContext({
     ...contextNodes.map((node) => ({
       file: node.file ?? "",
       line: node.lines?.[0] ?? 1,
+      endLine: node.lines?.[1],
       label: node.name,
       nodeId: node.id,
     })),
@@ -62,7 +64,7 @@ export async function retrieveQuestionContext({
       question,
       "",
       "Matched symbols:",
-      focusNodes.map((node) => `- ${node.name} (${node.type}) ${node.file ?? "external"}:${node.lines?.[0] ?? 1}`).join("\n") ||
+      focusNodes.map((node) => `- ${node.name} (${node.type}) ${nodeLocation(node)}`).join("\n") ||
         "- None",
       "",
       "Graph relationships:",
@@ -212,10 +214,17 @@ function nodeNameHint(node: GraphNode, question: string) {
   return 0;
 }
 
+function nodeLocation(node: GraphNode) {
+  if (!node.file) return "external";
+  const start = node.lines?.[0] ?? 1;
+  const end = node.lines?.[1];
+  return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
+}
+
 function dedupeCitations(citations: Citation[]) {
   const seen = new Set<string>();
   return citations.filter((citation) => {
-    const key = `${citation.file}:${citation.line}`;
+    const key = `${citation.file}:${citation.line}:${citation.endLine ?? ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

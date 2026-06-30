@@ -28,7 +28,7 @@ export function buildDocumentationExport(
     .slice(0, 120)
     .map((node) => {
       const summary = summaries[node.id]?.summary?.text ?? graphDerivedSummary(graph, node);
-      const file = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+      const file = sourceLocation(node);
       const relationships = relationshipFacts(graph, node);
       return [
         `### Summary: ${node.name}`,
@@ -79,7 +79,7 @@ export function buildDocumentationExport(
     .filter((node) => LINEAGE_EXPORT_TYPES.has(node.type))
     .slice(0, 120)
     .map((node) => {
-      const source = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+      const source = sourceLocation(node);
       const relationships = relationshipFacts(graph, node);
       return [
         `### Lineage: ${node.name}`,
@@ -224,7 +224,7 @@ function markdownAnchor(value: string) {
 function graphDerivedSummary(graph: GraphDocument, node: GraphNode) {
   const incoming = graph.edges.filter((edge) => edge.to === node.id);
   const outgoing = graph.edges.filter((edge) => edge.from === node.id);
-  const source = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
+  const source = sourceLocation(node);
   const parts = [
     `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}.`,
     `Source: ${source}.`,
@@ -242,6 +242,13 @@ function relationshipFacts(graph: GraphDocument, node: GraphNode) {
     .filter((edge) => edge.from === node.id || edge.to === node.id)
     .slice(0, 16)
     .map((edge) => citedRelationship(graph, edge));
+}
+
+function sourceLocation(node: GraphNode) {
+  if (!node.file) return "external";
+  const start = node.lines?.[0] ?? 1;
+  const end = node.lines?.[1];
+  return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
 }
 
 function citedRelationship(graph: GraphDocument, edge: GraphEdge) {

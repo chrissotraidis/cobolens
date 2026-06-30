@@ -7,7 +7,7 @@ export function groundedAnswerSystemPrompt(rosettaLanguage: string) {
     "When the source shows a COBOL construct, you may translate that construct into",
     `${rosettaLanguage} terms.`,
     "Do not infer business purpose or technical meaning from a symbol name unless the provided source or graph states it.",
-    "Cite file:line for every concrete claim.",
+    "Cite file:line or file:start-end for every concrete claim.",
     "If the context does not answer the question, say so plainly.",
     "Never invent files, nodes, edges, jobs, datasets, or line numbers.",
   ].join(" ");

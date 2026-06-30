@@ -43,7 +43,7 @@ try {
   const checks = {
     "mentions Rosetta language": prompt.includes("JavaScript terms"),
     "keeps graph-only grounding": prompt.includes("Use only the provided graph relationships and source excerpts."),
-    "requires citations": prompt.includes("Cite file:line for every concrete claim."),
+    "requires citations": prompt.includes("Cite file:line or file:start-end for every concrete claim."),
     "forbids invented graph facts": prompt.includes("Never invent files, nodes, edges, jobs, datasets, or line numbers."),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);

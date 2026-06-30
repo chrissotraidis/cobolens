@@ -144,6 +144,9 @@ Graph-backed Ask check:
 - `What depends on LINEAGE?` now answers with `STEP010 RUNS LINEAGE` at
   `jcl/DAILYLN.jcl:2` and keeps the citation chips scoped to the matched
   program and incoming JCL relationship.
+- Matched symbol citations preserve source ranges when the graph has them, for
+  example `LINEAGE (program) at src/LINEAGE.cbl:1-47`; single relationship
+  sites still cite their exact source line.
 - Unknown symbols such as `FROBULATOR` produce an explicit no-match graph
   answer with no citations, rather than implying unsupported evidence.
 - Selecting `CUSTOMER` from search after a `LINEAGE` Ask clears the old answer,

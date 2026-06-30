@@ -48,7 +48,7 @@ function summarySystemPrompt(rosettaLanguage: string) {
     "Use only the provided graph facts and source excerpt.",
     "Treat unit and symbol names as codebase artifacts, not as generic computing terms.",
     "Do not infer business purpose, business rules, or technical meaning from names alone.",
-    "Cite file:line for every concrete claim.",
+    "Cite file:line or file:start-end for every concrete claim.",
     "If the excerpt is insufficient, say what is missing.",
     `When the source shows a COBOL construct, you may translate that construct into ${rosettaLanguage} terms.`,
   ].join(" ");

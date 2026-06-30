@@ -44,6 +44,7 @@ try {
   const docs = buildDocumentationExport(graph, {}, "prog:LINEAGE");
   const assertions = [
     ["graph-derived summaries", docs.markdown.includes("Summary: graph-derived, no model required")],
+    ["source ranges are exported", docs.markdown.includes("- Source: src/LINEAGE.cbl:1-47")],
     ["lineage and impact section", docs.markdown.includes("## Lineage and Impact")],
     ["cited CUSTOMER-ID flow", docs.markdown.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
     ["no empty generated-summary placeholder", !docs.markdown.includes("No generated summary yet.")],

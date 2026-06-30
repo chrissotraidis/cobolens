@@ -170,6 +170,7 @@ function graphAnswerCitations(
       .map((node) => ({
         file: node.file ?? "",
         line: node.lines?.[0] ?? 1,
+        endLine: node.lines?.[1],
         label: node.name,
         nodeId: node.id,
       })),
@@ -189,7 +190,7 @@ function graphAnswerLocations(matched: GraphNode[], edges: GraphEdge[]) {
   const locations = [
     ...matched
       .filter((node) => node.file)
-      .map((node) => `${node.file}:${node.lines?.[0] ?? 1}`),
+      .map(formatNodeLocation),
     ...edges
       .filter((edge) => edge.site)
       .map((edge) => `${edge.site?.file ?? ""}:${edge.site?.line ?? 1}`),
@@ -200,7 +201,7 @@ function graphAnswerLocations(matched: GraphNode[], edges: GraphEdge[]) {
 function dedupeCitations(citations: Citation[]) {
   const seen = new Set<string>();
   return citations.filter((citation) => {
-    const key = `${citation.file}:${citation.line}`;
+    const key = `${citation.file}:${citation.line}:${citation.endLine ?? ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -208,6 +209,12 @@ function dedupeCitations(citations: Citation[]) {
 }
 
 function formatMatchedNode(node: GraphNode) {
-  const location = node.file ? ` at ${node.file}:${node.lines?.[0] ?? 1}` : "";
+  const location = node.file ? ` at ${formatNodeLocation(node)}` : "";
   return `${node.name} (${node.type})${location}`;
+}
+
+function formatNodeLocation(node: GraphNode) {
+  const start = node.lines?.[0] ?? 1;
+  const end = node.lines?.[1];
+  return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
 }

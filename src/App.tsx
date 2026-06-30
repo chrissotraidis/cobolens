@@ -1563,19 +1563,23 @@ function CitationList({
     <div className="citation-list">
       {citations.map((citation) => (
         <button
-          key={`${citation.file}:${citation.line}:${citation.label}`}
+          key={`${citation.file}:${citation.line}:${citation.endLine ?? ""}:${citation.label}`}
           type="button"
           onClick={() => onOpenCitation(citation)}
-          title={`${citation.label} - ${citation.file}:${citation.line}`}
+          title={`${citation.label} - ${citationSite(citation)}`}
         >
           <span className="citation-label">{citation.label}</span>
-          <span className="citation-site">
-            {citation.file}:{citation.line}
-          </span>
+          <span className="citation-site">{citationSite(citation)}</span>
         </button>
       ))}
     </div>
   );
+}
+
+function citationSite(citation: Citation) {
+  return citation.endLine && citation.endLine !== citation.line
+    ? `${citation.file}:${citation.line}-${citation.endLine}`
+    : `${citation.file}:${citation.line}`;
 }
 
 function ProgressNote({
@@ -1640,6 +1644,7 @@ function summaryEvidenceCitations(node: GraphNode, graph: GraphDocument) {
     citations.push({
       file: node.file,
       line: node.lines?.[0] ?? 1,
+      endLine: node.lines?.[1],
       label: `${node.name} source`,
       nodeId: node.id,
     });
@@ -1663,7 +1668,7 @@ function summaryEvidenceCitations(node: GraphNode, graph: GraphDocument) {
 function dedupeCitations(citations: Citation[]) {
   const seen = new Set<string>();
   return citations.filter((citation) => {
-    const key = `${citation.file}:${citation.line}`;
+    const key = `${citation.file}:${citation.line}:${citation.endLine ?? ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

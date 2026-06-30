@@ -131,6 +131,7 @@ try {
     ["program dependency citations stay focused", !lineageAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 40)],
     ["reports copybook where-used", usesAnswer.text.includes("Upstream or used by: LINEAGE")],
     ["cites copybook usage", usesAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 11)],
+    ["matched program location includes range", whereAnswer.text.includes("LINEAGE (program) at src/LINEAGE.cbl:1-47")],
     ["reports recorded locations", whereAnswer.text.includes("Recorded locations: src/LINEAGE.cbl:1")],
     ["cites matched location", whereAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["reports runtime transfer answer", callAnswer.text.includes("Calls or runtime transfers: LINK RATEAPI, RATEAUDIT.")],

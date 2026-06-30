@@ -5,6 +5,7 @@ type GraphQuestionIntent = "dependency" | "call" | "flow" | "where" | "general";
 
 const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
 const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "executes"]);
+const FLOW_SOURCE_EDGE_TYPES = new Set(["defines", "reads", "uses-dd"]);
 
 export function graphAnswerFallback(
   graph: GraphDocument,
@@ -61,7 +62,14 @@ export function graphAnswerFallback(
 
   if (intent === "flow") {
     const flowEdges = directEdges.filter(isFlowEdge);
-    lines.push("", `Flow and lineage: ${flowEdges.length ? flowEdges.map((edge) => edgeLabel(edge, graph)).join("; ") : "none recorded"}.`);
+    const flowSources = incoming.filter(isFlowSourceEdge);
+    const flowDestinations = outgoing.filter(isFlowEdge);
+    lines.push(
+      "",
+      `Flow sources or definitions: ${flowSources.length ? flowSources.map((edge) => nodeName(graph, edge.from)).join(", ") : "none recorded"}.`,
+      `Flow destinations: ${flowDestinations.length ? flowDestinations.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`,
+      `Flow and lineage: ${flowEdges.length ? flowEdges.map((edge) => edgeLabel(edge, graph)).join("; ") : "none recorded"}.`,
+    );
   }
 
   if (modelNote) lines.push("", `Model note: ${modelNote}`);
@@ -108,6 +116,10 @@ function isCallEdge(edge: GraphEdge) {
 
 function isFlowEdge(edge: GraphEdge) {
   return FLOW_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function isFlowSourceEdge(edge: GraphEdge) {
+  return FLOW_SOURCE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
 }
 
 function dedupeEdges(edges: GraphEdge[]) {

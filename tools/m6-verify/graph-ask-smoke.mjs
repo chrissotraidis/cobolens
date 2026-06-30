@@ -65,9 +65,17 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const callAnswer = graphAnswerFallback(graph, callQuestion, callContext);
+  const flowQuestion = "Where does CUSTOMER-ID flow?";
+  const flowContext = await retrieveQuestionContext({
+    graph,
+    question: flowQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const flowAnswer = graphAnswerFallback(graph, flowQuestion, flowContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
+    ["flow question classified as graph-only", isGraphQuestion(flowQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -78,6 +86,9 @@ try {
     ["reports runtime transfer answer", callAnswer.text.includes("Calls or runtime transfers: LINK RATEAPI.")],
     ["prioritizes runtime transfer relationship", callAnswer.text.includes("- LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40")],
     ["cites runtime transfer", callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 40)],
+    ["reports flow source", flowAnswer.text.includes("Flow sources or definitions: CUSTOMER.")],
+    ["reports flow destination", flowAnswer.text.includes("Flow destinations: REPORT-ID.")],
+    ["cites flow destination", flowAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

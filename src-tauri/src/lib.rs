@@ -5,6 +5,7 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    time::UNIX_EPOCH,
 };
 use tauri::{path::BaseDirectory, Manager};
 
@@ -20,12 +21,27 @@ fn analyze_sample_codebase(app: tauri::AppHandle) -> Result<Value, String> {
 }
 
 fn analyze_root(app: tauri::AppHandle, root: String) -> Result<Value, String> {
-    let out = env::temp_dir().join("cobolens-graph.json");
+    let root_path = PathBuf::from(&root)
+        .canonicalize()
+        .map_err(|err| format!("codebase folder is unavailable: {err}"))?;
+    let manifest = source_manifest(&root_path)?;
+    let cache_path = graph_cache_path(&app, &root_path, &manifest)?;
+    if cache_path.exists() {
+        if let Ok(cached) = fs::read_to_string(&cache_path) {
+            if let Ok(graph) = serde_json::from_str(&cached) {
+                return Ok(graph);
+            }
+        }
+        let _ = fs::remove_file(&cache_path);
+    }
+
+    let cache_key = stable_hash(&format!("{}|{}", root_path.display(), manifest));
+    let out = env::temp_dir().join(format!("cobolens-graph-{cache_key:016x}.json"));
     let analyzer = analyzer_binary_path(&app)?;
     let mut child = Command::new(analyzer)
         .args([
             "--root",
-            &root,
+            root_path.to_string_lossy().as_ref(),
             "--out",
             out.to_string_lossy().as_ref(),
             "--format",
@@ -57,7 +73,73 @@ fn analyze_root(app: tauri::AppHandle, root: String) -> Result<Value, String> {
     }
 
     let json = fs::read_to_string(&out).map_err(|err| err.to_string())?;
+    if let Some(parent) = cache_path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::write(&cache_path, &json).map_err(|err| err.to_string())?;
     serde_json::from_str(&json).map_err(|err| err.to_string())
+}
+
+fn source_manifest(root: &Path) -> Result<String, String> {
+    let mut entries = Vec::new();
+    collect_source_manifest(root, root, &mut entries)?;
+    entries.sort();
+    Ok(entries.join("\n"))
+}
+
+fn collect_source_manifest(root: &Path, current: &Path, entries: &mut Vec<String>) -> Result<(), String> {
+    for entry in fs::read_dir(current).map_err(|err| err.to_string())? {
+        let entry = entry.map_err(|err| err.to_string())?;
+        let path = entry.path();
+        let metadata = entry.metadata().map_err(|err| err.to_string())?;
+        if metadata.is_dir() {
+            collect_source_manifest(root, &path, entries)?;
+            continue;
+        }
+        if !metadata.is_file() || !is_source_file(&path) {
+            continue;
+        }
+
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|err| err.to_string())?
+            .to_string_lossy()
+            .replace('\\', "/");
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        entries.push(format!("{relative}|{}|{modified}", metadata.len()));
+    }
+    Ok(())
+}
+
+fn is_source_file(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| extension.to_ascii_lowercase()),
+        Some(extension) if matches!(extension.as_str(), "cbl" | "cob" | "cpy" | "jcl")
+    )
+}
+
+fn graph_cache_path(app: &tauri::AppHandle, root: &Path, manifest: &str) -> Result<PathBuf, String> {
+    let key = stable_hash(&format!("{}|{}", root.display(), manifest));
+    let filename = format!("{key:016x}.json");
+    app.path()
+        .resolve(Path::new("graph-cache").join(filename), BaseDirectory::AppCache)
+        .map_err(|err| err.to_string())
+}
+
+fn stable_hash(value: &str) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in value.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
 }
 
 fn sample_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -313,4 +395,49 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn source_manifest_tracks_only_supported_source_files() {
+        let root = temp_test_dir("manifest-source-files");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src").join("PROG.cbl"), "IDENTIFICATION DIVISION.\n").unwrap();
+        fs::write(root.join("notes.txt"), "not source\n").unwrap();
+
+        let manifest = source_manifest(&root).unwrap();
+        assert!(manifest.contains("src/PROG.cbl|"));
+        assert!(!manifest.contains("notes.txt"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn source_manifest_changes_when_source_changes() {
+        let root = temp_test_dir("manifest-invalidates");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("CUSTOMER.cpy");
+        fs::write(&source, "       01 CUSTOMER.\n").unwrap();
+        let first = source_manifest(&root).unwrap();
+
+        fs::write(&source, "       01 CUSTOMER.\n          05 CUSTOMER-ID PIC X(10).\n").unwrap();
+        let second = source_manifest(&root).unwrap();
+
+        assert_ne!(first, second);
+        assert_ne!(stable_hash(&first), stable_hash(&second));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    fn temp_test_dir(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        env::temp_dir().join(format!("cobolens-{name}-{unique}"))
+    }
 }

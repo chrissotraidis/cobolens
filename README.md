@@ -162,11 +162,21 @@ Run benchmark validation once a benchmark checkout exists locally:
 
 ```sh
 npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite
+npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite --report .cache/benchmark-reports/legacy-benchmark-report.json
 npm run m6:compare-candidates -- --root /path/to/COBOL-Legacy-Benchmark-Suite --timeout-ms 70000
 ```
 
-The local benchmark checkout used during M6 validation lives under `.cache/`
-and is intentionally ignored.
+If the benchmark lives at `.cache/benchmarks/COBOL-Legacy-Benchmark-Suite`,
+run the shortcut:
+
+```sh
+npm run validate:benchmark:local
+```
+
+The benchmark report records parse coverage, listed parse failures, node/edge
+type counts, citation coverage, and the semantic signals needed for v1 graph
+understanding. The local benchmark checkout and reports live under `.cache/`
+and are intentionally ignored.
 
 ## Parser Notes
 

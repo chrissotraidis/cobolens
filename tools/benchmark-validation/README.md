@@ -8,7 +8,39 @@ Run this helper after placing a benchmark checkout on disk:
 npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite
 ```
 
-The script runs the current analyzer sidecar through the stable `GraphDocument` contract and reports graph size, node/edge types, and parse errors. It intentionally does not download large corpora or claim validation when the benchmark is absent.
+Write an auditable report with:
+
+```sh
+npm run validate:benchmark -- \
+  --root /path/to/COBOL-Legacy-Benchmark-Suite \
+  --report .cache/benchmark-reports/legacy-benchmark-report.json
+```
+
+If the benchmark is cloned to the default ignored cache location, use:
+
+```sh
+npm run validate:benchmark:local
+```
+
+The script runs the current analyzer sidecar through the stable
+`GraphDocument` contract. It intentionally does not download large corpora or
+claim validation when the benchmark is absent.
+
+The validator checks the pieces that matter for the PRD v1 acceptance criteria:
+
+- the graph schema is valid and non-empty;
+- parsing is forgiving: parse failures are listed with file and reason instead
+  of aborting the whole run;
+- every edge references existing graph nodes;
+- citation sites are structurally valid when present;
+- benchmark-scale semantic signals are present for programs, copybooks, data
+  items, datasets, JCL jobs/steps/DDs, DB2 tables, copy usage, JCL wiring,
+  reads, writes, moves, queries, and DD usage.
+
+The JSON report includes parse coverage, node/edge type counts, citation
+coverage, external-node count, parse-error counts by reason, and parse-error
+samples. This records what the current analyzer understands and where it
+degrades on the primary PRD corpus.
 
 Use the M6 comparison runner when evaluating parser candidates:
 

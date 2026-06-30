@@ -20,6 +20,7 @@
     "m6:compare-candidates": "node tools/parser-upgrade/compare-candidates.mjs",
     "m6:packaging-readiness": "node tools/parser-upgrade/packaging-readiness.mjs",
     "validate:benchmark": "node tools/benchmark-validation/run.mjs",
+    "validate:benchmark:local": "npm run validate:benchmark -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite --report .cache/benchmark-reports/legacy-benchmark-report.json",
     "preview": "vite preview",
     "tauri": "tauri"
   },

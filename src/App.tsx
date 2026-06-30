@@ -194,6 +194,7 @@ function App() {
       .sort((left, right) => searchScore(left, query) - searchScore(right, query))
       .slice(0, 12);
   }, [graph, query]);
+  const codebaseGroups = useMemo(() => sourceTreeGroups(graph), [graph]);
   const focusExpansion = useMemo(
     () => graphExpansionState(graph, focusNodeId, hiddenNodeTypes),
     [focusNodeId, graph, hiddenNodeTypes],
@@ -942,6 +943,8 @@ function App() {
             </div>
           </section>
 
+          <SourceTree groups={codebaseGroups} selectedNodeId={focusNodeId} onSelectNode={focusOnNode} />
+
           <section className="pane-block">
             <h2>Inventory</h2>
             <Metric label="Files" value={graph?.meta.fileCount ?? 0} />
@@ -1202,6 +1205,53 @@ function ParseHealth({ graph }: { graph: GraphDocument | null }) {
         </ul>
       ) : (
         <div className="settings-footnote">Open a folder or sample to see parse coverage.</div>
+      )}
+    </section>
+  );
+}
+
+type SourceTreeGroup = {
+  title: string;
+  nodes: GraphNode[];
+};
+
+function SourceTree({
+  groups,
+  selectedNodeId,
+  onSelectNode,
+}: {
+  groups: SourceTreeGroup[];
+  selectedNodeId: string;
+  onSelectNode: (nodeId: string) => void;
+}) {
+  return (
+    <section className="pane-block source-tree" aria-label="Codebase browser">
+      <h2>Codebase</h2>
+      {groups.length ? (
+        groups.map((group) => (
+          <div className="source-tree-group" key={group.title}>
+            <div className="source-tree-heading">
+              <span>{group.title}</span>
+              <strong>{group.nodes.length}</strong>
+            </div>
+            <div className="source-tree-list">
+              {group.nodes.map((node) => (
+                <button
+                  key={node.id}
+                  type="button"
+                  className={node.id === selectedNodeId ? "is-active" : undefined}
+                  onClick={() => onSelectNode(node.id)}
+                >
+                  <span className="swatch" style={{ background: nodeColor(node.type) }} />
+                  <span title={node.name}>{node.name}</span>
+                  <small>{node.file ?? "external"}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="empty-copy">Open a folder or sample to browse source units.</div>
       )}
     </section>
   );
@@ -1469,6 +1519,24 @@ function dependencyCounts(node: GraphNode, graph: GraphDocument | null) {
   const incoming = graph.edges.filter((edge) => edge.to === node.id).length;
   const outgoing = graph.edges.filter((edge) => edge.from === node.id).length;
   return { incoming, outgoing, total: incoming + outgoing };
+}
+
+function sourceTreeGroups(graph: GraphDocument | null): SourceTreeGroup[] {
+  if (!graph) return [];
+  const groupSpecs: Array<[string, string[]]> = [
+    ["Programs", ["program"]],
+    ["Copybooks", ["copybook"]],
+    ["JCL", ["jcl-job", "jcl-step"]],
+  ];
+
+  return groupSpecs
+    .map(([title, types]) => ({
+      title,
+      nodes: graph.nodes
+        .filter((node) => types.includes(node.type) && node.file && !node.external)
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    }))
+    .filter((group) => group.nodes.length);
 }
 
 function graphExpansionState(graph: GraphDocument | null, focusNodeId: string, hiddenNodeTypes: Set<string>) {

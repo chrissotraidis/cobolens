@@ -53,6 +53,9 @@ Search-driven checks:
   COBOL-to-JCL bridge.
 - `CUSTOMER-FILE` summarized the path as COBOL `SELECT` -> DD `CUSTIN` ->
   dataset `BANK.CUSTOMER.MASTER`, with cited evidence.
+- The left navigator includes a `Codebase` browser grouped by programs,
+  copybooks, and JCL source units, so users can click through the project even
+  before they know a symbol name to search for.
 
 Parse-health checks:
 
@@ -129,9 +132,9 @@ Graph-backed Ask check:
 - `npm run m6:verify` includes `tools/m6-verify/ui-contract-smoke.mjs` to keep
   the Ask response block, inspector tab widths, and relationship labels covered
   by automated checks.
-- `AI explain LINEAGE` now submits an AI-backed explanation request directly, so
-  the suggested-question button behaves like the other Ask shortcuts instead of
-  looking like a dead control.
+- `Explain LINEAGE` now returns a graph-derived, cited brief immediately, so the
+  suggested-question button behaves like the other graph shortcuts even when no
+  model is configured.
 - `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
   `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
   states that `CUSTIN` resolves to `BANK.CUSTOMER.MASTER`.

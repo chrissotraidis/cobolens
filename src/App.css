@@ -309,6 +309,65 @@ select:focus {
   font-size: 12px;
 }
 
+.source-tree {
+  gap: 10px;
+}
+
+.source-tree-group {
+  display: grid;
+  gap: 6px;
+}
+
+.source-tree-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: #7d8996;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.source-tree-heading strong {
+  color: #aeb8c3;
+}
+
+.source-tree-list {
+  display: grid;
+  gap: 5px;
+}
+
+.source-tree-list button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.source-tree-list button.is-active {
+  color: #d9fff1;
+  border-color: rgba(90, 167, 161, 0.58);
+  background: rgba(90, 167, 161, 0.12);
+}
+
+.source-tree-list span:nth-child(2),
+.source-tree-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-tree-list small {
+  grid-column: 2;
+  color: #7d8996;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+}
+
 h2,
 .panel-title,
 .graph-toolbar {

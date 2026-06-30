@@ -58,6 +58,16 @@ const checks = [
       "expandedNodeIds.has(focusNode.id) ? Number.MAX_SAFE_INTEGER : DIRECT_LIMIT_PER_TYPE",
     ]) && includesAll(appSource, ["function expandNode(nodeId: string)", "onExpandNode={expandNode}"]),
   ],
+  [
+    "Left navigator exposes a grouped codebase browser",
+    includesAll(appSource, [
+      "function SourceTree",
+      'aria-label="Codebase browser"',
+      '["Programs", ["program"]]',
+      '["Copybooks", ["copybook"]]',
+      '["JCL", ["jcl-job", "jcl-step"]]',
+    ]) && includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
+  ],
 ];
 
 const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);

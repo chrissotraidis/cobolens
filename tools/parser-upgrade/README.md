@@ -8,3 +8,10 @@ npm run m6:parser-readiness
 
 The current WSL environment does not need this tooling for the Rust semantic slice, but it does need it before we can compile or package a ProLeap/mapa sidecar.
 
+Run the mapa fixture probe with:
+
+```sh
+npm run m6:mapa-probe
+```
+
+The probe uses mapa's checked-in `CallTree.jar` and `JCLParser.jar` against `fixtures/m6-bakeoff`. It requires JDK 21 for those jars. By default it clones mapa into `.cache/parser-upgrade/mapa`; set `MAPA_HOME=/path/to/mapa` or pass `-- --mapa-home /path/to/mapa` to use an existing checkout.

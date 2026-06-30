@@ -109,7 +109,7 @@ function validateGraph(graph, options) {
   if (graph.schemaVersion !== 1) failures.push("schemaVersion must remain 1 for the current app contract");
   if (!nodes.some((node) => node.type === "program" && node.name === "LINEAGE")) failures.push("missing LINEAGE program node");
   if (!nodes.some((node) => node.type === "copybook" && node.name === "CUSTOMER")) failures.push("missing CUSTOMER copybook node");
-  if (!nodes.some((node) => node.type === "jcl-job" && node.name === "DAILYLINE")) failures.push("missing DAILYLINE JCL job node");
+  if (!nodes.some((node) => node.type === "jcl-job" && node.name === "DAILYLN")) failures.push("missing DAILYLN JCL job node");
   if (options.contractOnly) return failures;
 
   const requiredSemanticSignals = [

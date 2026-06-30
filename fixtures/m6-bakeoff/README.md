@@ -8,5 +8,4 @@ Expected M6 semantic signals:
 - `CUSTOMER-ID`, `CUSTOMER-NAME`, and `CUSTOMER-BALANCE` flow into output/report fields.
 - `EXEC SQL SELECT` reads `CUSTOMER_TABLE`.
 - `EXEC CICS LINK PROGRAM('RATEAPI')` links to `RATEAPI`.
-- `DAILYLINE` runs `LINEAGE` and declares input/output datasets through DD statements.
-
+- `DAILYLN` runs `LINEAGE` and declares input/output datasets through DD statements.

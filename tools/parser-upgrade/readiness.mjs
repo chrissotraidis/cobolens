@@ -6,12 +6,14 @@ import { join } from "node:path";
 
 const localJvmHome = process.env.COBOLENS_JVM_HOME ?? join(homedir(), ".local", "codex-jvm");
 const localJdk = join(localJvmHome, "jdk-17");
+const localJdk21 = join(localJvmHome, "jdk-21");
 const localMaven = join(localJvmHome, "maven");
 
 const probes = [
   { name: "java", args: ["-version"], required: true, fallback: join(localJdk, "bin", "java") },
   { name: "javac", args: ["-version"], required: true, fallback: join(localJdk, "bin", "javac") },
   { name: "mvn", args: ["-version"], required: true, fallback: join(localMaven, "bin", "mvn") },
+  { name: "java21", binary: "java", args: ["-version"], required: false, fallback: join(localJdk21, "bin", "java"), minMajor: 21 },
   { name: "gradle", args: ["-version"], required: false },
   { name: "native-image", args: ["--version"], required: false },
 ];
@@ -26,19 +28,26 @@ if (missingRequired.length) {
 }
 
 function probeTool(probe) {
-  const command = probe.fallback && existsSync(probe.fallback) ? probe.fallback : probe.name;
+  const command = probe.fallback && existsSync(probe.fallback) ? probe.fallback : (probe.binary ?? probe.name);
   const env = {
     ...process.env,
     JAVA_HOME: process.env.JAVA_HOME ?? (existsSync(localJdk) ? localJdk : undefined),
   };
   const result = spawnSync(command, probe.args, { encoding: "utf8", env });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  const version = output.split(/\r?\n/).find(Boolean) ?? "";
+  const satisfiesVersion = probe.minMajor ? javaMajor(output) >= probe.minMajor : true;
   return {
     name: probe.name,
     required: probe.required,
-    available: !result.error && result.status === 0,
+    available: !result.error && result.status === 0 && satisfiesVersion,
     command,
-    version: output.split(/\r?\n/).find(Boolean) ?? "",
+    version,
     error: result.error?.message,
   };
+}
+
+function javaMajor(output) {
+  const match = output.match(/version "(\d+)/);
+  return match ? Number.parseInt(match[1], 10) : 0;
 }

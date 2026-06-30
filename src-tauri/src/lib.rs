@@ -10,6 +10,18 @@ use std::{
 };
 use tauri::{path::BaseDirectory, Emitter, Manager, Runtime};
 
+const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const IGNORED_DIR_NAMES: &[&str] = &[
+    ".git",
+    ".hg",
+    ".svn",
+    ".tauri",
+    "build",
+    "dist",
+    "node_modules",
+    "target",
+];
+
 #[tauri::command]
 fn analyze_codebase(
     app: tauri::AppHandle,
@@ -184,10 +196,16 @@ fn collect_source_manifest(
         let path = entry.path();
         let metadata = entry.metadata().map_err(|err| err.to_string())?;
         if metadata.is_dir() {
+            if is_ignored_dir(&path) {
+                continue;
+            }
             collect_source_manifest(root, &path, extensions, entries)?;
             continue;
         }
-        if !metadata.is_file() || !is_source_file(&path, extensions) {
+        if !metadata.is_file()
+            || metadata.len() > MAX_SOURCE_FILE_BYTES
+            || !is_source_file(&path, extensions)
+        {
             continue;
         }
 
@@ -205,6 +223,17 @@ fn collect_source_manifest(
         entries.push(format!("{relative}|{}|{modified}", metadata.len()));
     }
     Ok(())
+}
+
+fn is_ignored_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| {
+            IGNORED_DIR_NAMES
+                .iter()
+                .any(|ignored| name.eq_ignore_ascii_case(ignored))
+        })
+        .unwrap_or(false)
 }
 
 fn is_source_file(path: &Path, extensions: &[String]) -> bool {
@@ -686,6 +715,40 @@ mod tests {
     }
 
     #[test]
+    fn source_manifest_skips_artifact_dirs_and_oversized_sources() {
+        let root = temp_test_dir("manifest-skips-junk");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::create_dir_all(root.join("node_modules")).unwrap();
+        fs::create_dir_all(root.join("target")).unwrap();
+        fs::write(
+            root.join("src").join("KEEP.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("node_modules").join("IGNORE.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("target").join("IGNORE.cpy"),
+            "       01 GENERATED-COPYBOOK.\n",
+        )
+        .unwrap();
+        write_oversized_source(&root.join("src").join("TOO-BIG.cbl"));
+
+        let manifest =
+            source_manifest(&root, &ScanSettings::default().normalized_extensions()).unwrap();
+
+        assert!(manifest.contains("src/KEEP.cbl|"));
+        assert!(!manifest.contains("node_modules/IGNORE.cbl"));
+        assert!(!manifest.contains("target/IGNORE.cpy"));
+        assert!(!manifest.contains("src/TOO-BIG.cbl"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn source_manifest_changes_when_source_changes() {
         let root = temp_test_dir("manifest-invalidates");
         fs::create_dir_all(&root).unwrap();
@@ -758,5 +821,9 @@ mod tests {
             .unwrap()
             .as_nanos();
         env::temp_dir().join(format!("cobolens-{name}-{unique}"))
+    }
+
+    fn write_oversized_source(path: &Path) {
+        fs::write(path, vec![b' '; (MAX_SOURCE_FILE_BYTES + 1) as usize]).unwrap();
     }
 }

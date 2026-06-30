@@ -33,6 +33,8 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   UTF-8 or CP037/EBCDIC source encoding before opening or re-scanning a desktop
   codebase.
 - See desktop indexing progress from the analyzer while scans are running.
+- Skip common build/dependency folders and oversized source-like files during
+  scan discovery and cache fingerprinting, so real repo checkouts stay snappy.
 - Navigate an interactive focus graph.
 - Click nodes and relationships to inspect cited source locations.
 - Inspect lineage and impact relationships for semantic graph signals:

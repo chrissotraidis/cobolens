@@ -8,6 +8,18 @@ use std::{
 };
 use tree_sitter_patched_arborium::Parser;
 
+const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const IGNORED_DIR_NAMES: &[&str] = &[
+    ".git",
+    ".hg",
+    ".svn",
+    ".tauri",
+    "build",
+    "dist",
+    "node_modules",
+    "target",
+];
+
 #[derive(Debug, Clone)]
 struct AnalyzeOptions {
     root: PathBuf,
@@ -1111,11 +1123,15 @@ fn discover_files_inner(
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        if path.is_dir() {
+        let metadata = entry.metadata()?;
+        if metadata.is_dir() {
+            if is_ignored_dir(&path) {
+                continue;
+            }
             discover_files_inner(root, &path, extensions, files)?;
             continue;
         }
-        if !path.is_file() {
+        if !metadata.is_file() || metadata.len() > MAX_SOURCE_FILE_BYTES {
             continue;
         }
 
@@ -1144,6 +1160,17 @@ fn discover_files_inner(
         });
     }
     Ok(())
+}
+
+fn is_ignored_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| {
+            IGNORED_DIR_NAMES
+                .iter()
+                .any(|ignored| name.eq_ignore_ascii_case(ignored))
+        })
+        .unwrap_or(false)
 }
 
 fn normalize_extensions(extensions: &[String]) -> BTreeSet<String> {
@@ -1238,12 +1265,50 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn discover_files_skips_artifact_dirs_and_oversized_sources() {
+        let root = temp_test_dir("discover-skip-junk");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::create_dir_all(root.join("node_modules")).unwrap();
+        fs::create_dir_all(root.join("target")).unwrap();
+        fs::write(
+            root.join("src").join("KEEP.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("node_modules").join("IGNORE.cbl"),
+            "IDENTIFICATION DIVISION.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("target").join("IGNORE.cpy"),
+            "       01 GENERATED-COPYBOOK.\n",
+        )
+        .unwrap();
+        write_oversized_source(&root.join("src").join("TOO-BIG.cbl"));
+
+        let files = discover_files(
+            &root,
+            &normalize_extensions(&[".cbl".to_string(), ".cpy".to_string()]),
+        )
+        .unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].rel, "src/KEEP.cbl");
+        fs::remove_dir_all(root).unwrap();
+    }
+
     fn temp_test_dir(name: &str) -> PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         env::temp_dir().join(format!("cobolens-analyze-{name}-{unique}"))
+    }
+
+    fn write_oversized_source(path: &Path) {
+        fs::write(path, vec![b' '; (MAX_SOURCE_FILE_BYTES + 1) as usize]).unwrap();
     }
 
     fn cp037_fixture_program() -> Vec<u8> {

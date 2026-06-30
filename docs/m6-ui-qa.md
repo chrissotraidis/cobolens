@@ -80,6 +80,10 @@ Scan settings check:
 - In the desktop shell, analyzer JSON progress lines are forwarded as
   `analysis-progress` events and shown in the Ingest pane as counts such as
   `Parse 3/4` while indexing is running.
+- Desktop cache fingerprinting and analyzer discovery both skip common artifact
+  folders such as `.git`, `node_modules`, `target`, `dist`, and `build`, and
+  skip source-like files over 16 MiB so repo checkouts with build output do not
+  dominate scan time.
 - In the browser preview those controls stay disabled because the preview is a
   fixed prebuilt graph JSON. `Re-scan` is disabled there too, so browser users
   are not offered a scan action that cannot touch a local folder.

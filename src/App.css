@@ -316,8 +316,15 @@ h2,
 
 .button-row {
   display: grid;
-  grid-template-columns: 1fr 72px;
   gap: 8px;
+}
+
+.button-row.single {
+  grid-template-columns: 1fr;
+}
+
+.button-row.three {
+  grid-template-columns: 1fr 78px 58px;
 }
 
 .button-row button {
@@ -328,6 +335,18 @@ h2,
   min-height: 18px;
   color: #7d8996;
   font-size: 12px;
+}
+
+.settings-footnote.ready {
+  color: #b8f0dc;
+}
+
+.settings-footnote.error {
+  color: #ffb4a2;
+}
+
+.settings-footnote.checking {
+  color: #e8d796;
 }
 
 .cost-meter {

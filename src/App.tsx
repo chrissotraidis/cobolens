@@ -29,6 +29,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
+import { assertLocalOllamaUrl, normalizeOllamaBaseUrl } from "./model/providers";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import "./App.css";
@@ -45,6 +46,10 @@ type ChatAnswer = {
   question: string;
   text: string;
   citations: Citation[];
+};
+type ModelReadiness = {
+  status: "idle" | "checking" | "ready" | "error";
+  message: string;
 };
 type SourceFocus = {
   file: string;
@@ -80,6 +85,7 @@ function App() {
   const [keyDraft, setKeyDraft] = useState("");
   const [hasProviderKey, setHasProviderKey] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState("");
+  const [modelReadiness, setModelReadiness] = useState<ModelReadiness>({ status: "idle", message: "" });
   const [summaries, setSummaries] = useState<Record<string, SummaryState>>({});
   const [bulkSummaryStatus, setBulkSummaryStatus] = useState("");
   const [sourceFocus, setSourceFocus] = useState<SourceFocus | null>(null);
@@ -205,6 +211,10 @@ function App() {
       cancelled = true;
     };
   }, [modelSettings.provider]);
+
+  useEffect(() => {
+    setModelReadiness({ status: "idle", message: "" });
+  }, [modelSettings.provider, modelSettings.model, modelSettings.baseUrl, hasProviderKey]);
 
   async function chooseFolder() {
     if (!canUseTauri()) {
@@ -376,6 +386,31 @@ function App() {
       setSettingsMessage("Key cleared");
     } catch (err) {
       setSettingsMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function checkModelReadiness() {
+    setModelReadiness({ status: "checking", message: "Checking AI settings" });
+    try {
+      if (isCloudProvider(modelSettings.provider)) {
+        if (!canUseTauri()) {
+          throw new Error("Cloud API keys are stored in the desktop keychain. Use the desktop app to check cloud AI settings.");
+        }
+        if (!hasProviderKey) {
+          throw new Error(`Save a ${PROVIDER_LABELS[modelSettings.provider]} key before using cloud AI.`);
+        }
+        await providerKeyForModel(modelSettings);
+        setModelReadiness({
+          status: "ready",
+          message: `${PROVIDER_LABELS[modelSettings.provider]} key is saved. Cloud calls happen only when you run AI Summary or non-graph Ask.`,
+        });
+        return;
+      }
+
+      const message = await checkOllamaReadiness(modelSettings);
+      setModelReadiness({ status: "ready", message });
+    } catch (err) {
+      setModelReadiness({ status: "error", message: friendlyModelError(err, modelSettings) });
     }
   }
 
@@ -605,6 +640,8 @@ function App() {
             onKeyDraftChange={setKeyDraft}
             onSaveKey={saveKey}
             onClearKey={clearKey}
+            onCheckModel={checkModelReadiness}
+            modelReadiness={modelReadiness}
             modelCallCount={modelCallCount}
             bulkTokenEstimate={bulkTokenEstimate}
           />
@@ -779,6 +816,8 @@ function ModelSettingsPanel({
   onKeyDraftChange,
   onSaveKey,
   onClearKey,
+  onCheckModel,
+  modelReadiness,
 }: {
   settings: ModelSettings;
   keyDraft: string;
@@ -791,6 +830,8 @@ function ModelSettingsPanel({
   onKeyDraftChange: (value: string) => void;
   onSaveKey: () => void;
   onClearKey: () => void;
+  onCheckModel: () => void;
+  modelReadiness: ModelReadiness;
 }) {
   const cloud = isCloudProvider(settings.provider);
 
@@ -848,17 +889,24 @@ function ModelSettingsPanel({
           <option value="c#">C#</option>
         </select>
       </label>
-      {cloud ? (
-        <div className="button-row">
+      <div className={cloud ? "button-row three" : "button-row single"}>
+        <button type="button" onClick={onCheckModel} disabled={modelReadiness.status === "checking"}>
+          {modelReadiness.status === "checking" ? "Checking" : "Check AI"}
+        </button>
+        {cloud ? (
+          <>
           <button type="button" onClick={onSaveKey} disabled={!keyDraft.trim()}>
             Save Key
           </button>
           <button type="button" onClick={onClearKey} disabled={!hasProviderKey}>
             Clear
           </button>
-        </div>
-      ) : null}
-      <div className="settings-footnote">{cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode"}</div>
+          </>
+        ) : null}
+      </div>
+      <div className={`settings-footnote ${modelReadiness.status}`}>
+        {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode")}
+      </div>
       <div className="cost-meter">
         <span>{cloud ? "Cloud meter" : "Local calls"}</span>
         <strong>{modelCallCount}</strong>
@@ -1182,6 +1230,44 @@ async function providerKeyForModel(settings: ModelSettings) {
   return invoke<string>("read_provider_key", { provider: settings.provider });
 }
 
+async function checkOllamaReadiness(settings: ModelSettings) {
+  assertLocalOllamaUrl(settings.baseUrl);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 2500);
+
+  try {
+    const response = await fetch(`${normalizeOllamaBaseUrl(settings.baseUrl)}/tags`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Ollama responded with ${response.status}. Check the host and try again.`);
+    }
+
+    const body = (await response.json()) as { models?: Array<{ name?: string }> };
+    const modelNames = body.models?.map((model) => model.name).filter((name): name is string => Boolean(name)) ?? [];
+    if (!modelNames.length) {
+      throw new Error(`Ollama is reachable, but no local models are installed. Run: ollama pull ${settings.model}`);
+    }
+
+    const configuredModel = settings.model.trim();
+    const hasModel = modelNames.some(
+      (name) => name === configuredModel || name === `${configuredModel}:latest` || name.startsWith(`${configuredModel}:`),
+    );
+    if (!hasModel) {
+      throw new Error(`Ollama is reachable, but ${configuredModel} is not installed. Run: ollama pull ${configuredModel}`);
+    }
+
+    return `Ollama is ready on localhost with ${configuredModel}.`;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Could not reach Ollama at ${settings.baseUrl}. Start Ollama or check the host.`);
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 async function readSourceSnippet(root: string, sourceBase: string, file: string, line: number): Promise<SourceSnippet> {
   if (root && canUseTauri()) {
     return invoke<SourceSnippet>("read_source_snippet", {
@@ -1371,7 +1457,7 @@ function graphAnswerFallback(
 }
 
 function isGraphQuestion(question: string) {
-  return /\b(depend|impact|where|happen|flow|used by|uses|read|write|move|call|copy|query|link|xctl|dataset|table|file)\b/i.test(
+  return /\b(depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
 }

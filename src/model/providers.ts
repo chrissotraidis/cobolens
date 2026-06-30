@@ -39,7 +39,7 @@ export function assertLocalOllamaUrl(baseUrl: string) {
   }
 }
 
-function normalizeOllamaBaseUrl(baseUrl: string) {
+export function normalizeOllamaBaseUrl(baseUrl: string) {
   const trimmed = (baseUrl || "http://127.0.0.1:11434/api").replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 }

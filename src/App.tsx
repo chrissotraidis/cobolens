@@ -1460,7 +1460,7 @@ function InspectorTabs({
     { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "ask", label: "Ask" },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
-    { id: "relationship", label: "Rel", badge: hasRelationship ? "1" : undefined },
+    { id: "relationship", label: "Links", badge: hasRelationship ? "1" : undefined },
   ];
 
   return (
@@ -1513,7 +1513,7 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>Selected Summary</strong>
+          <strong>Summary</strong>
           <span>
             {node ? node.name : "No symbol"} - {PROVIDER_LABELS[settings.provider]} / {settings.model}
           </span>
@@ -1536,7 +1536,7 @@ function SummaryDock({
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
           <>
-            <p>{state.summary.text}</p>
+            <MessageText text={state.summary.text} />
             <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
           </>
         ) : state?.status === "running" ? (
@@ -1549,7 +1549,7 @@ function SummaryDock({
           <p className="error-text">{state.error}</p>
         ) : node && graph ? (
           <>
-            <p>{nodeGraphOverview(node, graph)}</p>
+            <MessageText text={nodeGraphOverview(node, graph)} />
             <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
           </>
         ) : (
@@ -1659,7 +1659,7 @@ function ChatAnswerPanel({
     <section className="answer-card" aria-live="polite">
       <div className="answer-header">
         <div>
-          <strong>Ask Codebase</strong>
+          <strong>Ask Cobolens</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>
@@ -1675,7 +1675,7 @@ function ChatAnswerPanel({
         ) : answer ? (
           <>
             <div className="answer-question">{answer.question}</div>
-            <p>{answer.text}</p>
+            <MessageText text={answer.text} />
             <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
@@ -1745,6 +1745,65 @@ function EvidenceList({
       <CitationList citations={citations} onOpenCitation={onOpenCitation} />
     </div>
   );
+}
+
+function MessageText({ text }: { text: string }) {
+  const blocks = textBlocks(text);
+
+  return (
+    <div className="message-text">
+      {blocks.map((block, index) =>
+        block.type === "list" ? (
+          <ul key={index}>
+            {block.items.map((item, itemIndex) => (
+              <li key={`${index}:${itemIndex}`}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={index}>{block.text}</p>
+        ),
+      )}
+    </div>
+  );
+}
+
+type MessageTextBlock = { type: "paragraph"; text: string } | { type: "list"; items: string[] };
+
+function textBlocks(text: string): MessageTextBlock[] {
+  const blocks: MessageTextBlock[] = [];
+  let paragraph: string[] = [];
+  let listItems: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push({ type: "paragraph", text: paragraph.join(" ") });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!listItems.length) return;
+    blocks.push({ type: "list", items: listItems });
+    listItems = [];
+  };
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      flushParagraph();
+      listItems.push(line.slice(2).trim());
+      continue;
+    }
+    flushList();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+  return blocks.length ? blocks : [{ type: "paragraph", text }];
 }
 
 function CitationList({

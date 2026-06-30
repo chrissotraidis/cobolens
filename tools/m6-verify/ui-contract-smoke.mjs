@@ -28,8 +28,14 @@ const checks = [
     includesAll(appCss, [".answer-response", "min-height: 76px", "background: rgba(17, 21, 26, 0.68)"]),
   ],
   [
+    "Ask and summary messages render structured text blocks",
+    includesAll(appSource, ["function MessageText", "function textBlocks", 'block.type === "list"']) &&
+      includesAll(appCss, [".message-text", ".message-text ul"]),
+  ],
+  [
     "Inspector tabs reserve enough width for Summary and Impact",
-    includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),
+    includesAll(appSource, ['label: "Links"']) &&
+      includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),
   ],
   [
     "Relationship source buttons expose section-specific accessible labels",

@@ -955,6 +955,26 @@ pre {
   white-space: pre-line;
 }
 
+.message-text {
+  display: grid;
+  gap: 8px;
+}
+
+.message-text p,
+.message-text ul {
+  margin: 0;
+}
+
+.message-text ul {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+}
+
+.message-text li {
+  padding-left: 2px;
+}
+
 .progress-note {
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);

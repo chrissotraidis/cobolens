@@ -938,6 +938,79 @@ mod tests {
     }
 
     #[test]
+    fn write_export_files_writes_markdown_mermaid_and_png() {
+        let output_dir = temp_test_dir("export-files");
+        fs::create_dir_all(&output_dir).unwrap();
+
+        let target = write_export_files(
+            output_dir.to_string_lossy().to_string(),
+            "Cobolens LINEAGE!".to_string(),
+            "# Cobolens\n".to_string(),
+            "graph TD\n".to_string(),
+            valid_png_bytes(),
+        )
+        .unwrap();
+
+        assert_eq!(target, output_dir.to_string_lossy());
+        assert_eq!(
+            fs::read_to_string(output_dir.join("cobolens-lineage.md")).unwrap(),
+            "# Cobolens\n"
+        );
+        assert_eq!(
+            fs::read_to_string(output_dir.join("cobolens-lineage.mmd")).unwrap(),
+            "graph TD\n"
+        );
+        assert_eq!(
+            fs::read(output_dir.join("cobolens-lineage.png")).unwrap(),
+            valid_png_bytes()
+        );
+
+        fs::remove_dir_all(output_dir).unwrap();
+    }
+
+    #[test]
+    fn write_export_files_rejects_non_folder_destinations() {
+        let output_dir = temp_test_dir("export-not-folder");
+        fs::write(&output_dir, "not a directory").unwrap();
+
+        let result = write_export_files(
+            output_dir.to_string_lossy().to_string(),
+            "docs".to_string(),
+            "# Docs\n".to_string(),
+            "graph TD\n".to_string(),
+            valid_png_bytes(),
+        );
+
+        assert!(result
+            .unwrap_err()
+            .contains("export destination must be a folder"));
+        fs::remove_file(output_dir).unwrap();
+    }
+
+    #[test]
+    fn write_export_files_rejects_invalid_png_payloads() {
+        let output_dir = temp_test_dir("export-invalid-png");
+        fs::create_dir_all(&output_dir).unwrap();
+
+        let result = write_export_files(
+            output_dir.to_string_lossy().to_string(),
+            "docs".to_string(),
+            "# Docs\n".to_string(),
+            "graph TD\n".to_string(),
+            b"not-png".to_vec(),
+        );
+
+        assert!(result
+            .unwrap_err()
+            .contains("export PNG payload was invalid"));
+        assert!(!output_dir.join("docs.md").exists());
+        assert!(!output_dir.join("docs.mmd").exists());
+        assert!(!output_dir.join("docs.png").exists());
+
+        fs::remove_dir_all(output_dir).unwrap();
+    }
+
+    #[test]
     fn source_snippet_reads_cp037_source_line() {
         let root = temp_test_dir("snippet-cp037-root");
         fs::create_dir_all(&root).unwrap();
@@ -982,5 +1055,9 @@ mod tests {
 
     fn write_oversized_source(path: &Path) {
         fs::write(path, vec![b' '; (MAX_SOURCE_FILE_BYTES + 1) as usize]).unwrap();
+    }
+
+    fn valid_png_bytes() -> Vec<u8> {
+        b"\x89PNG\r\n\x1a\nexport-smoke".to_vec()
     }
 }

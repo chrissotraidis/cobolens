@@ -126,6 +126,9 @@ Export check:
 - After navigating to `CUSTOMER`, clicking `Export Docs` reports
   `cobolens-customer.md`, `cobolens-customer.mmd`, and
   `cobolens-customer.png`.
+- Tauri command tests cover the desktop export writer: it writes Markdown,
+  Mermaid, and PNG files with a sanitized prefix, rejects non-folder
+  destinations, and rejects invalid PNG payloads before writing artifacts.
 
 Graph-backed Ask check:
 

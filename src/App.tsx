@@ -815,6 +815,11 @@ function App() {
     setChatError("");
   }
 
+  function explainSelectedNode() {
+    if (!selectedNode) return;
+    askQuestion(`Explain ${selectedNode.name} from the graph.`);
+  }
+
   function cancelAsk() {
     activeChatAbortRef.current?.abort();
   }
@@ -1143,6 +1148,7 @@ function App() {
                   onGenerateSelected={generateSelectedSummary}
                   onGenerateAll={generateAllSummaries}
                   onCancelSummary={cancelSummary}
+                  onExplainNode={explainSelectedNode}
                   onOpenCitation={jumpToCitation}
                 />
               ) : null}
@@ -1531,6 +1537,7 @@ function SummaryDock({
   onGenerateSelected,
   onGenerateAll,
   onCancelSummary,
+  onExplainNode,
   onOpenCitation,
 }: {
   node: GraphNode | null;
@@ -1542,6 +1549,7 @@ function SummaryDock({
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
   onCancelSummary: () => void;
+  onExplainNode: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
@@ -1557,20 +1565,30 @@ function SummaryDock({
             {node ? node.name : "No symbol"} - {PROVIDER_LABELS[settings.provider]} / {settings.model}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={generating ? onCancelSummary : onGenerateSelected}
-          disabled={!generating && !node?.file}
-          title={
-            generating
-              ? "Stop the running summary request"
-              : !node?.file
-                ? "Select a symbol with source to summarize"
-                : "Generate an AI summary for this symbol"
-          }
-        >
-          {generating ? "Stop" : state?.summary ? "Regenerate" : "Generate Summary"}
-        </button>
+        <div className="summary-action-buttons">
+          <button
+            type="button"
+            onClick={onExplainNode}
+            disabled={!node}
+            title={node ? "Ask Cobolens for a cited graph explanation of this symbol" : "Select a symbol to ask about it"}
+          >
+            Ask
+          </button>
+          <button
+            type="button"
+            onClick={generating ? onCancelSummary : onGenerateSelected}
+            disabled={!generating && !node?.file}
+            title={
+              generating
+                ? "Stop the running summary request"
+                : !node?.file
+                  ? "Select a symbol with source to summarize"
+                  : "Generate an AI summary for this symbol"
+            }
+          >
+            {generating ? "Stop" : state?.summary ? "Regenerate" : "Generate Summary"}
+          </button>
+        </div>
       </div>
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (

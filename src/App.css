@@ -935,6 +935,12 @@ pre {
   padding: 0 10px;
 }
 
+.summary-action-buttons {
+  display: grid;
+  grid-template-columns: 58px minmax(122px, auto);
+  gap: 8px;
+}
+
 .summary-output {
   color: #b7c2cd;
   font-size: 13px;

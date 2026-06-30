@@ -43,6 +43,14 @@ const checks = [
     ]) && includesAll(appCss, [".answer-history", ".answer-history-list button"]),
   ],
   [
+    "Summary can seed a cited Ask explanation for the selected node",
+    includesAll(appSource, [
+      "function explainSelectedNode()",
+      "Ask Cobolens for a cited graph explanation of this symbol",
+      "onExplainNode={explainSelectedNode}",
+    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: 58px minmax(122px, auto)"]),
+  ],
+  [
     "Inspector tabs reserve enough width for Summary and Impact",
     includesAll(appSource, ['label: "Links"']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),

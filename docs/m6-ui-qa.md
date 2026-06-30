@@ -141,6 +141,9 @@ Graph-backed Ask check:
 - The Ask panel keeps a bounded `Recent answers` trail for the current graph.
   Previous questions can be restored with their cited answer and citation chips,
   which makes the surface behave more like a lightweight code conversation.
+- The Summary panel has an `Ask` action for the selected node. It seeds the
+  existing graph-grounded Ask flow with `Explain <symbol> from the graph.`, so a
+  node selection can drive a cited chat answer without manual tab setup.
 - Inspector tabs remain readable at the default desktop preview width, and
   duplicated relationship source controls expose section-specific labels such
   as `Depends On: show ...` and `Lineage: show ...`.

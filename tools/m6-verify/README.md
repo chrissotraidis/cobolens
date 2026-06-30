@@ -10,7 +10,8 @@ This runner verifies the completed M6 surface:
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
 - model privacy smoke for local/cloud mode invariants,
 - Rust sidecar `cargo check`,
-- Tauri shell `cargo test`.
+- Tauri shell `cargo test`, including command-level coverage for bundled sample
+  analysis, source snippets, and path traversal rejection.
 
 It also runs JVM parser work as advisory checks:
 

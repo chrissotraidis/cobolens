@@ -7,20 +7,20 @@ use std::{
     process::{Command, Stdio},
     time::UNIX_EPOCH,
 };
-use tauri::{path::BaseDirectory, Manager};
+use tauri::{path::BaseDirectory, Manager, Runtime};
 
 #[tauri::command]
 fn analyze_codebase(app: tauri::AppHandle, root: String) -> Result<Value, String> {
-    analyze_root(app, root)
+    analyze_root(&app, root)
 }
 
 #[tauri::command]
 fn analyze_sample_codebase(app: tauri::AppHandle) -> Result<Value, String> {
     let root = sample_root(&app)?.to_string_lossy().to_string();
-    analyze_root(app, root)
+    analyze_root(&app, root)
 }
 
-fn analyze_root(app: tauri::AppHandle, root: String) -> Result<Value, String> {
+fn analyze_root<R: Runtime>(app: &tauri::AppHandle<R>, root: String) -> Result<Value, String> {
     let root_path = PathBuf::from(&root)
         .canonicalize()
         .map_err(|err| format!("codebase folder is unavailable: {err}"))?;
@@ -125,7 +125,11 @@ fn is_source_file(path: &Path) -> bool {
     )
 }
 
-fn graph_cache_path(app: &tauri::AppHandle, root: &Path, manifest: &str) -> Result<PathBuf, String> {
+fn graph_cache_path<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    root: &Path,
+    manifest: &str,
+) -> Result<PathBuf, String> {
     let key = stable_hash(&format!("{}|{}", root.display(), manifest));
     let filename = format!("{key:016x}.json");
     app.path()
@@ -142,7 +146,7 @@ fn stable_hash(value: &str) -> u64 {
     hash
 }
 
-fn sample_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+fn sample_root<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
     if let Ok(path) = app
         .path()
         .resolve("samples/mini-bank", BaseDirectory::Resource)
@@ -337,7 +341,7 @@ fn safe_export_prefix(prefix: &str) -> Result<String, String> {
     Ok(stem)
 }
 
-fn analyzer_binary_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+fn analyzer_binary_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
     if let Ok(path) = env::var("COBOLENS_ANALYZE_BIN") {
         return Ok(PathBuf::from(path));
     }
@@ -401,6 +405,58 @@ pub fn run() {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn analyze_sample_command_returns_graph() {
+        let app = tauri::test::mock_app();
+        let root = sample_root(app.handle()).unwrap();
+        let graph = analyze_root(app.handle(), root.to_string_lossy().to_string()).unwrap();
+
+        assert_eq!(graph["schemaVersion"], 1);
+        assert_eq!(graph["meta"]["fileCount"], 4);
+        assert_eq!(graph["meta"]["parsedFileCount"], 4);
+        assert!(graph["nodes"].as_array().unwrap().len() >= 20);
+        assert!(graph["edges"].as_array().unwrap().len() >= 20);
+        assert!(graph["nodes"].as_array().unwrap().iter().any(|node| {
+            node["type"] == "program" && node["name"] == "ACCTREAD"
+        }));
+    }
+
+    #[test]
+    fn source_snippet_rejects_paths_outside_root() {
+        let root = temp_test_dir("snippet-safe-root");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("PROGRAM.cbl"), "       IDENTIFICATION DIVISION.\n").unwrap();
+
+        let result = read_source_snippet(
+            root.to_string_lossy().to_string(),
+            "../PROGRAM.cbl".to_string(),
+            1,
+        );
+
+        assert!(result.is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn source_snippet_reads_selected_file_line() {
+        let app = tauri::test::mock_app();
+        let root = sample_root(app.handle()).unwrap();
+        let snippet = read_source_snippet(
+            root.to_string_lossy().to_string(),
+            "src/ACCTREAD.cbl".to_string(),
+            18,
+        )
+        .unwrap();
+
+        assert_eq!(snippet["file"], "src/ACCTREAD.cbl");
+        assert_eq!(snippet["highlightLine"], 18);
+        assert!(snippet["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|line| line["text"].as_str().unwrap_or_default().contains("READ CUSTOMER")));
+    }
 
     #[test]
     fn source_manifest_tracks_only_supported_source_files() {

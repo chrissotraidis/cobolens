@@ -147,6 +147,10 @@ Smoke-test the desktop shell against an already-running Vite server:
 npm run desktop:smoke
 ```
 
+`npm run m6:verify` also runs Tauri command-level tests that exercise the
+desktop analysis path against the bundled sample, source snippet reads, and
+path traversal rejection.
+
 The packaged analyzer/sample smoke used for the current Linux validation ran
 the analyzer extracted from the AppImage against the bundled `mini-bank` sample
 and produced a graph with 4 parsed files, 25 nodes, 27 edges, and 0 parse

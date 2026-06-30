@@ -684,8 +684,12 @@ function App() {
           ) : null}
         </nav>
 
-        <div className={`mode-indicator ${modelSettings.privacyMode}`} aria-label="Privacy mode">
-          {modelSettings.privacyMode === "local" ? "Local" : `Cloud: ${PROVIDER_LABELS[modelSettings.provider]}`}
+        <div
+          className={`mode-indicator ${modelSettings.privacyMode}`}
+          aria-label={privacyModeLabel(modelSettings)}
+          title={privacyModeLabel(modelSettings)}
+        >
+          {modelSettings.privacyMode === "local" ? "Local: no code leaves" : `Cloud: ${PROVIDER_LABELS[modelSettings.provider]}`}
         </div>
       </header>
 
@@ -1031,7 +1035,7 @@ function ModelSettingsPanel({
         ) : null}
       </div>
       <div className={`settings-footnote ${modelReadiness.status}`}>
-        {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode")}
+        {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode: model calls stay on this machine.")}
       </div>
       <div className="cost-meter">
         <span>{cloud ? "Cloud meter" : "Local calls"}</span>
@@ -1070,7 +1074,7 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>Summary</strong>
+          <strong>Selected Summary</strong>
           <span>
             {node ? node.name : "No symbol"} - {PROVIDER_LABELS[settings.provider]} / {settings.model}
           </span>
@@ -1081,7 +1085,7 @@ function SummaryDock({
           disabled={!node?.file || state?.status === "running"}
           title={!node?.file ? "Select a symbol with source to summarize" : "Generate an AI summary for this symbol"}
         >
-          {state?.status === "running" ? "Generating" : "Generate"}
+          {state?.status === "running" ? "Generating" : state?.summary ? "Regenerate" : "Generate Summary"}
         </button>
       </div>
       <div className="summary-output">
@@ -1145,7 +1149,8 @@ function ChatAnswerPanel({
   const starterQuestions = suggestedGraphQuestions(node);
   const explainQuestion = node ? `Explain ${node.name} for a new developer.` : "";
   const elapsedSeconds = useElapsedSeconds(status === "running");
-  const workingWithModel = status === "running" && question.trim() && !isGraphQuestion(question);
+  const questionText = question.trim();
+  const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
   const answerSubtitle =
     status === "running"
       ? workingWithModel
@@ -1153,8 +1158,11 @@ function ChatAnswerPanel({
         : "Answering from graph context"
       : answer?.source === "model"
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
-        : "Graph answers need no model";
+        : workingWithModel
+          ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
+          : "Graph shortcuts answer without a model";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
+  const askButtonLabel = status === "running" ? "..." : workingWithModel ? "Ask AI" : "Ask";
 
   return (
     <section className="answer-card" aria-live="polite">
@@ -1169,9 +1177,9 @@ function ChatAnswerPanel({
           {explainQuestion ? (
             <button
               type="button"
-              onClick={() => onQuestionChange(explainQuestion)}
+              onClick={() => onAskPreset(explainQuestion)}
               disabled={status === "running"}
-              title="Seed an explanation question without calling a model yet"
+              title={`Ask ${PROVIDER_LABELS[settings.provider]} for a cited explanation`}
             >
               Explain {node?.name}
             </button>
@@ -1201,7 +1209,7 @@ function ChatAnswerPanel({
           disabled={!canAsk || status === "running"}
         />
         <button type="button" onClick={onAsk} disabled={!canAsk || !question.trim() || status === "running"}>
-          {status === "running" ? "..." : "Ask"}
+          {askButtonLabel}
         </button>
       </div>
       {status === "running" ? (
@@ -1583,6 +1591,13 @@ function ParseErrorSummary({ graph }: { graph: GraphDocument }) {
 
 function canUseTauri() {
   return typeof window !== "undefined" && typeof window.__TAURI_INTERNALS__?.invoke === "function";
+}
+
+function privacyModeLabel(settings: ModelSettings) {
+  if (settings.privacyMode === "local") {
+    return "Local mode: inference uses localhost Ollama; code stays on this machine.";
+  }
+  return `Cloud mode: retrieved code context is sent to ${PROVIDER_LABELS[settings.provider]}.`;
 }
 
 function sourceBaseForGraphUrl(graphUrl: string) {

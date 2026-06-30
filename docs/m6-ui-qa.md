@@ -58,6 +58,14 @@ Legend/filter checks:
   `26 indexed`, `0 hidden` to `9 visible`, `26 indexed`, `2 hidden`; turning it
   back on restores the original counts.
 
+Privacy mode checks:
+
+- In local Ollama mode, the top bar shows `Local: no code leaves` with an
+  explanatory tooltip/ARIA label that the model call stays on localhost.
+- Switching Provider to `Anthropic` changes the top bar to `Cloud: Anthropic`
+  and explains that retrieved code context is sent to Anthropic; switching back
+  to `Ollama` restores the local-mode indicator.
+
 Relationship-click check:
 
 - Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to
@@ -75,9 +83,11 @@ Export check:
 
 Graph-backed Ask check:
 
-- `Explain LINEAGE` seeds the Ask composer with
-  `Explain LINEAGE for a new developer.`, enables `Ask`, and does not increment
-  local model calls until the user explicitly submits.
+- `Explain LINEAGE` now submits an AI-backed explanation request directly, so
+  the suggested-question button behaves like the other Ask shortcuts instead of
+  looking like a dead control.
+- Typing a broader explanation question changes the submit button from `Ask` to
+  `Ask AI`, while graph-only questions keep the normal `Ask` label.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and focused citations;
   it does not include unrelated copybook, read, write, or define edges.

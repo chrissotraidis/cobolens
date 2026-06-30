@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import type { RetrievedContext } from "../retrieval/context";
 import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
+import { groundedAnswerSystemPrompt } from "./prompts";
 
 export type GroundedAnswer = {
   text: string;
@@ -22,16 +23,7 @@ export async function generateGroundedAnswer({
 }): Promise<GroundedAnswer> {
   const result = await generateText({
     model: createLanguageModel(settings, apiKey),
-    system: [
-      "You answer questions about a COBOL codebase for an engineer who may not know COBOL.",
-      "Use only the provided graph relationships and source excerpts.",
-      "Treat matched symbol names as codebase artifacts, not as generic computing terms.",
-      "When asked to explain a symbol, describe its recorded type, source location, and cited graph relationships.",
-      "Do not infer business purpose or technical meaning from a symbol name unless the provided source or graph states it.",
-      "Cite file:line for every concrete claim.",
-      "If the context does not answer the question, say so plainly.",
-      "Never invent files, nodes, edges, jobs, datasets, or line numbers.",
-    ].join(" "),
+    system: groundedAnswerSystemPrompt(settings.rosettaLanguage),
     prompt: [
       context.prompt,
       "",

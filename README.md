@@ -46,6 +46,8 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   "what depends on this?" and "where does this data flow?"
 - Preflight local/cloud model readiness for AI Ask and summaries, with Stop
   controls and bounded timeouts so model calls do not leave the UI spinning.
+- Apply the selected Rosetta language to both grounded Ask and generated
+  summaries while preserving graph-only grounding and citation rules.
 - Validate parser candidates against the strict M6 fixture and the cloned
   benchmark suite when available locally.
 

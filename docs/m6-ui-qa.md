@@ -131,6 +131,9 @@ Graph-backed Ask check:
 Model-backed Ask check:
 
 - `Check AI` reports `Ollama is ready on localhost with llama3.2`.
+- Grounded Ask now passes the selected Rosetta language into the model system
+  prompt while keeping the graph-only grounding, citation, and no-invention
+  rules.
 - Asking `Explain LINEAGE in plain English for a new developer.` labels the
   response as an `Ollama answer with cited graph context`, increments the local
   call counter, cites `src/LINEAGE.cbl:1` plus relationship lines, and does not

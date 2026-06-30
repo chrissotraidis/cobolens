@@ -31,7 +31,7 @@ export function buildDocumentationExport(
       const file = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
       const relationships = relationshipFacts(graph, node);
       return [
-        `### ${node.name}`,
+        `### Summary: ${node.name}`,
         "",
         `- Type: ${node.type}`,
         `- Source: ${file}`,
@@ -50,10 +50,30 @@ export function buildDocumentationExport(
   const parseErrors = graph.meta.parseErrors.length
     ? graph.meta.parseErrors.map((error) => `- ${error.file}: ${error.reason}`).join("\n")
     : "- None";
+  const summaryNodes = graph.nodes
+    .filter((node) => node.type === "program" || node.type === "copybook" || node.type === "paragraph")
+    .slice(0, 120);
+  const lineageNodes = graph.nodes
+    .filter((node) => LINEAGE_EXPORT_TYPES.has(node.type))
+    .slice(0, 120);
+  const contents = [
+    "- [Inventory](#inventory)",
+    "- [Dependency Diagram](#dependency-diagram)",
+    "- [Program Diagrams](#program-diagrams)",
+    ...graph.nodes
+      .filter((node) => node.type === "program" && !node.external)
+      .slice(0, 12)
+      .map((node) => `  - [${node.name} diagram](#${markdownAnchor(`Diagram: ${node.name}`)})`),
+    "- [Lineage and Impact](#lineage-and-impact)",
+    ...lineageNodes.slice(0, 12).map((node) => `  - [${node.name} lineage](#${markdownAnchor(`Lineage: ${node.name}`)})`),
+    "- [Summaries](#summaries)",
+    ...summaryNodes.slice(0, 12).map((node) => `  - [${node.name} summary](#${markdownAnchor(`Summary: ${node.name}`)})`),
+    "- [Parse Errors](#parse-errors)",
+  ].join("\n");
   const programDiagrams = graph.nodes
     .filter((node) => node.type === "program" && !node.external)
     .slice(0, 40)
-    .map((node) => [`### ${node.name}`, "", "```mermaid", buildMermaidDiagram(graph, node.id), "```"].join("\n"))
+    .map((node) => [`### Diagram: ${node.name}`, "", "```mermaid", buildMermaidDiagram(graph, node.id), "```"].join("\n"))
     .join("\n\n");
   const lineageRows = graph.nodes
     .filter((node) => LINEAGE_EXPORT_TYPES.has(node.type))
@@ -62,7 +82,7 @@ export function buildDocumentationExport(
       const source = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
       const relationships = relationshipFacts(graph, node);
       return [
-        `### ${node.name}`,
+        `### Lineage: ${node.name}`,
         "",
         `- Type: ${node.type}`,
         `- Source: ${source}`,
@@ -91,6 +111,10 @@ export function buildDocumentationExport(
       `- Files parsed: ${graph.meta.parsedFileCount}`,
       `- Nodes: ${graph.nodes.length}`,
       `- Edges: ${graph.edges.length}`,
+      "",
+      "## Table of Contents",
+      "",
+      contents,
       "",
       "## Dependency Diagram",
       "",
@@ -186,6 +210,15 @@ function escapeMermaid(value: string) {
 
 function safeName(value: string) {
   return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "docs";
+}
+
+function markdownAnchor(value: string) {
+  return value
+    .toLocaleLowerCase()
+    .trim()
+    .replace(/[^a-z0-9 _-]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }
 
 function graphDerivedSummary(graph: GraphDocument, node: GraphNode) {

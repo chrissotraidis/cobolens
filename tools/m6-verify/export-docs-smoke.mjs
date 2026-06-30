@@ -47,6 +47,9 @@ try {
     ["lineage and impact section", docs.markdown.includes("## Lineage and Impact")],
     ["cited CUSTOMER-ID flow", docs.markdown.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
     ["no empty generated-summary placeholder", !docs.markdown.includes("No generated summary yet.")],
+    ["navigable table of contents", docs.markdown.includes("## Table of Contents")],
+    ["links to focused program summary", docs.markdown.includes("- [LINEAGE summary](#summary-lineage)")],
+    ["links to lineage section", docs.markdown.includes("- [CUSTOMER-ID lineage](#lineage-customer-id)")],
     ["mermaid diagram", docs.mermaid.includes("flowchart LR")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);

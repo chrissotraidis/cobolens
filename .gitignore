@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 .cache
+public/m6-bakeoff-graph.json
 dist
 dist-ssr
 *.local

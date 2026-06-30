@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "m6:verify": "node tools/m6-verify/run.mjs",
+    "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",
     "m6:mapa-probe": "node tools/parser-upgrade/mapa-probe.mjs",
     "m6:mapa-bakeoff": "node tools/m6-bakeoff/run.mjs --candidate mapa=sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa",

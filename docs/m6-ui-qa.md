@@ -191,9 +191,11 @@ Graph-backed Ask check:
 - Selected-symbol overview questions such as
   `What does this program do in plain English?` use the selected graph node as
   the only focus and answer instantly from the graph.
-- Typing a broader explanation question changes the submit button from `Ask` to
-  `Ask AI`, while typed graph-only questions use `Ask Graph` and suggested graph
-  shortcuts still run instantly without a model.
+- Typing a broader explanation question such as
+  `Explain the business logic in LINEAGE for a new developer` changes the submit
+  button from `Ask` to `Ask AI`, while typed structural questions use `Ask Graph`
+  and suggested graph shortcuts such as `Explain LINEAGE` still run instantly
+  from the graph.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it

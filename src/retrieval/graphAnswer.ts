@@ -124,7 +124,9 @@ export function graphAnswerFallback(
 export function isGraphQuestion(question: string) {
   if (isOrientationQuestion(question)) return true;
   if (isSelectedSymbolOverviewQuestion(question)) return true;
-  return /\b(explain\w*|summar\w*|overview|purpose|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
+  if (isExplicitGraphExplanationQuestion(question)) return true;
+  if (isInterpretiveModelQuestion(question)) return false;
+  return /\b(overview|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
 }
@@ -146,6 +148,16 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
 
 function isSelectedSymbolOverviewQuestion(question: string) {
   return /\b(what\s+does\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)\s+do|what\s+is\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)|tell\s+me\s+about\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table))\b/i.test(
+    question,
+  );
+}
+
+function isExplicitGraphExplanationQuestion(question: string) {
+  return /\b(?:from|using|with)\s+(?:the\s+)?graph\b|\bgraph[- ](?:derived|grounded|only)\b/i.test(question);
+}
+
+function isInterpretiveModelQuestion(question: string) {
+  return /\b(explain\w*|summari[sz]\w*|purpose|business\s+(?:logic|rule|rules|meaning)|plain\s+english|new\s+developer|walk\s+me\s+through|what\s+does\s+\w+\s+do)\b/i.test(
     question,
   );
 }

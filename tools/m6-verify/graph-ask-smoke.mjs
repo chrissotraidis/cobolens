@@ -115,6 +115,8 @@ try {
   });
   const flowAnswer = graphAnswerFallback(graph, flowQuestion, flowContext);
   const explainQuestion = "Explain LINEAGE from the graph.";
+  const typedBusinessLogicQuestion = "Explain the business logic in LINEAGE for a new developer";
+  const typedPlainEnglishQuestion = "Explain LINEAGE in plain English for a new developer.";
   const explainContext = await retrieveQuestionContext({
     graph,
     question: explainQuestion,
@@ -186,6 +188,9 @@ try {
     ["orientation question classified as graph-only", isGraphQuestion(orientationQuestion)],
     ["codebase overview question classified as graph-only", isGraphQuestion(codebaseOverviewQuestion)],
     ["selected-symbol overview question classified as graph-only", isGraphQuestion(selectedProgramQuestion)],
+    ["explicit graph explanation stays graph-only", isGraphQuestion(explainQuestion)],
+    ["typed business logic explanation uses model route", !isGraphQuestion(typedBusinessLogicQuestion)],
+    ["typed plain-English explanation uses model route", !isGraphQuestion(typedPlainEnglishQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],

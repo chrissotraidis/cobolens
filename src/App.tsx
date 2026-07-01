@@ -763,6 +763,7 @@ function App() {
       context = await retrieveQuestionContext({
         graph,
         question,
+        preferredNode: selectedNode,
         readExcerpt: sourceExcerptForNode,
       });
       if (isGraphQuestion(question)) {

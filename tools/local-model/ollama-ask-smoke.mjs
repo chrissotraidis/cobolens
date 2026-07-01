@@ -138,6 +138,7 @@ async function patchCompiledImports(path) {
   const current = await readFile(target, "utf8");
   const patched = current
     .replaceAll('from "./providers"', 'from "./providers.js"')
+    .replaceAll('from "./prompts"', 'from "./prompts.js"')
     .replaceAll('from "./privacy"', 'from "./privacy.js"')
     .replaceAll('from "./config"', 'from "./config.js"')
     .replaceAll('from "../lib/graph"', 'from "../lib/graph.js"')

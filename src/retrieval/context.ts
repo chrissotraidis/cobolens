@@ -19,24 +19,34 @@ export type RetrievedContext = {
 export async function retrieveQuestionContext({
   graph,
   question,
+  preferredNode,
   readExcerpt,
 }: {
   graph: GraphDocument;
   question: string;
+  preferredNode?: GraphNode | null;
   readExcerpt: (node: GraphNode) => Promise<SourceExcerpt>;
 }): Promise<RetrievedContext> {
-  const focusNodes = rankNodes(graph, question).slice(0, 4);
+  const rankedNodes = rankNodes(graph, question);
+  const focusNodes = applyPreferredNode(rankedNodes, preferredNode, question).slice(0, 4);
   const focusIds = new Set(focusNodes.map((node) => node.id));
   const edges = graph.edges
     .filter((edge) => focusIds.has(edge.from) || focusIds.has(edge.to))
     .slice(0, 32);
   const neighborIds = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
-  const contextNodes = graph.nodes
-    .filter((node) => neighborIds.has(node.id) || focusIds.has(node.id))
+  const contextNodes = uniqueNodes([
+    ...focusNodes,
+    ...graph.nodes.filter((node) => neighborIds.has(node.id) || focusIds.has(node.id)),
+  ])
     .filter((node) => node.file && !node.external)
     .slice(0, 8);
 
   const excerpts = await Promise.allSettled(contextNodes.map((node) => readExcerpt(node)));
+  const sourceExcerpts = excerpts
+    .map((result, index) =>
+      result.status === "fulfilled" ? formatSourceExcerpt(contextNodes[index], result.value) : "",
+    )
+    .filter(Boolean);
   const citations = dedupeCitations([
     ...contextNodes.map((node) => ({
       file: node.file ?? "",
@@ -63,6 +73,13 @@ export async function retrieveQuestionContext({
       "Question:",
       question,
       "",
+      preferredNode ? `Selected symbol: ${preferredNode.name} (${preferredNode.type}) ${nodeLocation(preferredNode)}` : "Selected symbol: none",
+      "",
+      "Grounding rules for this context:",
+      "- Treat matched and selected symbols as codebase artifacts.",
+      "- Use relationship direction exactly as listed.",
+      "- Cite only the graph relationship sites or source lines shown below.",
+      "",
       "Matched symbols:",
       focusNodes.map((node) => `- ${node.name} (${node.type}) ${nodeLocation(node)}`).join("\n") ||
         "- None",
@@ -71,13 +88,30 @@ export async function retrieveQuestionContext({
       edges.map((edge) => `- ${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`).join("\n") ||
         "- None",
       "",
-      "Source excerpts:",
-      excerpts
-        .map((result) => (result.status === "fulfilled" ? result.value.text : ""))
-        .filter(Boolean)
-        .join("\n\n") || "No source excerpt available.",
+      "Source excerpts (line-numbered):",
+      sourceExcerpts.join("\n\n") || "No source excerpt available.",
     ].join("\n"),
   };
+}
+
+function applyPreferredNode(rankedNodes: GraphNode[], preferredNode: GraphNode | null | undefined, question: string) {
+  if (!preferredNode) return rankedNodes;
+  if (!shouldPreferSelectedNode(question, rankedNodes)) return rankedNodes;
+  return [preferredNode, ...rankedNodes.filter((node) => node.id !== preferredNode.id)];
+}
+
+function shouldPreferSelectedNode(question: string, rankedNodes: GraphNode[]) {
+  if (!rankedNodes.length) return true;
+  return /\b(this|that|it|its|selected|current)\b/i.test(question);
+}
+
+function uniqueNodes(nodes: GraphNode[]) {
+  const seen = new Set<string>();
+  return nodes.filter((node) => {
+    if (seen.has(node.id)) return false;
+    seen.add(node.id);
+    return true;
+  });
 }
 
 function rankNodes(graph: GraphDocument, question: string) {
@@ -219,6 +253,17 @@ function nodeLocation(node: GraphNode) {
   const start = node.lines?.[0] ?? 1;
   const end = node.lines?.[1];
   return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
+}
+
+function formatSourceExcerpt(node: GraphNode, excerpt: SourceExcerpt) {
+  const range =
+    excerpt.endLine && excerpt.endLine !== excerpt.startLine
+      ? `${excerpt.file}:${excerpt.startLine}-${excerpt.endLine}`
+      : `${excerpt.file}:${excerpt.startLine}`;
+  return [
+    `Source excerpt for ${node.name} (${node.type}) at ${range}${excerpt.truncated ? " (truncated)" : ""}:`,
+    excerpt.text,
+  ].join("\n");
 }
 
 function dedupeCitations(citations: Citation[]) {

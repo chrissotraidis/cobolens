@@ -163,6 +163,14 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const codebaseOverviewAnswer = graphAnswerFallback(graph, codebaseOverviewQuestion, codebaseOverviewContext);
+  const selectedLineage = graph.nodes.find((node) => node.name === "LINEAGE" && node.type === "program");
+  const selectedProgramQuestion = "What does this program do in plain English?";
+  const selectedProgramContext = await retrieveQuestionContext({
+    graph,
+    question: selectedProgramQuestion,
+    preferredNode: selectedLineage,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -233,6 +241,10 @@ try {
     ["codebase overview answer is graph-only", codebaseOverviewAnswer.text.includes("Graph answer, no model required:")],
     ["codebase overview gives inventory", codebaseOverviewAnswer.text.includes("I found 1 source program, 2 copybooks, and 1 JCL job.")],
     ["codebase overview has citations", codebaseOverviewAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
+    ["selected-symbol pronoun question focuses selected node", selectedProgramContext.focusNodes[0]?.id === selectedLineage?.id],
+    ["selected-symbol context labels selected symbol", selectedProgramContext.prompt.includes("Selected symbol: LINEAGE (program) src/LINEAGE.cbl:1-47")],
+    ["selected-symbol context labels source excerpts", selectedProgramContext.prompt.includes("Source excerpt for LINEAGE (program) at src/LINEAGE.cbl:1-47")],
+    ["selected-symbol context includes grounding rules", selectedProgramContext.prompt.includes("Use relationship direction exactly as listed.")],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

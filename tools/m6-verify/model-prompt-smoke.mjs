@@ -43,7 +43,12 @@ try {
   const checks = {
     "mentions Rosetta language": prompt.includes("JavaScript terms"),
     "keeps graph-only grounding": prompt.includes("Use only the provided graph relationships and source excerpts."),
+    "uses selected symbol for pronouns": prompt.includes("use the Selected symbol from the context as the referent"),
+    "requires relationship direction": prompt.includes("Use relationship direction exactly as listed in Graph relationships."),
     "requires citations": prompt.includes("Cite file:line or file:start-end for every concrete claim."),
+    "forbids footnote citations": prompt.includes("never use bracketed footnotes like [1]"),
+    "requires inline behavioral citations": prompt.includes("Every sentence that states behavior"),
+    "distinguishes files from databases": prompt.includes("Do not call a COBOL file a database"),
     "forbids invented graph facts": prompt.includes("Never invent files, nodes, edges, jobs, datasets, or line numbers."),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);

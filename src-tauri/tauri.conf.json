@@ -27,7 +27,7 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "../sidecar/cobolens-analyze/target/release/cobolens-analyze": "cobolens-analyze",
+      "binaries/": "binaries/",
       "../samples/mini-bank/": "samples/mini-bank/"
     },
     "icon": [

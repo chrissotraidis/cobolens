@@ -51,6 +51,11 @@ const checks = [
     args: ["tools/m6-verify/accessibility-smoke.mjs"],
   },
   {
+    name: "packaging contract smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/packaging-contract-smoke.mjs"],
+  },
+  {
     name: "model privacy smoke",
     command: process.execPath,
     args: ["tools/m6-verify/model-privacy-smoke.mjs"],

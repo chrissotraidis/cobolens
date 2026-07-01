@@ -228,7 +228,7 @@ async function packagedDebSmoke() {
       };
     }
 
-    const analyzerPath = resolve(extractRoot, "usr", "lib", "Cobolens", "cobolens-analyze");
+    const analyzerPath = resolve(extractRoot, "usr", "lib", "Cobolens", "binaries", "cobolens-analyze");
     const sampleRoot = resolve(extractRoot, "usr", "lib", "Cobolens", "samples", "mini-bank");
     const analyzer = await fileArtifact("packaged analyzer", analyzerPath);
     const sample = await directoryArtifact("packaged mini-bank sample", sampleRoot);

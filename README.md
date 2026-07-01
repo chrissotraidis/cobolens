@@ -27,8 +27,8 @@ As of 2026-07-01, M0-M6 local v1 work is implemented and committed.
 - Linux packaging from WSL is validated. `npm run tauri build` builds the
   production analyzer sidecar, bundles it with the sample codebase, and
   produced `.deb`, `.rpm`, and `.AppImage` artifacts.
-- Windows packaging is not a current target and is not validated in this
-  checkout.
+- GitHub Actions packaging now validates unsigned Linux and Windows Tauri
+  bundle builds on push/PR. Signed release installers are still not claimed.
 
 ## What Works
 
@@ -143,8 +143,11 @@ The release build runs `npm run tauri:before-build`, which compiles the
 frontend and the production Rust analyzer sidecar before Tauri packages the
 app. The Linux bundles include both:
 
-- `usr/lib/Cobolens/cobolens-analyze`
+- `usr/lib/Cobolens/binaries/cobolens-analyze`
 - `usr/lib/Cobolens/samples/mini-bank/`
+
+The same resource layout is used for Windows builds, where the generated
+sidecar resource is `binaries/cobolens-analyze.exe`.
 
 Successful Linux builds produce:
 
@@ -243,12 +246,25 @@ summary provenance honest for graph-derived summaries, accepted AI summaries,
 and guarded graph fallbacks.
 It also includes a UI contract smoke for the Ask/Inspector shell so graph-answer
 layout, readable tabs, and relationship citation labels do not regress silently.
+The packaging contract smoke verifies that the Tauri sidecar resource layout
+remains platform-aware before CI or local bundle builds run.
 
 `npm run m6:packaging-readiness` includes a `packagedDebSmoke` gate when a
 Linux `.deb` bundle exists. It extracts the package, verifies
-`usr/lib/Cobolens/cobolens-analyze` and `usr/lib/Cobolens/samples/mini-bank/`,
-then runs the packaged analyzer against the packaged sample. The current local
-bundle produces 4 parsed files, 25 nodes, 27 edges, and 0 parse errors.
+`usr/lib/Cobolens/binaries/cobolens-analyze` and
+`usr/lib/Cobolens/samples/mini-bank/`, then runs the packaged analyzer against
+the packaged sample. The current local bundle produces 4 parsed files, 25
+nodes, 27 edges, and 0 parse errors.
+
+## CI Packaging
+
+`.github/workflows/package.yml` runs unsigned Tauri packaging builds on
+`ubuntu-22.04` and `windows-latest` for pushes to `main`, pull requests, and
+manual dispatch. The workflow uses `npm ci`, the Rust stable toolchain, the
+packaging contract smoke, and `tauri-apps/tauri-action@v1`.
+
+This is build validation, not a signed public release process. Windows and
+macOS code signing remain separate release gates.
 
 Run the strict fixture bake-off directly:
 

@@ -15,6 +15,7 @@ dist
 dist-ssr
 *.local
 sidecar/**/target/
+src-tauri/binaries/
 
 # Editor directories and files
 .vscode/*

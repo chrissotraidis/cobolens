@@ -17,7 +17,8 @@ local Ollama or configured cloud providers with visible privacy state.
 Not claimed yet:
 
 - Signed cross-platform installers are not validated. Linux AppImage packaging
-  is validated locally; Windows packaging is explicitly not claimed.
+  is validated locally, and GitHub Actions now runs unsigned Linux/Windows
+  Tauri bundle builds. Signed Windows release installers are not yet claimed.
 - A persistent local vector cache now stores graph-derived semantic chunk
   embeddings in the app's local browser storage, keyed by graph fingerprint and
   embedding model settings. It does not store source excerpts or use an
@@ -82,4 +83,4 @@ Not claimed yet:
   citation-clean.
 - The production analyzer remains the lightweight Rust sidecar. ProLeap and
   mapa are validated candidates, but not production dependencies.
-- Windows packaging remains unvalidated in this checkout.
+- Signed Windows release packaging remains unvalidated in this checkout.

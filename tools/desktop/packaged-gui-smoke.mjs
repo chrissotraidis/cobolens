@@ -197,7 +197,7 @@ async function appDirResourceSmoke(appPath) {
     };
   }
 
-  const analyzerPath = resolve(appDir, "usr", "lib", "Cobolens", "cobolens-analyze");
+  const analyzerPath = resolve(appDir, "usr", "lib", "Cobolens", "binaries", "cobolens-analyze");
   const sampleRoot = resolve(appDir, "usr", "lib", "Cobolens", "samples", "mini-bank");
   const checks = {
     "packaged AppDir exists": true,

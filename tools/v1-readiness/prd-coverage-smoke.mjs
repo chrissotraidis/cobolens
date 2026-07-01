@@ -13,9 +13,9 @@ const checks = {
   "audit accounts for all FR ids": Array.from({ length: 32 }, (_, index) => `FR-${index + 1}`).every((id) =>
     audit.includes(`| ${id} `),
   ),
-  "audit distinguishes partial coverage": audit.includes("Partial/Should") && audit.includes("Windows packaging is explicitly not claimed"),
+  "audit distinguishes partial coverage": audit.includes("Partial/Should") && audit.includes("Signed Windows release installers are not yet claimed"),
   "audit documents persistent local vector cache": audit.includes("persistent local vector cache") && audit.includes("local browser storage"),
-  "audit caveats Windows packaging": audit.includes("Windows packaging"),
+  "audit caveats signed Windows release packaging": audit.includes("Signed Windows release packaging remains unvalidated"),
   "audit documents local Ollama risk": audit.includes("Local Ollama quality and speed"),
 };
 

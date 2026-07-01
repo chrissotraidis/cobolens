@@ -113,7 +113,7 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
   - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
 - `npm run m6:packaging-readiness` now includes a repeatable `packagedDebSmoke`
   when a `.deb` bundle exists. It extracts the package, verifies
-  `usr/lib/Cobolens/cobolens-analyze` and
+  `usr/lib/Cobolens/binaries/cobolens-analyze` and
   `usr/lib/Cobolens/samples/mini-bank/`, and runs the packaged analyzer against
   the packaged `mini-bank` sample.
 - The packaged analyzer smoke currently parses 4 packaged sample files,
@@ -121,12 +121,19 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
 - `npm run desktop:packaged-smoke` launches the AppImage under WSLg, configures
   the system GStreamer plugin path/scanner when present, and verifies that the
   packaged GUI stays alive with WebKit/GStreamer runtime complete.
-- The Windows host is still not a validated build target: it is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
+- The local Windows host is still not a validated release build target: it is
+  reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools,
+  and WebView2 are not currently detected. `cscript.exe` is available for
+  MSI/VBScript support.
+- `.github/workflows/package.yml` now validates unsigned Linux and Windows
+  Tauri bundle builds in GitHub Actions using the platform-specific
+  `binaries/cobolens-analyze{.exe}` sidecar resource layout.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
 
 Remaining decision work:
 
 1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
-2. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
+2. Before a public Windows release, validate the GitHub Actions package run and
+   add Windows code signing.
 3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.

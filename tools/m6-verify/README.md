@@ -11,6 +11,8 @@ This runner verifies the completed M6 surface:
 - semantic retrieval smoke for vector-ranked Ask context and cached graph chunk vectors,
 - UI contract smoke for the Ask/Inspector shell,
 - accessibility smoke for skip links, landmark targets, and named keyboard controls,
+- packaging contract smoke for the platform-specific Tauri sidecar resource
+  layout and GitHub Actions package workflow,
 - model privacy smoke for local/cloud mode invariants,
 - embedding privacy smoke for localhost-only local embeddings,
 - model answer guard smoke for exact inline citation enforcement,

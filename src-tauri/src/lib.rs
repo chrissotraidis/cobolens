@@ -603,6 +603,15 @@ fn analyzer_binary_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf
         "cobolens-analyze"
     };
 
+    if let Ok(path) = app
+        .path()
+        .resolve(Path::new("binaries").join(exe_name), BaseDirectory::Resource)
+    {
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
     if let Ok(path) = app.path().resolve(exe_name, BaseDirectory::Resource) {
         if path.exists() {
             return Ok(path);

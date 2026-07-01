@@ -56,6 +56,11 @@ const checks = [
     args: ["tools/m6-verify/model-prompt-smoke.mjs"],
   },
   {
+    name: "model chat contract smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/model-chat-contract-smoke.mjs"],
+  },
+  {
     name: "model answer guard smoke",
     command: process.execPath,
     args: ["tools/m6-verify/model-answer-guard-smoke.mjs"],

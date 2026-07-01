@@ -51,6 +51,7 @@ type ChatAnswer = {
   text: string;
   citations: Citation[];
   source: "graph" | "model";
+  guarded?: boolean;
 };
 type InspectorTab = "ask" | "summary" | "impact" | "relationship";
 type ModelReadiness = {
@@ -787,7 +788,13 @@ function App() {
         }),
       );
       setModelCallCount((count) => count + 1);
-      const modelAnswer: ChatAnswer = { question, text: answer.text, citations: answerContext.citations, source: "model" };
+      const modelAnswer: ChatAnswer = {
+        question,
+        text: answer.text,
+        citations: answerContext.citations,
+        source: "model",
+        guarded: answer.guarded,
+      };
       setChatAnswer(modelAnswer);
       rememberChatAnswer(modelAnswer);
       setChatStatus("ready");
@@ -1798,7 +1805,11 @@ function ChatAnswerPanel({
       ? workingWithModel
         ? `${PROVIDER_LABELS[settings.provider]} is answering with cited graph context`
         : "Answering from graph context"
-      : answer?.source === "model"
+      : answer?.guarded
+        ? `${PROVIDER_LABELS[settings.provider]} missed citation rules; showing graph-grounded fallback`
+        : answer?.source === "graph" && workingWithModel
+          ? "Graph-grounded fallback; model answer unavailable"
+        : answer?.source === "model"
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
         : workingWithModel
           ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
@@ -1907,7 +1918,7 @@ function ChatAnswerPanel({
               >
                 <span>{item.question}</span>
                 <small>
-                  {item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
+                  {item.guarded ? "Guarded fallback" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
                   {item.citations.length === 1 ? "" : "s"}
                 </small>
               </button>

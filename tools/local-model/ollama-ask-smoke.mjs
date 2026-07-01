@@ -19,6 +19,7 @@ try {
     resolve(repoRoot, tsc),
     [
       "src/model/chat.ts",
+      "src/model/answerGuard.ts",
       "src/model/config.ts",
       "src/model/privacy.ts",
       "src/model/providers.ts",
@@ -138,6 +139,7 @@ async function patchCompiledImports(path) {
   const current = await readFile(target, "utf8");
   const patched = current
     .replaceAll('from "./providers"', 'from "./providers.js"')
+    .replaceAll('from "./answerGuard"', 'from "./answerGuard.js"')
     .replaceAll('from "./prompts"', 'from "./prompts.js"')
     .replaceAll('from "./privacy"', 'from "./privacy.js"')
     .replaceAll('from "./config"', 'from "./config.js"')

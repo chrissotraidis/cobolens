@@ -1,11 +1,14 @@
 import { generateText } from "ai";
 import type { RetrievedContext } from "../retrieval/context";
+import { enforceGroundedAnswerCitations } from "./answerGuard";
 import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
 import { groundedAnswerSystemPrompt } from "./prompts";
 
 export type GroundedAnswer = {
   text: string;
+  guarded?: boolean;
+  guardReason?: string;
 };
 
 export async function generateGroundedAnswer({
@@ -40,5 +43,6 @@ export async function generateGroundedAnswer({
     abortSignal,
   });
 
-  return { text: result.text.trim() };
+  const guarded = enforceGroundedAnswerCitations(result.text, context);
+  return { text: guarded.text, guarded: guarded.guarded, guardReason: guarded.reason };
 }

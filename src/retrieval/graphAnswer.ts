@@ -41,7 +41,7 @@ export function graphAnswerFallback(
   }
 
   const lines = [
-    "Graph answer, no model required:",
+    modelNote ? "Graph-grounded fallback:" : "Graph answer, no model required:",
     `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
   ];
 
@@ -230,7 +230,7 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
   ).slice(0, 4);
 
   const lines = [
-    "Graph answer, no model required:",
+    modelNote ? "Graph-grounded fallback:" : "Graph answer, no model required:",
     `I found ${programs.length} source program${programs.length === 1 ? "" : "s"}, ${copybooks.length} copybook${copybooks.length === 1 ? "" : "s"}, and ${jobs.length} JCL job${jobs.length === 1 ? "" : "s"}.`,
     "",
     "Best starting points from the dependency graph:",

@@ -10,13 +10,13 @@ const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphV
 
 const checks = [
   [
-    "Ask answer renders before suggested-question chips",
-    appearsInOrder(appSource, ['className="answer-header"', 'className="answer-response"', 'className="question-chips"']),
+    "Ask composer stays before suggestions and answers",
+    appearsInOrder(appSource, ['className="answer-header"', 'className="chat-composer"', 'className="question-chips"', 'className="answer-response"']),
   ],
   [
     "Ask response contains progress, error, answer, and empty states",
     includesAll(appSource, [
-      '<div className="answer-response">',
+      'className="answer-response"',
       'status === "running"',
       'status === "error"',
       "answer ?",
@@ -73,11 +73,15 @@ const checks = [
   [
     "Check AI verifies local generation without slowing every model call preflight",
     includesAll(appSource, [
-      "Checking local generation",
+      "Checking local generation with a quick probe",
       "verifyGeneration: true",
-      "generationTimeoutMs: MODEL_CALL_TIMEOUT_MS",
+      "generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS",
       "const message = await checkOllamaReadiness(modelSettings);",
     ]) && includesAll(appSource, ['from "./model/readiness"']),
+  ],
+  [
+    "Ask composer remains available while reading answers",
+    includesAll(appCss, [".chat-composer", "position: sticky", "top: -6px", "grid-template-columns: minmax(0, 1fr) 86px"]),
   ],
   [
     "Inspector opens on Overview and keeps Ask as the conversational follow-up",

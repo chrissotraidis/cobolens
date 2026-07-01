@@ -83,6 +83,7 @@ type AnalysisProgress = {
 const APP_SETTINGS_STORAGE_KEY = "cobolens.settings.v1";
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const MODEL_CALL_TIMEOUT_MS = 45_000;
+const MODEL_READINESS_TIMEOUT_MS = 12_000;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
   extensions: ".cbl,.cob,.cpy,.jcl",
@@ -641,10 +642,10 @@ function App() {
   async function checkModelReadiness() {
     try {
       if (!isCloudProvider(modelSettings.provider)) {
-        setModelReadiness({ status: "checking", message: "Checking local generation" });
+        setModelReadiness({ status: "checking", message: "Checking local generation with a quick probe" });
         const message = await checkOllamaReadiness(modelSettings, {
           verifyGeneration: true,
-          generationTimeoutMs: MODEL_CALL_TIMEOUT_MS,
+          generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS,
         });
         setModelReadiness({ status: "ready", message });
         return;
@@ -1669,7 +1670,7 @@ function SummaryDock({
                   : "Generate an AI summary for this symbol"
             }
           >
-            {generating ? "Stop" : state?.summary ? "Regenerate" : "Generate Summary"}
+            {generating ? "Stop" : state?.summary ? "Regenerate AI Summary" : "AI Summary"}
           </button>
         </div>
       </div>
@@ -1698,7 +1699,7 @@ function SummaryDock({
       </div>
       <div className="summary-meta">
         <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
-          Summarize All
+          AI Summarize All
         </button>
         <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
       </div>
@@ -1803,31 +1804,32 @@ function ChatAnswerPanel({
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
 
   return (
-    <section className="answer-card" aria-live="polite">
+    <section className="answer-card">
       <div className="answer-header">
         <div>
           <strong>Ask Cobolens</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>
-      <div className="answer-response">
-        {status === "running" ? (
-          <ProgressNote
-            label={progressLabel}
-            detail={aiProgressDetail(settings, elapsedSeconds)}
-            elapsedSeconds={elapsedSeconds}
-          />
-        ) : status === "error" ? (
-          <p className="error-text">{error}</p>
-        ) : answer ? (
-          <>
-            <div className="answer-question">{answer.question}</div>
-            <MessageText text={answer.text} />
-            <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
-          </>
-        ) : (
-          <p>Ask where something happens, what uses it, or where data flows. Graph questions answer instantly; broader explanations use the selected AI provider with cited context.</p>
-        )}
+      <div className="chat-composer" aria-label="Ask a question">
+        <input
+          type="text"
+          aria-label="Ask about the codebase"
+          placeholder="Ask where something happens, what uses it, or where data flows..."
+          value={question}
+          onChange={(event) => onQuestionChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onAsk();
+          }}
+          disabled={!canAsk || status === "running"}
+        />
+        <button
+          type="button"
+          onClick={status === "running" ? onCancel : onAsk}
+          disabled={!canAsk || (status !== "running" && !question.trim())}
+        >
+          {askButtonLabel}
+        </button>
       </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested graph questions">
@@ -1853,25 +1855,24 @@ function ChatAnswerPanel({
           ))}
         </div>
       ) : null}
-      <div className="chat-composer" aria-label="Ask a question">
-        <input
-          type="text"
-          aria-label="Ask about the codebase"
-          placeholder="Ask where something happens, what uses it, or where data flows..."
-          value={question}
-          onChange={(event) => onQuestionChange(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") onAsk();
-          }}
-          disabled={!canAsk || status === "running"}
-        />
-        <button
-          type="button"
-          onClick={status === "running" ? onCancel : onAsk}
-          disabled={!canAsk || (status !== "running" && !question.trim())}
-        >
-          {askButtonLabel}
-        </button>
+      <div className="answer-response" aria-live="polite">
+        {status === "running" ? (
+          <ProgressNote
+            label={progressLabel}
+            detail={aiProgressDetail(settings, elapsedSeconds)}
+            elapsedSeconds={elapsedSeconds}
+          />
+        ) : status === "error" ? (
+          <p className="error-text">{error}</p>
+        ) : answer ? (
+          <>
+            <div className="answer-question">{answer.question}</div>
+            <MessageText text={answer.text} />
+            <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
+          </>
+        ) : (
+          <p>Ask where something happens, what uses it, or where data flows. Graph questions answer instantly; broader explanations use the selected AI provider with cited context.</p>
+        )}
       </div>
       {previousAnswers.length ? (
         <div className="answer-history" aria-label="Recent Ask answers">

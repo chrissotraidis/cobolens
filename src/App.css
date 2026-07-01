@@ -1156,10 +1156,16 @@ pre {
 }
 
 .chat-composer {
+  position: sticky;
+  top: -6px;
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 86px;
   gap: 8px;
   align-items: center;
+  margin: -2px -2px 0;
+  padding: 2px;
+  background: #101419;
 }
 
 .chat-composer input,

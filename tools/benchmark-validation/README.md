@@ -34,8 +34,9 @@ The validator checks the pieces that matter for the PRD v1 acceptance criteria:
 - every edge references existing graph nodes;
 - citation sites are structurally valid when present;
 - benchmark-scale semantic signals are present for programs, copybooks, data
-  items, datasets, JCL jobs/steps/DDs, DB2 tables, copy usage, JCL wiring,
-  reads, writes, moves, queries, and DD usage.
+  items, datasets, JCL jobs/steps/DDs, DB2 tables, CICS commands, call/perform
+  control flow, copy usage, JCL wiring, reads, writes, moves, queries, and DD
+  usage.
 
 The JSON report includes parse coverage, node/edge type counts, citation
 coverage, external-node count, parse-error counts by reason, and parse-error

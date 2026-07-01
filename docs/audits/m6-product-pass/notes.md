@@ -28,7 +28,8 @@ Live browser pass against the M6 fixture at `http://127.0.0.1:1430/?graph=/m6-ba
 2. Ask answer output now uses labeled Question and Answer sections.
 3. Feed/lineage-style questions route to graph mode and include a bounded connection path between matched symbols.
 4. UI and graph Ask smoke contracts cover the stale subtitle fix and the feed-into path.
+5. Ask evidence citations now keep the Ask answer visible while focusing the graph/code on the cited source.
 
 ## Remaining UX Risk
 
-Summary and Ask are still separate tabs. The patched Ask path is clearer, but a future v1 pass should consider a single "Understand" dock that keeps Overview, Ask, and evidence in one continuous flow without losing the current answer when citations open relationship detail.
+Summary and Ask are still separate tabs. The patched Ask path is clearer, but a future v1 pass should consider a single "Understand" dock that keeps Overview, Ask, and evidence in one continuous flow.

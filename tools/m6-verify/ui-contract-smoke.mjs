@@ -178,7 +178,16 @@ const checks = [
       "const citedEdge = graph?.edges.find",
       "edgeLabel(edge, graph) === citation.label",
       "setSelectedEdge(citedEdge)",
+      "preserveInspectorTab",
       'setInspectorTab("relationship")',
+    ]),
+  ],
+  [
+    "Ask evidence citations keep the answer visible while focusing code",
+    includesAll(appSource, [
+      "onOpenCitation={(citation) => jumpToCitation(citation, false, true)}",
+      "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
+      'if (!preserveInspectorTab) setInspectorTab("relationship")',
     ]),
   ],
   [

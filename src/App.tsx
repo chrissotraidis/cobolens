@@ -880,7 +880,7 @@ function App() {
     activeSummaryAbortRef.current?.abort();
   }
 
-  function jumpToCitation(citation: Citation, keepEdge = false) {
+  function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false) {
     const citedEdge = graph?.edges.find(
       (edge) =>
         edge.site?.file === citation.file &&
@@ -904,7 +904,7 @@ function App() {
     }
     if (citedEdge) {
       setSelectedEdge(citedEdge);
-      setInspectorTab("relationship");
+      if (!preserveInspectorTab) setInspectorTab("relationship");
     } else if (!keepEdge) {
       setSelectedEdge(null);
     }
@@ -1208,7 +1208,7 @@ function App() {
                   onAskPreset={askPresetQuestion}
                   onRestoreAnswer={restoreChatAnswer}
                   onClearHistory={clearChatHistory}
-                  onOpenCitation={jumpToCitation}
+                  onOpenCitation={(citation) => jumpToCitation(citation, false, true)}
                 />
               ) : null}
               {inspectorTab === "summary" ? (

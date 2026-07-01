@@ -165,6 +165,19 @@ const checks = [
     ]),
   ],
   [
+    "Tablet and mobile breakpoints keep code and graph toolbar usable",
+    includesAll(appCss, [
+      "@media (max-width: 900px)",
+      "@media (max-width: 760px)",
+      ".source-line-text",
+      "white-space: pre-wrap",
+      ".button-row.two",
+      "grid-template-columns: minmax(0, 1fr);",
+      ".graph-toolbar button",
+      "min-width: 88px",
+    ]),
+  ],
+  [
     "Ask composer remains available while reading answers",
     includesAll(appSource, ['inspectorTab === "ask" ? " is-ask-focused"', "autoFocus"]) &&
       appearsInOrder(appSource, ['<div className="chat-composer"', '<div className="answer-response"']) &&

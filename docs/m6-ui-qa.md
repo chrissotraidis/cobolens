@@ -245,6 +245,9 @@ Model-backed Ask check:
 - At the default in-app browser width, the right code/Inspector pane avoids
   horizontal overflow; source lines wrap in the constrained desktop layout while
   the three-pane workspace remains intact.
+- Tablet and narrow mobile breakpoint checks cover `820x720` and `430x760`.
+  Source lines wrap without horizontal overflow, AI action buttons do not clip,
+  and the mobile graph toolbar keeps the focus action inside the graph pane.
 - If no non-equivalent installed model can fix a timeout, the AI panel shows a
   concrete smaller-model command: `ollama pull llama3.2:1b`.
 - The optional local Ollama summary/Ask smokes report `guarded` and

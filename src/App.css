@@ -660,6 +660,14 @@ h2,
 .graph-toolbar > div {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+
+.graph-toolbar span,
+.graph-toolbar small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .graph-toolbar small {
@@ -1724,6 +1732,15 @@ pre {
   .right-pane.is-ask-focused {
     grid-template-rows: minmax(0, 1fr);
   }
+
+  .source-line {
+    min-width: 0;
+  }
+
+  .source-line-text {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1749,16 +1766,20 @@ pre {
 
   .shell {
     grid-template-columns: 180px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) 340px;
+    grid-template-rows: minmax(0, 1fr) 400px;
   }
 
   .right-pane {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 128px minmax(0, 1fr);
+    grid-template-rows: 150px minmax(0, 1fr);
   }
 
   .right-pane.is-ask-focused {
-    grid-template-rows: 96px minmax(0, 1fr);
+    grid-template-rows: 120px minmax(0, 1fr);
+  }
+
+  .button-row.two {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .code-panel {
@@ -1769,5 +1790,16 @@ pre {
   .graph-minimap {
     right: 8px;
     bottom: 8px;
+  }
+
+  .graph-toolbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .graph-toolbar button {
+    min-width: 88px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 }

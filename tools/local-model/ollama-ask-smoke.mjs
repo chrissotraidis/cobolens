@@ -71,6 +71,7 @@ try {
 
   const checks = {
     "answer returned text": answer.text.length > 0,
+    "answer guard status is reported": typeof answer.guarded === "boolean",
     "answer mentions LINEAGE": /LINEAGE/i.test(answer.text),
     "answer treats LINEAGE as a program artifact": /program/i.test(answer.text),
     "answer cites matched source line": /src\/LINEAGE\.cbl:1/i.test(answer.text),
@@ -91,6 +92,8 @@ try {
     JSON.stringify(
       {
         question,
+        guarded: Boolean(answer.guarded),
+        guardReason: answer.guardReason ?? "",
         answerBytes: Buffer.byteLength(answer.text),
         citationCount: context.citations.length,
         preview: answer.text.slice(0, 320),

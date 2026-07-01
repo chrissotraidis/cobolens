@@ -242,6 +242,9 @@ Model-backed Ask check:
   app.
 - If no non-equivalent installed model can fix a timeout, the AI panel shows a
   concrete smaller-model command: `ollama pull llama3.2:1b`.
+- The optional local Ollama summary/Ask smokes report `guarded` and
+  `guardReason`, so a passing local smoke distinguishes an accepted model answer
+  from Cobolens' cited graph fallback.
 - Grounded Ask now passes the selected Rosetta language into the model system
   prompt while keeping the graph-only grounding, citation, and no-invention
   rules.

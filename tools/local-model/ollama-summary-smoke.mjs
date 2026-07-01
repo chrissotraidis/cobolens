@@ -68,6 +68,7 @@ try {
     "summary returned text": summary.text.length > 0,
     "summary used Ollama provider": summary.provider === "ollama",
     "summary used requested model": summary.model === (process.argv[2] ?? DEFAULT_MODEL_SETTINGS.model),
+    "summary guard status is reported": typeof summary.guarded === "boolean",
     "summary cites matched source line": /src\/LINEAGE\.cbl:1/i.test(summary.text),
     "summary cites relationship line": /src\/LINEAGE\.cbl:(11|13|21|26|37|40)/i.test(summary.text),
     "summary avoids generic preamble": !/^here is\b/i.test(summary.text.trim()),
@@ -85,6 +86,8 @@ try {
       {
         provider: summary.provider,
         model: summary.model,
+        guarded: Boolean(summary.guarded),
+        guardReason: summary.guardReason ?? "",
         summaryBytes: Buffer.byteLength(summary.text),
         preview: summary.text.slice(0, 240),
         checks,

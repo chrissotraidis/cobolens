@@ -183,6 +183,11 @@ AI model field to `llama3.2:1b`:
 ollama pull llama3.2:1b
 ```
 
+The optional `ollama:*` smokes report whether the local model produced accepted
+cited prose or whether Cobolens returned a guarded graph-cited fallback. Both
+paths keep answers cited; the `guarded` field tells you how much the model
+itself followed the citation contract.
+
 Smoke-test the desktop shell against an already-running Vite server:
 
 ```sh

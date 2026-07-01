@@ -196,6 +196,10 @@ Graph-backed Ask check:
   button from `Ask` to `Ask AI`, while typed structural questions use `Ask Graph`
   and suggested graph shortcuts such as `Explain LINEAGE` still run instantly
   from the graph.
+- Before submitting, the Ask response area mirrors the route: typed AI-backed
+  questions say they are ready to ask the selected provider with cited graph and
+  source context, while typed graph questions say they are ready to answer from
+  the dependency graph.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it

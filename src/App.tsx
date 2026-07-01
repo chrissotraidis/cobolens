@@ -1837,6 +1837,11 @@ function ChatAnswerPanel({
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
   const showReadiness = workingWithModel && modelReadiness.status !== "idle" && modelReadiness.message;
+  const emptyResponseText = questionText
+    ? workingWithModel
+      ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
+      : "Ready to answer instantly from the dependency graph."
+    : "Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.";
 
   return (
     <section className="answer-card">
@@ -1871,7 +1876,7 @@ function ChatAnswerPanel({
             <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
-          <p>Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.</p>
+          <p>{emptyResponseText}</p>
         )}
       </div>
       <div className="chat-composer" aria-label="Ask a question">

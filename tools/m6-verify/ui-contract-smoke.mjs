@@ -82,6 +82,8 @@ const checks = [
       "Ask Graph",
       "modelReadiness.status !== \"idle\"",
       'className={`ask-readiness ${modelReadiness.status}`}',
+      "Ready to ask",
+      "Ready to answer instantly from the dependency graph.",
       "Use a graph shortcut for instant cited answers",
       "EvidenceList citations={answer.citations.slice(0, 8)}",
     ]) && includesAll(appCss, [".answer-modes", ".answer-modes span.is-active", ".ask-readiness.error"]),

@@ -7,6 +7,12 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const summariesSource = await readFile(resolve(repoRoot, "src", "model", "summaries.ts"), "utf8");
 
 const checks = {
+  "local summary budget is smaller than cloud budget":
+    summariesSource.includes("const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 260") &&
+    summariesSource.includes("const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420"),
+  "summary generation uses provider-aware budget": summariesSource.includes("maxOutputTokens: summaryMaxOutputTokens(settings)"),
+  "Ollama summary prompt asks for brief answers": summariesSource.includes("keep local Ollama summaries brief so they return quickly"),
+  "cloud summary prompt keeps fuller answer allowance": summariesSource.includes("Summarize this unit in 2-4 direct sentences."),
   "summary system uses only graph and source": summariesSource.includes("Use only the provided graph facts and source excerpt."),
   "summary system requires citations": summariesSource.includes("Cite file:line or file:start-end for every concrete claim."),
   "summary prompt starts with proven graph facts": summariesSource.includes("Start with what the graph proves about this unit"),

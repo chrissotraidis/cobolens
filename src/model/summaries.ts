@@ -5,6 +5,9 @@ import { enforceGroundedAnswerCitations, type GuardedAnswerText } from "./answer
 import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
 
+const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 260;
+const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420;
+
 export type UnitSummary = {
   nodeId: string;
   text: string;
@@ -32,9 +35,9 @@ export async function generateUnitSummary({
   const result = await generateText({
     model: createLanguageModel(settings, apiKey),
     system: summarySystemPrompt(settings.rosettaLanguage),
-    prompt: summaryUserPrompt(graph, node, excerpt),
+    prompt: summaryUserPrompt(graph, node, excerpt, settings),
     temperature: 0.1,
-    maxOutputTokens: 420,
+    maxOutputTokens: summaryMaxOutputTokens(settings),
     abortSignal,
   });
 
@@ -76,6 +79,10 @@ export function guardUnitSummaryText({
   );
 }
 
+export function summaryMaxOutputTokens(settings: Pick<ModelSettings, "provider">) {
+  return settings.provider === "ollama" ? LOCAL_SUMMARY_MAX_OUTPUT_TOKENS : CLOUD_SUMMARY_MAX_OUTPUT_TOKENS;
+}
+
 function summarySystemPrompt(rosettaLanguage: string) {
   return [
     "You explain a COBOL codebase to an engineer who may not know COBOL.",
@@ -88,9 +95,21 @@ function summarySystemPrompt(rosettaLanguage: string) {
   ].join(" ");
 }
 
-function summaryUserPrompt(graph: GraphDocument, node: GraphNode, excerpt: SourceExcerpt) {
+function summaryLengthInstruction(settings: Pick<ModelSettings, "provider">) {
+  if (settings.provider === "ollama") {
+    return "Summarize this unit in 1-2 direct sentences; keep local Ollama summaries brief so they return quickly.";
+  }
+  return "Summarize this unit in 2-4 direct sentences.";
+}
+
+function summaryUserPrompt(
+  graph: GraphDocument,
+  node: GraphNode,
+  excerpt: SourceExcerpt,
+  settings: Pick<ModelSettings, "provider">,
+) {
   return [
-    "Summarize this unit in 2-4 direct sentences.",
+    summaryLengthInstruction(settings),
     "Start with what the graph proves about this unit: type, source location, and cited relationships.",
     "When Graph facts list relationships, mention at least one relationship with its exact file:line citation.",
     "Include inputs, outputs, calls, datasets, tables, or visible rules only when present in the graph facts or source excerpt.",

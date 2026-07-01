@@ -504,8 +504,8 @@ h2,
   gap: 6px;
 }
 
-.model-chips button,
-.model-chips span {
+.model-chips > button,
+.model-chips > span {
   min-height: 26px;
   max-width: 100%;
   padding: 4px 8px;
@@ -520,7 +520,31 @@ h2,
   white-space: nowrap;
 }
 
-.model-chips span {
+.model-chips > button {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.model-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-chips button small {
+  padding: 1px 5px;
+  border: 1px solid rgba(90, 167, 161, 0.26);
+  border-radius: 999px;
+  color: #d8eee8;
+  background: rgba(90, 167, 161, 0.14);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.model-chips > span {
   display: grid;
   place-items: center;
   color: #7d8996;

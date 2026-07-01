@@ -251,6 +251,9 @@ Model-backed Ask check:
   the AI panel. If the configured model is missing or times out, those installed
   models appear as quick-pick chips so the user can switch without leaving the
   app.
+- Installed-model chips keep the current configured model and the recommended
+  small local model visible when present, labeled as `Current` and `Fast local`,
+  so a timeout can be recovered without guessing which model to try next.
 - `Refresh models` reads installed local Ollama models without running a
   generation probe, so model chips can be surfaced quickly before `Check AI`.
 - At the default in-app browser width, the right code/Inspector pane avoids

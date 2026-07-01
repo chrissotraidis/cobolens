@@ -32,7 +32,12 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { inspectOllamaReadiness, isSameOllamaModel, ollamaReadinessDetails } from "./model/readiness";
+import {
+  RECOMMENDED_SMALL_OLLAMA_MODEL,
+  inspectOllamaReadiness,
+  isSameOllamaModel,
+  ollamaReadinessDetails,
+} from "./model/readiness";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -1652,7 +1657,7 @@ function ModelSettingsPanel({
 }) {
   const cloud = isCloudProvider(settings.provider);
   const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
-  const visibleInstalledModels = installedModels.slice(0, 6);
+  const visibleInstalledModels = prioritizedOllamaModels(installedModels, settings.model).slice(0, 6);
   const hiddenInstalledModelCount = Math.max(0, installedModels.length - visibleInstalledModels.length);
   const suggestedModel = !cloud && modelReadiness.status === "error" ? modelReadiness.suggestedModel : "";
   const showSuggestedModel =
@@ -1683,17 +1688,24 @@ function ModelSettingsPanel({
       </label>
       {visibleInstalledModels.length ? (
         <div className="model-chips" aria-label="Installed Ollama models">
-          {visibleInstalledModels.map((model) => (
-            <button
-              key={model}
-              type="button"
-              onClick={() => onSettingsChange({ ...settings, model })}
-              disabled={modelReadiness.status === "checking" || isSameOllamaModel(model, settings.model)}
-              title={`Use ${model}`}
-            >
-              {model}
-            </button>
-          ))}
+          {visibleInstalledModels.map((model) => {
+            const isCurrent = isSameOllamaModel(model, settings.model);
+            const isRecommendedSmall = isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL);
+            const badge = isCurrent ? "Current" : isRecommendedSmall ? "Fast local" : "";
+            return (
+              <button
+                key={model}
+                type="button"
+                onClick={() => onSettingsChange({ ...settings, model })}
+                disabled={modelReadiness.status === "checking" || isCurrent}
+                aria-label={`${isCurrent ? "Current model" : "Use model"} ${model}${isRecommendedSmall ? ", recommended small local model" : ""}`}
+                title={`${isCurrent ? "Current model" : "Use model"}: ${model}${isRecommendedSmall ? " (recommended small local model)" : ""}`}
+              >
+                <span className="model-chip-name">{model}</span>
+                {badge ? <small>{badge}</small> : null}
+              </button>
+            );
+          })}
           {hiddenInstalledModelCount ? <span>+{hiddenInstalledModelCount} more</span> : null}
         </div>
       ) : null}
@@ -2966,6 +2978,15 @@ function isStoppedModelCall(message: string) {
 function bulkSummaryProgressLabel(done: number, total: number, fallbackCount: number) {
   const progress = `${done}/${total}`;
   return fallbackCount ? `${progress} (${fallbackCount} graph fallback${fallbackCount === 1 ? "" : "s"})` : progress;
+}
+
+function prioritizedOllamaModels(models: string[], currentModel: string) {
+  const priority = (model: string) => {
+    if (isSameOllamaModel(model, currentModel)) return 0;
+    if (isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL)) return 1;
+    return 2;
+  };
+  return [...models].sort((left, right) => priority(left) - priority(right));
 }
 
 function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {

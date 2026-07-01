@@ -90,6 +90,7 @@ function summarySystemPrompt(rosettaLanguage: string) {
     "Treat unit and symbol names as codebase artifacts, not as generic computing terms.",
     "Do not infer business purpose, business rules, or technical meaning from names alone.",
     "Cite file:line or file:start-end for every concrete claim.",
+    "Citation format must be exact inline text such as (src/LINEAGE.cbl:21); never use bracketed footnotes like [1].",
     "If the excerpt is insufficient, say what is missing.",
     `When the source shows a COBOL construct, you may translate that construct into ${rosettaLanguage} terms.`,
   ].join(" ");
@@ -97,7 +98,7 @@ function summarySystemPrompt(rosettaLanguage: string) {
 
 function summaryLengthInstruction(settings: Pick<ModelSettings, "provider">) {
   if (settings.provider === "ollama") {
-    return "Summarize this unit in 1-2 direct sentences; keep local Ollama summaries brief so they return quickly.";
+    return "Summarize this unit in 1-2 short cited bullets or sentences; keep local Ollama summaries brief so they return quickly.";
   }
   return "Summarize this unit in 2-4 direct sentences.";
 }
@@ -110,6 +111,7 @@ function summaryUserPrompt(
 ) {
   return [
     summaryLengthInstruction(settings),
+    "End every bullet or sentence with an exact inline source citation from the graph facts or source excerpt.",
     "Start with what the graph proves about this unit: type, source location, and cited relationships.",
     "When Graph facts list relationships, mention at least one relationship with its exact file:line citation.",
     "Include inputs, outputs, calls, datasets, tables, or visible rules only when present in the graph facts or source excerpt.",

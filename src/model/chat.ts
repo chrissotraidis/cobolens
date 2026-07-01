@@ -33,9 +33,10 @@ export async function generateGroundedAnswer({
     prompt: [
       context.prompt,
       "",
-      "Answer the user's question with a concise explanation and inline citations.",
+      "Answer the user's question with concise cited bullets or sentences.",
       answerLengthInstruction(settings),
       "Write citations exactly as file:line or file:start-end in parentheses, for example (src/LINEAGE.cbl:21).",
+      "End every bullet or sentence with an exact inline source citation from the context.",
       "Do not use [1], [2], or any other footnote-style citations.",
       "Do not include a claim unless you can cite it from the context.",
       "If context is thin, say what is known and what is not shown.",
@@ -56,7 +57,7 @@ export function askMaxOutputTokens(settings: Pick<ModelSettings, "provider">) {
 
 function answerLengthInstruction(settings: Pick<ModelSettings, "provider">) {
   if (settings.provider === "ollama") {
-    return "Use 1-3 short bullets or sentences; keep local Ollama answers brief so they return quickly.";
+    return "Use 1-3 short bullets; keep local Ollama answers brief so they return quickly.";
   }
   return "Use 2-4 short bullets or sentences unless the question asks for more detail.";
 }

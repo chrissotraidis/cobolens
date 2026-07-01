@@ -12,6 +12,8 @@ const checks = {
     summariesSource.includes("const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420"),
   "summary generation uses provider-aware budget": summariesSource.includes("maxOutputTokens: summaryMaxOutputTokens(settings)"),
   "Ollama summary prompt asks for brief answers": summariesSource.includes("keep local Ollama summaries brief so they return quickly"),
+  "summary system forbids footnote citations": summariesSource.includes("never use bracketed footnotes like [1]"),
+  "summary prompt requires citation-ended units": summariesSource.includes("End every bullet or sentence with an exact inline source citation"),
   "cloud summary prompt keeps fuller answer allowance": summariesSource.includes("Summarize this unit in 2-4 direct sentences."),
   "summary system uses only graph and source": summariesSource.includes("Use only the provided graph facts and source excerpt."),
   "summary system requires citations": summariesSource.includes("Cite file:line or file:start-end for every concrete claim."),

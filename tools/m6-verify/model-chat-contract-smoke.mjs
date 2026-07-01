@@ -11,7 +11,8 @@ const checks = {
     chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 260") &&
     chatSource.includes("const CLOUD_ASK_MAX_OUTPUT_TOKENS = 520"),
   "Ask generation uses provider-aware budget": chatSource.includes("maxOutputTokens: askMaxOutputTokens(settings)"),
-  "Ollama prompt asks for brief answers": chatSource.includes("keep local Ollama answers brief so they return quickly"),
+  "Ollama prompt asks for brief answers": chatSource.includes("Use 1-3 short bullets; keep local Ollama answers brief so they return quickly"),
+  "Ask prompt requires citation-ended units": chatSource.includes("End every bullet or sentence with an exact inline source citation from the context."),
   "cloud prompt keeps fuller answer allowance": chatSource.includes("Use 2-4 short bullets or sentences unless the question asks for more detail."),
   "budget helper is exported for future behavioral tests": chatSource.includes("export function askMaxOutputTokens"),
 };

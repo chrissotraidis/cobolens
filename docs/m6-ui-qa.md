@@ -267,6 +267,10 @@ Model-backed Ask check:
 - The optional local Ollama summary/Ask smokes report `guarded` and
   `guardReason`, so a passing local smoke distinguishes an accepted model answer
   from Cobolens' cited graph fallback.
+- Model-backed Ask and Summary prompts now ask for short citation-ended bullets
+  or sentences. If a small local model still omits exact inline citations,
+  Cobolens keeps the guard path and shows the cited graph fallback instead of
+  uncited prose.
 - Guarded AI Summary results render a cited graph overview in the Overview
   panel instead of a bare error, with a model note explaining why the model text
   was not used.

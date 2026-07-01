@@ -1076,6 +1076,10 @@ pre {
   gap: 8px;
 }
 
+.summary-wide-action {
+  grid-column: 1 / -1;
+}
+
 .summary-output {
   color: #b7c2cd;
   font-size: 13px;

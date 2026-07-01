@@ -88,12 +88,16 @@ const checks = [
     "Summary can seed a cited Ask explanation for the selected node",
     includesAll(appSource, [
       "function explainSelectedNode()",
+      "function askAboutSelectedNode()",
       "function selectedNodeGraphAnswer",
       "I matched the selected",
       "Open Ask with a cited graph explanation",
       "Explain from graph",
+      "Ask follow-up",
       "onExplainNode={explainSelectedNode}",
-    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
+      "onAskFollowUp={askAboutSelectedNode}",
+      "setChatQuestion(`Ask about ${selectedNode.name}`)",
+    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))", ".summary-wide-action"]),
   ],
   [
     "Guarded AI summaries are clearly labeled as graph fallbacks",

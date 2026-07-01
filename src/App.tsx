@@ -864,6 +864,14 @@ function App() {
     setInspectorTab("ask");
   }
 
+  function askAboutSelectedNode() {
+    if (!selectedNode) return;
+    setChatQuestion(`Ask about ${selectedNode.name}`);
+    setChatError("");
+    if (chatStatus === "error") setChatStatus("idle");
+    setInspectorTab("ask");
+  }
+
   function askPresetQuestion(question: string) {
     if (selectedNode && question === `Explain ${selectedNode.name} from the graph.`) {
       explainSelectedNode();
@@ -1223,6 +1231,7 @@ function App() {
                   onGenerateAll={generateAllSummaries}
                   onCancelSummary={cancelSummary}
                   onExplainNode={explainSelectedNode}
+                  onAskFollowUp={askAboutSelectedNode}
                   onOpenCitation={jumpToCitation}
                 />
               ) : null}
@@ -1659,6 +1668,7 @@ function SummaryDock({
   onGenerateAll,
   onCancelSummary,
   onExplainNode,
+  onAskFollowUp,
   onOpenCitation,
 }: {
   node: GraphNode | null;
@@ -1671,6 +1681,7 @@ function SummaryDock({
   onGenerateAll: () => void;
   onCancelSummary: () => void;
   onExplainNode: () => void;
+  onAskFollowUp: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
@@ -1697,6 +1708,15 @@ function SummaryDock({
             Explain from graph
           </button>
           <button
+            type="button"
+            onClick={onAskFollowUp}
+            disabled={!node}
+            title={node ? "Open Ask with this symbol in the prompt" : "Select a symbol to ask about it"}
+          >
+            Ask follow-up
+          </button>
+          <button
+            className="summary-wide-action"
             type="button"
             onClick={generating ? onCancelSummary : onGenerateSelected}
             disabled={!generating && !node?.file}

@@ -1608,11 +1608,12 @@ function InspectorTabs({
           type="button"
           role="tab"
           aria-selected={activeTab === tab.id}
+          aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}
           className={activeTab === tab.id ? "is-active" : undefined}
           onClick={() => onChange(tab.id)}
         >
           <span>{tab.label}</span>
-          {tab.badge ? <small>{tab.badge}</small> : null}
+          {tab.badge ? <small>{` ${tab.badge}`}</small> : null}
         </button>
       ))}
     </div>
@@ -1900,13 +1901,14 @@ function ChatAnswerPanel({
         )}
       </div>
       {previousAnswers.length ? (
-        <div className="answer-history" aria-label="Recent Ask answers">
-          <div className="answer-history-heading">
+        <details className="answer-history" aria-label="Recent Ask answers">
+          <summary>
             <span>Recent answers</span>
-            <button type="button" onClick={onClearHistory} disabled={status === "running"}>
-              Clear
-            </button>
-          </div>
+            <small>{previousAnswers.length}</small>
+          </summary>
+          <button type="button" onClick={onClearHistory} disabled={status === "running"}>
+            Clear
+          </button>
           <div className="answer-history-list">
             {previousAnswers.map((item, index) => (
               <button
@@ -1924,7 +1926,7 @@ function ChatAnswerPanel({
               </button>
             ))}
           </div>
-        </div>
+        </details>
       ) : null}
     </section>
   );
@@ -2022,6 +2024,7 @@ function CitationList({
           key={`${citation.file}:${citation.line}:${citation.endLine ?? ""}:${citation.label}`}
           type="button"
           onClick={() => onOpenCitation(citation)}
+          aria-label={`Open citation ${citation.label} at ${citationSite(citation)}`}
           title={`${citation.label} - ${citationSite(citation)}`}
         >
           <span className="citation-label">{citation.label}</span>
@@ -2851,24 +2854,39 @@ function suggestedGraphQuestions(node: GraphNode | null) {
   const overviewQuestion = "Give me a codebase overview.";
   if (!node) return [overviewQuestion];
   const name = node.name;
+  const selectedOverview = selectedNodeOverviewQuestion(node);
   if (node.type === "program") {
-    return [overviewQuestion, `What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
+    return [overviewQuestion, selectedOverview, `What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
   }
   if (node.type === "data-item") {
-    return [overviewQuestion, `Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
+    return [overviewQuestion, selectedOverview, `Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
   }
   if (node.type === "jcl-dd") {
-    return [overviewQuestion, `What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
+    return [overviewQuestion, selectedOverview, `What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
   }
   if (node.type === "dataset") {
-    return [overviewQuestion, `What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
+    return [overviewQuestion, selectedOverview, `What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
   }
   return [
     overviewQuestion,
+    selectedOverview,
     `What uses ${name}?`,
     `Where does ${name} happen?`,
     `What depends on ${name}?`,
   ];
+}
+
+function selectedNodeOverviewQuestion(node: GraphNode) {
+  const type = friendlyQuestionNodeType(node.type);
+  return `What does this ${type} do in plain English?`;
+}
+
+function friendlyQuestionNodeType(type: string) {
+  if (type === "jcl-job") return "job";
+  if (type === "jcl-step") return "step";
+  if (type === "data-item") return "symbol";
+  if (type === "jcl-dd") return "symbol";
+  return type.replace(/-/g, " ");
 }
 
 function statusLabel(status: Status) {

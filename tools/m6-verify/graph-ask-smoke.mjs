@@ -171,6 +171,7 @@ try {
     preferredNode: selectedLineage,
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
+  const selectedProgramAnswer = graphAnswerFallback(graph, selectedProgramQuestion, selectedProgramContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -184,6 +185,7 @@ try {
     ["written-by question classified as graph-only", isGraphQuestion(writtenByQuestion)],
     ["orientation question classified as graph-only", isGraphQuestion(orientationQuestion)],
     ["codebase overview question classified as graph-only", isGraphQuestion(codebaseOverviewQuestion)],
+    ["selected-symbol overview question classified as graph-only", isGraphQuestion(selectedProgramQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -242,6 +244,10 @@ try {
     ["codebase overview gives inventory", codebaseOverviewAnswer.text.includes("I found 1 source program, 2 copybooks, and 1 JCL job.")],
     ["codebase overview has citations", codebaseOverviewAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["selected-symbol pronoun question focuses selected node", selectedProgramContext.focusNodes[0]?.id === selectedLineage?.id],
+    ["selected-symbol pronoun question uses selected node only", selectedProgramContext.focusNodes.length === 1],
+    ["selected-symbol overview answer is graph-only", selectedProgramAnswer.text.includes("Graph answer, no model required:")],
+    ["selected-symbol overview answer includes graph brief", selectedProgramAnswer.text.includes("Graph-derived brief:")],
+    ["selected-symbol overview answer cites source", selectedProgramAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["selected-symbol context labels selected symbol", selectedProgramContext.prompt.includes("Selected symbol: LINEAGE (program) src/LINEAGE.cbl:1-47")],
     ["selected-symbol context labels source excerpts", selectedProgramContext.prompt.includes("Source excerpt for LINEAGE (program) at src/LINEAGE.cbl:1-47")],
     ["selected-symbol context includes grounding rules", selectedProgramContext.prompt.includes("Use relationship direction exactly as listed.")],

@@ -27,6 +27,7 @@ const checks = [
     "Program Ask suggestions include concrete read/write graph questions",
     includesAll(appSource, [
       '"Give me a codebase overview."',
+      "selectedNodeOverviewQuestion(node)",
       "`What files does ${name} read?`",
       "`What does ${name} write?`",
     ]),
@@ -35,8 +36,9 @@ const checks = [
     "Ask suggestions expose a graph-only codebase overview first",
     includesAll(appSource, [
       'const overviewQuestion = "Give me a codebase overview."',
-      "return [overviewQuestion, `What depends on ${name}?`",
-      "return [overviewQuestion, `Where does ${name} flow?`",
+      "return [overviewQuestion, selectedOverview, `What depends on ${name}?`",
+      "return [overviewQuestion, selectedOverview, `Where does ${name} flow?`",
+      "`What does this ${type} do in plain English?`",
     ]) &&
       appearsInOrder(appSource, ["{starterQuestions.map((question) => (", "{explainQuestion ? ("]),
   ],
@@ -56,8 +58,9 @@ const checks = [
       "function rememberChatAnswer(answer: ChatAnswer)",
       "function restoreChatAnswer(answer: ChatAnswer)",
       'aria-label="Recent Ask answers"',
+      "<summary>",
       "item.citations.length",
-    ]) && includesAll(appCss, [".answer-history", ".answer-history-list button"]),
+    ]) && includesAll(appCss, [".answer-history", ".answer-history summary", ".answer-history-list button"]),
   ],
   [
     "Summary can seed a cited Ask explanation for the selected node",
@@ -114,6 +117,7 @@ const checks = [
       'label: "Overview"',
       'label: "Ask"',
       'label: "Links"',
+      "aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}",
     ]) &&
       appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Ask" }']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(94px, 1.18fr)", "minmax(78px, 1fr)"]),

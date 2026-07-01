@@ -96,12 +96,17 @@ export async function retrieveQuestionContext({
 
 function applyPreferredNode(rankedNodes: GraphNode[], preferredNode: GraphNode | null | undefined, question: string) {
   if (!preferredNode) return rankedNodes;
+  if (isSelectedNodeReference(question)) return [preferredNode];
   if (!shouldPreferSelectedNode(question, rankedNodes)) return rankedNodes;
   return [preferredNode, ...rankedNodes.filter((node) => node.id !== preferredNode.id)];
 }
 
 function shouldPreferSelectedNode(question: string, rankedNodes: GraphNode[]) {
   if (!rankedNodes.length) return true;
+  return isSelectedNodeReference(question);
+}
+
+function isSelectedNodeReference(question: string) {
   return /\b(this|that|it|its|selected|current)\b/i.test(question);
 }
 

@@ -123,6 +123,7 @@ export function graphAnswerFallback(
 
 export function isGraphQuestion(question: string) {
   if (isOrientationQuestion(question)) return true;
+  if (isSelectedSymbolOverviewQuestion(question)) return true;
   return /\b(explain\w*|summar\w*|overview|purpose|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
@@ -141,6 +142,12 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
   if (/\b(flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
   if (/\b(where|happen\w*)\b/i.test(question)) return "where";
   return "general";
+}
+
+function isSelectedSymbolOverviewQuestion(question: string) {
+  return /\b(what\s+does\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)\s+do|what\s+is\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)|tell\s+me\s+about\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table))\b/i.test(
+    question,
+  );
 }
 
 function isOrientationQuestion(question: string) {

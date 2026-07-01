@@ -1233,18 +1233,37 @@ pre {
   padding-top: 2px;
 }
 
-.answer-history-heading {
+.answer-history summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(125, 137, 150, 0.18);
+  border-radius: 6px;
   color: #7d8996;
+  background: rgba(125, 137, 150, 0.06);
+  cursor: pointer;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.answer-history-heading button {
+.answer-history summary small {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #b8f0dc;
+  background: rgba(90, 167, 161, 0.18);
+  font-size: 11px;
+}
+
+.answer-history > button {
+  justify-self: end;
   height: 24px;
   padding: 0 7px;
   color: #9aa6b2;

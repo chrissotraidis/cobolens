@@ -74,6 +74,27 @@ export function GraphView({
     if (!graph || !focusNodeId) return null;
     return buildFocusSlice(graph, focusNodeId, expandedNodeIds, hiddenNodeTypes, selectedEdgeKey);
   }, [expandedNodeIds, focusNodeId, graph, hiddenNodeTypes, selectedEdgeKey]);
+  const visibleNodeControls = useMemo(() => {
+    if (!slice) return [];
+    return slice.graph
+      .nodes()
+      .map((nodeId) => {
+        const attributes = slice.graph.getNodeAttributes(nodeId);
+        return {
+          id: nodeId,
+          label: attributes.label,
+          color: attributes.color,
+          isFocus: nodeId === focusNodeId,
+          isCluster: slice.syntheticNodeIds.has(nodeId),
+        };
+      })
+      .sort((left, right) => {
+        if (left.isFocus) return -1;
+        if (right.isFocus) return 1;
+        if (left.isCluster !== right.isCluster) return left.isCluster ? 1 : -1;
+        return left.label.localeCompare(right.label);
+      });
+  }, [focusNodeId, slice]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -120,6 +141,16 @@ export function GraphView({
       }
     };
   }, [onExpandNode, onSelectEdge, onSelectNode, slice]);
+  function activateVisibleNode(nodeId: string) {
+    if (!slice) return;
+    if (slice.syntheticNodeIds.has(nodeId)) {
+      const ownerId = slice.syntheticNodeOwners.get(nodeId);
+      if (ownerId === focusNodeId) onExpandNode(ownerId);
+      else if (ownerId) onSelectNode(ownerId);
+      return;
+    }
+    onSelectNode(nodeId);
+  }
 
   if (!graph) {
     return (
@@ -162,6 +193,30 @@ export function GraphView({
         <span>{slice.visibleNodeIds.size} visible</span>
         <span>{graph.nodes.length} indexed</span>
         <span>{slice.hiddenNeighborCount} hidden</span>
+      </div>
+      <div className="graph-node-list" aria-label="Visible graph nodes">
+        <span>Visible nodes</span>
+        <div>
+          {visibleNodeControls.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              onClick={() => activateVisibleNode(node.id)}
+              aria-current={node.isFocus ? "true" : undefined}
+              aria-label={
+                node.isCluster
+                  ? `Expand hidden ${node.label} neighbors`
+                  : node.isFocus
+                    ? `Current focus ${node.label}`
+                    : `Focus ${node.label}`
+              }
+              title={node.isCluster ? `Expand ${node.label}` : `Focus ${node.label}`}
+            >
+              <i aria-hidden="true" style={{ background: node.color }} />
+              <span>{node.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );

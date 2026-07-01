@@ -39,6 +39,12 @@ button:hover {
   border-color: #5aa7a1;
 }
 
+button:focus-visible {
+  outline: none;
+  border-color: #66c2a5;
+  box-shadow: 0 0 0 2px rgba(90, 167, 161, 0.24);
+}
+
 button:disabled,
 input:disabled,
 select:disabled {
@@ -761,6 +767,69 @@ h2,
   color: #9aa6b2;
   background: rgba(17, 21, 26, 0.84);
   font-size: 12px;
+}
+
+.graph-node-list {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: grid;
+  gap: 7px;
+  width: min(260px, calc(100% - 176px));
+  max-height: min(230px, calc(100% - 28px));
+  padding: 9px 10px;
+  overflow: hidden;
+  border: 1px solid #27303a;
+  border-radius: 8px;
+  color: #9aa6b2;
+  background: rgba(17, 21, 26, 0.86);
+  font-size: 12px;
+}
+
+.graph-node-list > span {
+  color: #7d8996;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.graph-node-list > div {
+  display: grid;
+  gap: 5px;
+  max-height: 180px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.graph-node-list button {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 7px;
+  color: #cdd5de;
+  background: rgba(125, 137, 150, 0.06);
+  font-size: 12px;
+  text-align: left;
+}
+
+.graph-node-list button[aria-current="true"] {
+  color: #e7fff6;
+  border-color: rgba(102, 194, 165, 0.42);
+  background: rgba(90, 167, 161, 0.12);
+}
+
+.graph-node-list i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.graph-node-list button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .right-pane {

@@ -315,6 +315,26 @@ const checks = [
     ]) && includesAll(appSource, ["function expandNode(nodeId: string)", "onExpandNode={expandNode}"]),
   ],
   [
+    "Graph slice has keyboard-accessible visible node controls",
+    includesAll(graphViewSource, [
+      "const visibleNodeControls = useMemo",
+      'className="graph-node-list"',
+      'aria-label="Visible graph nodes"',
+      "aria-current={node.isFocus ? \"true\" : undefined}",
+      "`Current focus ${node.label}`",
+      "`Focus ${node.label}`",
+      "`Expand hidden ${node.label} neighbors`",
+      "function activateVisibleNode(nodeId: string)",
+      "slice.syntheticNodeIds.has(nodeId)",
+    ]) &&
+      includesAll(appCss, [
+        "button:focus-visible",
+        ".graph-node-list",
+        '.graph-node-list button[aria-current="true"]',
+        ".graph-node-list > div",
+      ]),
+  ],
+  [
     "Graph toolbar explains when the focused slice has no hidden direct neighbors",
     includesAll(appSource, [
       "focusedNode ? (",

@@ -32,7 +32,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { checkOllamaReadiness } from "./model/readiness";
+import { checkOllamaReadiness, inspectOllamaReadiness, ollamaReadinessDetails } from "./model/readiness";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -58,6 +58,7 @@ type InspectorTab = "ask" | "summary" | "impact" | "relationship";
 type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
   message: string;
+  installedModels?: string[];
 };
 type SourceFocus = {
   file: string;
@@ -652,16 +653,21 @@ function App() {
     try {
       if (!isCloudProvider(modelSettings.provider)) {
         setModelReadiness({ status: "checking", message: "Checking local generation with a quick probe" });
-        const message = await checkOllamaReadiness(modelSettings, {
+        const readiness = await inspectOllamaReadiness(modelSettings, {
           verifyGeneration: true,
           generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS,
         });
-        setModelReadiness({ status: "ready", message });
+        setModelReadiness({ status: "ready", message: readiness.message, installedModels: readiness.installedModels });
         return;
       }
       await prepareModelCall();
     } catch (err) {
-      setModelReadiness({ status: "error", message: friendlyModelError(err, modelSettings) });
+      const details = ollamaReadinessDetails(err);
+      setModelReadiness({
+        status: "error",
+        message: friendlyModelError(err, modelSettings),
+        installedModels: details.installedModels,
+      });
     }
   }
 
@@ -1537,6 +1543,9 @@ function ModelSettingsPanel({
   modelReadiness: ModelReadiness;
 }) {
   const cloud = isCloudProvider(settings.provider);
+  const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
+  const visibleInstalledModels = installedModels.slice(0, 6);
+  const hiddenInstalledModelCount = Math.max(0, installedModels.length - visibleInstalledModels.length);
 
   return (
     <section className="pane-block model-settings">
@@ -1561,6 +1570,22 @@ function ModelSettingsPanel({
           onChange={(event) => onSettingsChange({ ...settings, model: event.currentTarget.value })}
         />
       </label>
+      {visibleInstalledModels.length ? (
+        <div className="model-chips" aria-label="Installed Ollama models">
+          {visibleInstalledModels.map((model) => (
+            <button
+              key={model}
+              type="button"
+              onClick={() => onSettingsChange({ ...settings, model })}
+              disabled={modelReadiness.status === "checking" || model === settings.model}
+              title={`Use ${model}`}
+            >
+              {model}
+            </button>
+          ))}
+          {hiddenInstalledModelCount ? <span>+{hiddenInstalledModelCount} more</span> : null}
+        </div>
+      ) : null}
       {settings.provider === "ollama" ? (
         <label className="form-row">
           <span>Host</span>

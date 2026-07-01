@@ -7,7 +7,29 @@ type OllamaReadinessOptions = {
   generationTimeoutMs?: number;
 };
 
+export type OllamaReadinessResult = {
+  message: string;
+  configuredModel: string;
+  installedModels: string[];
+};
+
+export class OllamaReadinessError extends Error {
+  configuredModel: string;
+  installedModels: string[];
+
+  constructor(message: string, configuredModel: string, installedModels: string[] = []) {
+    super(message);
+    this.name = "OllamaReadinessError";
+    this.configuredModel = configuredModel;
+    this.installedModels = installedModels;
+  }
+}
+
 export async function checkOllamaReadiness(settings: ModelSettings, options: OllamaReadinessOptions = {}) {
+  return (await inspectOllamaReadiness(settings, options)).message;
+}
+
+export async function inspectOllamaReadiness(settings: ModelSettings, options: OllamaReadinessOptions = {}): Promise<OllamaReadinessResult> {
   assertLocalOllamaUrl(settings.baseUrl);
   const baseUrl = normalizeOllamaBaseUrl(settings.baseUrl);
   const tagsTimeoutMs = options.tagsTimeoutMs ?? 2500;
@@ -24,18 +46,22 @@ export async function checkOllamaReadiness(settings: ModelSettings, options: Oll
   const body = (await response.json()) as { models?: Array<{ name?: string }> };
   const modelNames = body.models?.map((model) => model.name).filter((name): name is string => Boolean(name)) ?? [];
   if (!modelNames.length) {
-    throw new Error(`Ollama is reachable, but no local models are installed. Run: ollama pull ${configuredModel}`);
+    throw new OllamaReadinessError(`Ollama is reachable, but no local models are installed. Run: ollama pull ${configuredModel}`, configuredModel);
   }
 
   const hasModel = modelNames.some(
     (name) => name === configuredModel || name === `${configuredModel}:latest` || name.startsWith(`${configuredModel}:`),
   );
   if (!hasModel) {
-    throw new Error(`Ollama is reachable, but ${configuredModel} is not installed. Run: ollama pull ${configuredModel}`);
+    throw new OllamaReadinessError(`Ollama is reachable, but ${configuredModel} is not installed. Use an installed model below or run: ollama pull ${configuredModel}`, configuredModel, modelNames);
   }
 
   if (!options.verifyGeneration) {
-    return `Ollama is ready on localhost with ${configuredModel}.`;
+    return {
+      message: `Ollama is ready on localhost with ${configuredModel}.`,
+      configuredModel,
+      installedModels: modelNames,
+    };
   }
 
   const generation = await fetchWithTimeout(
@@ -55,18 +81,39 @@ export async function checkOllamaReadiness(settings: ModelSettings, options: Oll
     },
     generationTimeoutMs,
     () => {
-      throw new Error(`Ollama is reachable, but ${configuredModel} did not finish a test generation. Try a smaller model or check Ollama logs.`);
+      throw new OllamaReadinessError(
+        `Ollama is reachable, but ${configuredModel} did not finish a test generation. Use an installed model below or check Ollama logs.`,
+        configuredModel,
+        modelNames,
+      );
     },
   );
   if (!generation.ok) {
-    throw new Error(`Ollama generation responded with ${generation.status}. Check the model and server logs.`);
+    throw new OllamaReadinessError(`Ollama generation responded with ${generation.status}. Use an installed model below or check Ollama logs.`, configuredModel, modelNames);
   }
   const generationBody = (await generation.json()) as { response?: string };
   if (!generationBody.response?.trim()) {
-    throw new Error(`Ollama generation returned no text for ${configuredModel}. Check the model and try again.`);
+    throw new OllamaReadinessError(`Ollama generation returned no text for ${configuredModel}. Use an installed model below or check Ollama logs.`, configuredModel, modelNames);
   }
 
-  return `Ollama is ready on localhost with ${configuredModel}; test generation returned text.`;
+  return {
+    message: `Ollama is ready on localhost with ${configuredModel}; test generation returned text.`,
+    configuredModel,
+    installedModels: modelNames,
+  };
+}
+
+export function ollamaReadinessDetails(err: unknown) {
+  if (err instanceof OllamaReadinessError) {
+    return {
+      configuredModel: err.configuredModel,
+      installedModels: err.installedModels,
+    };
+  }
+  return {
+    configuredModel: "",
+    installedModels: [],
+  };
 }
 
 async function fetchWithTimeout(

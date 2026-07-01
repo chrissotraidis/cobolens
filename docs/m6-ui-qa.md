@@ -236,6 +236,10 @@ Graph-backed Ask check:
 Model-backed Ask check:
 
 - `Check AI` reports `Ollama is ready on localhost with llama3.2`.
+- When Ollama is reachable, `Check AI` carries installed local model names into
+  the AI panel. If the configured model is missing or times out, those installed
+  models appear as quick-pick chips so the user can switch without leaving the
+  app.
 - Grounded Ask now passes the selected Rosetta language into the model system
   prompt while keeping the graph-only grounding, citation, and no-invention
   rules.

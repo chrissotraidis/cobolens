@@ -482,6 +482,36 @@ h2,
   padding: 0 8px;
 }
 
+.model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.model-chips button,
+.model-chips span {
+  min-height: 26px;
+  max-width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
+  border: 1px solid rgba(90, 167, 161, 0.24);
+  border-radius: 999px;
+  color: #b8f0dc;
+  background: rgba(90, 167, 161, 0.08);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-chips span {
+  display: grid;
+  place-items: center;
+  color: #7d8996;
+  border-color: rgba(125, 137, 150, 0.18);
+  background: rgba(125, 137, 150, 0.06);
+}
+
 .button-row {
   display: grid;
   gap: 8px;

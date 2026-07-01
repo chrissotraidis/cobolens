@@ -139,10 +139,13 @@ const checks = [
     "Check AI verifies local generation without slowing every model call preflight",
     includesAll(appSource, [
       "Checking local generation with a quick probe",
+      "inspectOllamaReadiness",
+      "installedModels: readiness.installedModels",
+      "ollamaReadinessDetails",
       "verifyGeneration: true",
       "generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS",
       "const message = await checkOllamaReadiness(modelSettings);",
-    ]) && includesAll(appSource, ['from "./model/readiness"']),
+    ]) && includesAll(appSource, ['from "./model/readiness"', 'aria-label="Installed Ollama models"']) && includesAll(appCss, [".model-chips", ".model-chips button"]),
   ],
   [
     "Ask composer remains available while reading answers",

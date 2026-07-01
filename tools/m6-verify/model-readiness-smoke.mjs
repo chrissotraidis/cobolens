@@ -42,7 +42,7 @@ try {
 
   const require = createRequire(resolve(tempRoot, "smoke.cjs"));
   const { DEFAULT_MODEL_SETTINGS } = require(compiledModule("config.js"));
-  const { checkOllamaReadiness } = require(compiledModule("readiness.js"));
+  const { checkOllamaReadiness, inspectOllamaReadiness, ollamaReadinessDetails } = require(compiledModule("readiness.js"));
 
   const fastRequests = [];
   global.fetch = async (url, init = {}) => {
@@ -50,6 +50,13 @@ try {
     return jsonResponse({ models: [{ name: "llama3.2:latest" }] });
   };
   const fastMessage = await checkOllamaReadiness(DEFAULT_MODEL_SETTINGS, { tagsTimeoutMs: 1000 });
+
+  const richRequests = [];
+  global.fetch = async (url, init = {}) => {
+    richRequests.push({ url: String(url), method: init.method ?? "GET" });
+    return jsonResponse({ models: [{ name: "llama3.2:latest" }] });
+  };
+  const fastDetails = await inspectOllamaReadiness(DEFAULT_MODEL_SETTINGS, { tagsTimeoutMs: 1000 });
 
   const fullRequests = [];
   global.fetch = async (url, init = {}) => {
@@ -79,14 +86,36 @@ try {
     }),
   );
 
+  global.fetch = async (url, init = {}) => {
+    if (String(url).endsWith("/tags")) return jsonResponse({ models: [{ name: "llama3.2:latest" }, { name: "tinyllama:latest" }] });
+    return new Promise((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    });
+  };
+  const timeoutError = await captures(() =>
+    inspectOllamaReadiness(DEFAULT_MODEL_SETTINGS, {
+      verifyGeneration: true,
+      tagsTimeoutMs: 1000,
+      generationTimeoutMs: 1,
+    }),
+  );
+  const timeoutDetails = ollamaReadinessDetails(timeoutError);
+
   const assertions = [
     ["fast readiness checks tags only", fastRequests.length === 1 && fastRequests[0].url.endsWith("/api/tags")],
     ["fast readiness returns installed model", fastMessage.includes("llama3.2")],
+    ["rich readiness checks tags only", richRequests.length === 1 && richRequests[0].url.endsWith("/api/tags")],
+    ["rich readiness includes installed models", fastDetails.installedModels.includes("llama3.2:latest")],
     ["full readiness checks generation", fullRequests.some((request) => request.url.endsWith("/api/generate"))],
     ["full readiness posts configured model", fullRequests.some((request) => request.body?.model === "llama3.2")],
     ["full readiness reports generation text", fullMessage.includes("test generation returned text")],
     ["missing configured model rejects", missingModel.includes("is not installed")],
     ["empty generation rejects", emptyGeneration.includes("returned no text")],
+    ["timeout error preserves installed model choices", timeoutDetails.installedModels.includes("tinyllama:latest")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {
@@ -112,10 +141,15 @@ function jsonResponse(body) {
 }
 
 async function rejects(fn) {
+  const error = await captures(fn);
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function captures(fn) {
   try {
     await fn();
     return "";
   } catch (error) {
-    return error instanceof Error ? error.message : String(error);
+    return error;
   }
 }

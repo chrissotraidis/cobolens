@@ -55,6 +55,9 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   "what depends on this?" and "where does this data flow?"
 - Preflight local/cloud model readiness for AI Ask and summaries, with Stop
   controls and bounded timeouts so model calls do not leave the UI spinning.
+- When Ollama is reachable, the AI panel can show installed local models after
+  `Check AI`, letting a user switch from a missing or slow configured model
+  without leaving Cobolens.
 - Apply the selected Rosetta language to both grounded Ask and generated
   summaries while preserving graph-only grounding and citation rules.
 - Resolve "this program" style Ask questions against the current selected graph
@@ -167,6 +170,11 @@ If it fails, install Ollama and run:
 ```sh
 ollama pull llama3.2
 ```
+
+Inside the app, `Check AI` also reads installed Ollama model names from
+localhost. If the configured model is missing or too slow to finish the quick
+probe, use one of the installed-model chips in the AI panel or pull the default
+model above.
 
 Smoke-test the desktop shell against an already-running Vite server:
 

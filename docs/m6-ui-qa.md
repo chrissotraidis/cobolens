@@ -65,6 +65,9 @@ Search-driven checks:
   exact/prefix/type matches still work. Searching `report` stays focused on the
   report copybook/data/dataset family instead of surfacing distant runtime
   program names, and unmatched queries show `No matching symbols.`.
+- Keyboard search is fast enough for the primary workflow: typing a symbol and
+  pressing Enter focuses the top-ranked result, while Escape clears the current
+  query without changing graph focus.
 
 Parse-health checks:
 

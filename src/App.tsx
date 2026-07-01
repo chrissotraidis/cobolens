@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentationExport,
   documentationExportPrefix,
@@ -600,6 +600,18 @@ function App() {
     setQuery("");
   }
 
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" && searchResults[0]) {
+      event.preventDefault();
+      focusOnSearchResult(searchResults[0].id);
+      return;
+    }
+    if (event.key === "Escape" && query) {
+      event.preventDefault();
+      setQuery("");
+    }
+  }
+
   function goHome() {
     if (!graph) return;
     const homeNodeId = firstFocusableNode(graph);
@@ -1072,6 +1084,7 @@ function App() {
             placeholder="Search symbols"
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
+            onKeyDown={handleSearchKeyDown}
             disabled={!graph}
           />
         </label>

@@ -358,6 +358,11 @@ const checks = [
     "Symbol search keeps fuzzy matching focused on symbol names",
     includesAll(appSource, [
       "function searchResultScore(node: GraphNode, query: string)",
+      "function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>)",
+      'event.key === "Enter" && searchResults[0]',
+      "focusOnSearchResult(searchResults[0].id)",
+      'event.key === "Escape" && query',
+      "onKeyDown={handleSearchKeyDown}",
       "matchesFuzzy(name, needle)",
       "return null",
       "No matching symbols.",

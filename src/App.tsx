@@ -779,15 +779,35 @@ function App() {
         }),
       );
       setModelCallCount((count) => count + 1);
+      const displayedSummary = summary.guarded
+        ? graphBackedSummaryFallback(
+            graph,
+            node,
+            summary,
+            `model summary had ${summary.guardReason ?? "citation issues"}`,
+          )
+        : summary;
       setSummaries((current) => ({
         ...current,
-        [node.id]: { status: "ready", summary },
+        [node.id]: { status: "ready", summary: displayedSummary },
       }));
       return true;
     } catch (err) {
+      const fallbackReason = friendlyModelError(err, modelSettings);
+      const fallbackSummary = graphBackedSummaryFallback(
+        graph,
+        node,
+        {
+          nodeId: node.id,
+          text: "",
+          provider: modelSettings.provider,
+          model: modelSettings.model,
+        },
+        fallbackReason,
+      );
       setSummaries((current) => ({
         ...current,
-        [node.id]: { status: "error", error: friendlyModelError(err, modelSettings) },
+        [node.id]: { status: "ready", summary: fallbackSummary },
       }));
       return false;
     }
@@ -1843,7 +1863,8 @@ function SummaryDock({
           <>
             {state.summary.guarded ? (
               <div className="summary-guard-note" role="status">
-                Showing a cited graph answer because {PROVIDER_LABELS[settings.provider]} missed citation rules.
+                Showing a cited graph overview:{" "}
+                {state.summary.guardReason ?? `${PROVIDER_LABELS[settings.provider]} missed citation rules`}.
               </div>
             ) : null}
             <MessageText text={state.summary.text} />
@@ -2953,6 +2974,20 @@ function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
     parts.push(`${lineage.length} lineage relationship${lineage.length === 1 ? " is" : "s are"} available for reads, writes, moves, queries, links, or runtime wiring.`);
   }
   return parts.join(" ");
+}
+
+function graphBackedSummaryFallback(
+  graph: GraphDocument,
+  node: GraphNode,
+  summary: UnitSummary,
+  reason: string,
+): UnitSummary {
+  return {
+    ...summary,
+    text: [nodeGraphOverview(node, graph), "", `Model note: ${reason}`].join("\n"),
+    guarded: true,
+    guardReason: reason,
+  };
 }
 
 function cobolFileBridgeInsight(

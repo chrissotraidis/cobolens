@@ -121,7 +121,10 @@ const checks = [
     "Guarded AI summaries are clearly labeled as graph fallbacks",
     includesAll(appSource, [
       "state.summary.guarded",
-      "Showing a cited graph answer because",
+      "Showing a cited graph overview:",
+      "graphBackedSummaryFallback",
+      "model summary had ${summary.guardReason ?? \"citation issues\"}",
+      "Model note: ${reason}",
       'className="summary-guard-note"',
       'role="status"',
     ]) && includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.08)"]),

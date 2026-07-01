@@ -46,7 +46,7 @@ export function graphAnswerFallback(
   }
 
   const lines = [
-    modelNote ? "I could not use the model response safely, so I answered from the graph instead." : "I answered from the graph without using a model.",
+    modelNote ? "I could not get a usable model answer, so I answered from the graph instead." : "I answered from the graph without using a model.",
     `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
   ];
 
@@ -262,7 +262,7 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
   ).slice(0, 4);
 
   const lines = [
-    modelNote ? "I could not use the model response safely, so I answered from the graph instead." : "I answered from the graph without using a model.",
+    modelNote ? "I could not get a usable model answer, so I answered from the graph instead." : "I answered from the graph without using a model.",
     `I found ${programs.length} source program${programs.length === 1 ? "" : "s"}, ${copybooks.length} copybook${copybooks.length === 1 ? "" : "s"}, and ${jobs.length} JCL job${jobs.length === 1 ? "" : "s"}.`,
     "",
     "Best starting points from the dependency graph:",

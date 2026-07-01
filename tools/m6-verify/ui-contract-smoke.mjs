@@ -47,12 +47,27 @@ const checks = [
       'const overviewQuestion = "Give me a codebase overview."',
       "return [overviewQuestion, selectedOverview, `What depends on ${name}?`",
       "return [overviewQuestion, selectedOverview, `Where does ${name} flow?`",
-      "`What does this ${type} do in plain English?`",
+      "`Explain ${node.name} in plain English.`",
       "shouldSyncAskFocus(question)",
       "codebase\\s+overview",
     ]) &&
-      appearsInOrder(appSource, ["{starterQuestions.map((question) => (", "{explainQuestion ? ("]) &&
+      includesAll(appSource, ["{starterQuestions.map((question) => (", "PROVIDER_LABELS[settings.provider]"]) &&
+      !appSource.includes("const explainQuestion =") &&
       includesAll(appCss, [".question-chips button small", "text-transform: uppercase"]),
+  ],
+  [
+    "Guarded Ask answers use the richer graph fallback",
+    includesAll(appSource, [
+      "answer.guarded",
+      "graphAnswerFallback(",
+      "graph,",
+      "question,",
+      "answerContext,",
+      "model answer had ${answer.guardReason ?? \"citation issues\"}",
+      "text: displayedAnswer.text",
+      "citations: displayedAnswer.citations",
+      'source: answer.guarded ? "graph" : "model"',
+    ]),
   ],
   [
     "Ask response has a visible framed style",
@@ -93,7 +108,8 @@ const checks = [
       "I matched the selected",
       "Open Ask with a cited graph explanation",
       "Explain from graph",
-      "Ask follow-up",
+      "Ask AI follow-up",
+      "AI-backed plain-English prompt",
       "onExplainNode={explainSelectedNode}",
       "onAskFollowUp={askAboutSelectedNode}",
       "setChatQuestion(`Explain ${selectedNode.name} in plain English.`)",
@@ -114,8 +130,8 @@ const checks = [
     "Ask clearly distinguishes graph shortcuts from AI-backed questions",
     includesAll(appSource, [
       'className="answer-modes"',
-      "Graph instant",
-      "when needed",
+      "Graph shortcuts",
+      "with citations",
       "Ask Graph",
       "modelReadiness.status !== \"idle\"",
       'className={`ask-readiness ${modelReadiness.status}`}',

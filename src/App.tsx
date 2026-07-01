@@ -843,11 +843,19 @@ function App() {
         }),
       );
       setModelCallCount((count) => count + 1);
+      const displayedAnswer = answer.guarded
+        ? graphAnswerFallback(
+            graph,
+            question,
+            answerContext,
+            `model answer had ${answer.guardReason ?? "citation issues"}`,
+          )
+        : { text: answer.text, citations: answerContext.citations };
       const modelAnswer: ChatAnswer = {
         question,
-        text: answer.text,
-        citations: answerContext.citations,
-        source: "model",
+        text: displayedAnswer.text,
+        citations: displayedAnswer.citations,
+        source: answer.guarded ? "graph" : "model",
         guarded: answer.guarded,
       };
       setChatAnswer(modelAnswer);
@@ -1809,9 +1817,9 @@ function SummaryDock({
             type="button"
             onClick={onAskFollowUp}
             disabled={!node}
-            title={node ? "Open Ask with this symbol in the prompt" : "Select a symbol to ask about it"}
+            title={node ? "Open Ask with an AI-backed plain-English prompt" : "Select a symbol to ask about it"}
           >
-            Ask follow-up
+            Ask AI follow-up
           </button>
           <button
             className="summary-wide-action"
@@ -1948,7 +1956,6 @@ function ChatAnswerPanel({
   onOpenCitation: (citation: Citation) => void;
 }) {
   const starterQuestions = suggestedGraphQuestions(node);
-  const explainQuestion = node ? `Explain ${node.name} from the graph.` : "";
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
@@ -1961,7 +1968,7 @@ function ChatAnswerPanel({
       : answer?.guarded
         ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} missed citation rules`
         : answer?.fallbackReason
-          ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} was unavailable`
+          ? `Showing a cited graph answer: ${answer.fallbackReason}`
         : answer?.source === "model"
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
         : answer?.source === "graph"
@@ -1990,8 +1997,8 @@ function ChatAnswerPanel({
         </div>
       </div>
       <div className="answer-modes" aria-label="Ask modes">
-        <span className={!workingWithModel ? "is-active" : undefined}>Graph instant</span>
-        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} when needed</span>
+        <span className={!workingWithModel ? "is-active" : undefined}>Graph shortcuts</span>
+        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} with citations</span>
       </div>
       {showReadiness ? (
         <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>
@@ -2057,17 +2064,6 @@ function ChatAnswerPanel({
               <small>{isGraphQuestion(question) ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
             </button>
           ))}
-          {explainQuestion ? (
-            <button
-              type="button"
-              onClick={() => onAskPreset(explainQuestion)}
-              disabled={status === "running"}
-              title="Show a cited graph-derived explanation"
-            >
-              <span>Explain {node?.name}</span>
-              <small>Graph</small>
-            </button>
-          ) : null}
         </div>
       ) : null}
       {previousAnswers.length ? (
@@ -3117,16 +3113,7 @@ function shouldSyncAskFocus(question: string) {
 }
 
 function selectedNodeOverviewQuestion(node: GraphNode) {
-  const type = friendlyQuestionNodeType(node.type);
-  return `What does this ${type} do in plain English?`;
-}
-
-function friendlyQuestionNodeType(type: string) {
-  if (type === "jcl-job") return "job";
-  if (type === "jcl-step") return "step";
-  if (type === "data-item") return "symbol";
-  if (type === "jcl-dd") return "symbol";
-  return type.replace(/-/g, " ");
+  return `Explain ${node.name} in plain English.`;
 }
 
 function statusLabel(status: Status) {

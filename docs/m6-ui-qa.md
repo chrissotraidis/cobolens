@@ -1,6 +1,6 @@
 # M6 UI QA
 
-Date: 2026-06-30
+Date: 2026-07-01
 
 ## Fixture Graph
 
@@ -33,7 +33,7 @@ First-run check:
 
 - With no graph loaded, the center canvas offers `Open Sample` and `Open Folder`
   actions plus a compact first-run path: load a sample/folder, inspect the map,
-  then add a model later for Summary and Ask. In browser preview, `Open Sample`
+  then add AI later for generated summaries and broader Ask. In browser preview, `Open Sample`
   is the primary action and opens the bundled fixture graph while `Open Folder`
   remains desktop-only.
 - The Ingest pane mirrors that first-run path and explicitly says the map and
@@ -43,7 +43,7 @@ First-run check:
   users see only the sample/open actions rather than a disabled `Focus complete`
   control with no focus.
 
-The right-side Impact panel for `LINEAGE` showed:
+The right-side Dependencies panel for `LINEAGE` showed:
 
 - `LINK RATEAPI` via `executes src/LINEAGE.cbl:40`
 - `CUSTOMER` and `REPORT` via `COPIES`
@@ -65,10 +65,10 @@ Search-driven checks:
 - The left navigator includes a `Codebase` browser grouped by programs,
   copybooks, and JCL source units, so users can click through the project even
   before they know a symbol name to search for.
-- Symbol search now keeps loose fuzzy matching scoped to symbol names, while
+- Codebase search now keeps loose fuzzy matching scoped to symbol names, while
   exact/prefix/type matches still work. Searching `report` stays focused on the
   report copybook/data/dataset family instead of surfacing distant runtime
-  program names, and unmatched queries show `No matching symbols.`.
+  program names, and unmatched queries show `No matching codebase items.`.
 - Keyboard search is fast enough for the primary workflow: typing a symbol and
   pressing Enter focuses the top-ranked result, while Escape clears the current
   query without changing graph focus.
@@ -91,8 +91,8 @@ Parse-health checks:
 Legend/filter checks:
 
 - The left-nav legend renders enabled checkbox filters for graph node types.
-- The graph filters now sit directly under Symbols in a compact two-column grid,
-  before the Codebase browser and secondary status/settings panels, so the
+- The graph filters now sit directly under Search Results in a compact two-column grid,
+  before the Codebase browser and secondary status panels, so the
   color legend and visibility controls are reachable without scrolling to the
   bottom of the left pane.
 - Turning `Copybooks` off changes the graph orientation from `11 visible`,
@@ -121,15 +121,15 @@ Privacy mode checks:
   (`settings.json` in desktop app config, browser local storage in preview).
   Cloud API keys are still saved only through the OS keychain commands and are
   rejected if they appear in app settings.
-- The AI pane shows an explicit usage card with local/cloud call count, bulk
+- Settings shows an explicit AI usage card with local/cloud call count, bulk
   summary input token estimate, and a note that graph answers need no model
   while summaries and non-graph Ask send cited context only when the user runs
   them.
 
 Scan settings check:
 
-- The Ingest pane now exposes scan format, extension, and encoding controls for
-  the desktop scan path.
+- The top-bar Settings drawer exposes scan format, extension, and encoding
+  controls for the desktop scan path.
 - Encoding offers UTF-8 and CP037 / EBCDIC US. The analyzer and desktop source
   snippet/excerpt readers decode CP037 so indexed line citations still open in
   the code panel.
@@ -140,9 +140,9 @@ Scan settings check:
   folders such as `.git`, `node_modules`, `target`, `dist`, and `build`, and
   skip source-like files over 16 MiB so repo checkouts with build output do not
   dominate scan time.
-- In the browser preview those desktop scan controls are replaced by a compact
-  note because the preview is a fixed prebuilt graph JSON. Browser users are
-  not offered scan actions that cannot touch a local folder.
+- In the browser preview, Settings shows a compact note because the preview is a
+  fixed prebuilt graph JSON. Browser users are not offered scan controls that
+  cannot touch a local folder.
 
 Relationship-click check:
 
@@ -151,7 +151,7 @@ Relationship-click check:
   `COPY CUSTOMER.` at `src/LINEAGE.cbl:11` in the code pane.
 - Clicking a relationship citation from an Ask answer selects the cited graph
   edge and highlights the cited source line while keeping the Ask answer
-  visible. Relationship details are still one click away in `Links`.
+  visible. Relationship details are shown from `Dependencies`.
 - Citation jumps add a focused-citation note above the code snippet and label
   the highlighted source row for assistive technology, so the cited evidence is
   explicit beyond the visual gutter marker.
@@ -164,10 +164,10 @@ Relationship-click check:
 
 Export check:
 
-- Clicking `Export Docs` in the browser demo reports the concrete generated
+- Clicking `Export` in the browser demo reports the concrete generated
   artifact names: `cobolens-lineage.md`, `cobolens-lineage.mmd`, and
   `cobolens-lineage.png`.
-- After navigating to `CUSTOMER`, clicking `Export Docs` reports
+- After navigating to `CUSTOMER`, clicking `Export` reports
   `cobolens-customer.md`, `cobolens-customer.mmd`, and
   `cobolens-customer.png`.
 - Tauri command tests cover the desktop export writer: it writes Markdown,
@@ -188,19 +188,17 @@ Graph-backed Ask check:
 - The Ask panel keeps a bounded `Recent answers` trail for the current graph.
   Previous questions can be restored with their cited answer and citation chips,
   which makes the surface behave more like a lightweight code conversation.
-- The Overview panel has an `Explain from graph` action for the selected node. It
-  now anchors the answer to the exact selected graph node instead of re-running
-  fuzzy retrieval, so `CUSTOMER` explains the copybook without blending in
-  `CUSTOMER-FILE` or `BANK.CUSTOMER.MASTER`.
-- The Overview panel also has an `Ask AI follow-up` action. It opens Ask with a
-  plain-English model-backed question about the selected symbol, clears any
-  stale displayed answer, and focuses the composer so the user can edit or
-  submit immediately.
+- The Overview panel has `Use graph overview`, `View source`, `Ask follow-up`,
+  and `Generate AI summary` actions. `View source` makes code viewing explicit,
+  while AI summary actions show `Set up AI first` until a provider is configured.
+- The Overview `Ask follow-up` action opens Ask with a plain-English
+  model-backed question about the selected symbol, clears stale displayed
+  answers, and focuses the composer so the user can edit or submit immediately.
 - The Ask composer is rendered before the answer/evidence block, so follow-up
   questions remain immediately reachable while reviewing a longer cited answer.
 - Inspector tabs remain readable at the default desktop preview width, and
   duplicated relationship source controls expose section-specific labels such
-  as `Depends On: show ...` and `Lineage: show ...`.
+  as `Depends On: show ...` and `Data flow / runtime links: show ...`.
 - `npm run m6:verify` includes `tools/m6-verify/ui-contract-smoke.mjs` to keep
   the Ask response block, inspector tab widths, and relationship labels covered
   by automated checks.
@@ -208,7 +206,7 @@ Graph-backed Ask check:
   suggested-question button behaves like the other graph shortcuts even when no
   model is configured.
 - The `Explain <symbol>` Ask chip follows the same exact selected-node path as
-  `Explain from graph`, while typed free-form Ask questions still use fuzzy symbol
+  the graph overview action, while typed free-form Ask questions still use fuzzy symbol
   matching.
 - `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
   `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
@@ -222,19 +220,19 @@ Graph-backed Ask check:
   the only focus and answer instantly from the graph.
 - Typing a broader explanation question such as
   `Explain the business logic in LINEAGE for a new developer` changes the submit
-  button from `Ask` to `Ask AI`, while typed structural questions use `Ask Graph`
-  and suggested graph shortcuts such as `Explain LINEAGE` still run instantly
-  from the graph.
+  button from `Ask` to `Set up AI` until AI is configured, while typed structural
+  questions use `Ask Graph` and suggested graph shortcuts such as
+  `Explain LINEAGE` still run instantly from the graph.
 - Before submitting, the Ask response area mirrors the route: typed AI-backed
-  questions say they are ready to ask the selected provider with cited graph and
-  source context, while typed graph questions say they are ready to answer from
-  the dependency graph.
+  questions say to set up AI first when no provider is ready, while typed graph
+  questions say they are ready to answer from the dependency graph.
 - Suggested Ask questions now carry an explicit `Graph` or provider badge, and
   codebase-wide overview questions keep the current graph focus instead of
   jumping to whichever symbol appears first in the retrieved context.
 - Suggested Ask question buttons also expose their behavior to tooltips and
   assistive technology: graph suggestions answer instantly, while provider
-  suggestions prepare the AI prompt for review before the user runs `Ask AI`.
+  suggestions prepare the AI prompt for review before the user sets up or runs
+  `Ask AI`.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it
@@ -255,7 +253,7 @@ Model-backed Ask check:
 
 - `Check AI` reports `Ollama is ready on localhost with llama3.2`.
 - When Ollama is reachable, `Check AI` carries installed local model names into
-  the AI panel. If the configured model is missing or times out, those installed
+  Settings. If the configured model is missing or times out, those installed
   models appear as quick-pick chips so the user can switch without leaving the
   app.
 - Installed-model chips keep the current configured model and the recommended
@@ -269,16 +267,16 @@ Model-backed Ask check:
 - Tablet and narrow mobile breakpoint checks cover `820x720` and `430x760`.
   Source lines wrap without horizontal overflow, AI action buttons do not clip,
   and the mobile graph toolbar keeps the focus action inside the graph pane.
-- If no non-equivalent installed model can fix a timeout, the AI panel shows a
+- If no non-equivalent installed model can fix a timeout, Settings shows a
   concrete smaller-model command: `ollama pull llama3.2:1b`.
 - The optional local Ollama summary/Ask smokes report `guarded` and
   `guardReason`, so a passing local smoke distinguishes an accepted model answer
   from Cobolens' cited graph fallback.
-- Model-backed Ask and Summary prompts now ask for short citation-ended bullets
+- Model-backed Ask and AI summary prompts now ask for short citation-ended bullets
   or sentences. If a small local model still omits exact inline citations,
   Cobolens keeps the guard path and shows the cited graph fallback instead of
   uncited prose.
-- Guarded AI Summary results render a cited graph overview in the Overview
+- Guarded AI summary results render a cited graph overview in the Overview
   panel instead of a bare error, with a model note explaining why the model text
   was not used.
 - Exported Markdown labels summary provenance honestly: graph-derived,
@@ -309,14 +307,14 @@ Model-backed Ask check:
   seconds, and near the 45s timeout a concrete recovery path that keeps `Stop`
   visible and recommends trying `llama3.2:1b` if the model repeatedly stalls.
 
-Model-backed Summary check:
+Model-backed AI summary check:
 
-- The Summary dock bulk action now reports `4 source units` on the M6 fixture,
+- The Overview bulk AI summary action now reports `4 source units` on the M6 fixture,
   covering source-backed programs, copybooks, and paragraphs rather than only
   programs.
 - Generating a summary first checks model readiness. While it is running, the
   action changes to `Stop`; stopping it leaves a clear `Summary generation was
-  stopped.` message and restores the `Generate Summary` action.
+  stopped.` message and restores the AI summary action.
 - Generating a `LINEAGE` summary with local Ollama cites `src/LINEAGE.cbl:1`
   plus relationship lines, avoids generic preamble text, and does not explain
   `LINEAGE` as a generic compiler concept.
@@ -325,6 +323,6 @@ Model-backed Summary check:
   as accepted model prose.
 - Generating a `CUSTOMER` summary cites `copybook/CUSTOMER.cpy:1` plus
   `DEFINES` relationship lines, increments the local call counter, and preserves
-  model line breaks in the Summary panel.
+  model line breaks in the Overview panel.
 
 This verifies the current UI can answer "what depends on this?" and "where does this data flow?" from the `GraphDocument` alone.

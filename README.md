@@ -1,79 +1,90 @@
 # Cobolens
 
-Cobolens is a free, open-source, local desktop app for understanding COBOL
-codebases. It is an understanding tool, not a migration or code-generation
-tool: point it at COBOL, copybooks, and JCL, then inspect the dependency map,
-source citations, lineage, and impact relationships locally.
+Cobolens is a free, open-source, local-first desktop app for understanding COBOL, copybooks, and JCL. Point it at a codebase, inspect a focus-and-expand dependency map, jump into cited source, ask grounded questions, and export documentation without turning the project into a cloud migration exercise.
 
-The product source of truth is [docs/COBOL-Lens-PRD.md](docs/COBOL-Lens-PRD.md),
-with [PRD.md](PRD.md) as the stable root entry point for agents and contributors.
-Build milestones follow PRD section 19.
+It is an understanding tool, not a translator, migration suite, or code generator.
 
-Agent build guidance starts at [AGENTS.md](AGENTS.md), which points to the
-canonical guide under `docs/`.
+## Why It Exists
+
+COBOL systems often encode decades of business rules across programs, copybooks, JCL, datasets, CICS calls, and DB2 tables. The hard part is rarely one file. The hard part is answering:
+
+- Where does this value come from?
+- What writes this file?
+- What depends on this copybook?
+- Why are these two programs connected?
+- Can I get a cited answer without sending the whole codebase to a vendor?
+
+Cobolens is built for that first hour with an unfamiliar system.
 
 ## Current Status
 
-As of 2026-07-01, M0-M6 local v1 work is implemented and committed.
+As of 2026-07-01, Cobolens is a local v1 release candidate on the implemented M0-M6 scope.
 
-- M0-M5: Tauri/React shell, scanning, graph view, summaries/model wiring,
-  grounded chat/export polish, sample workflow, and privacy/mode surfaces are
-  in place.
-- M6: lineage and impact/where-used UI is live on top of the existing
-  `GraphDocument` contract. The UI does not depend on parser internals.
-- Production analyzer decision: keep the Rust analyzer as the v1 production
-  sidecar. ProLeap and mapa are benchmark-checked candidates, but they are not
-  adopted production dependencies yet.
-- Linux packaging from WSL is validated. `npm run tauri build` builds the
-  production analyzer sidecar, bundles it with the sample codebase, and
-  produced `.deb`, `.rpm`, and `.AppImage` artifacts.
-- GitHub Actions packaging now validates unsigned Linux and Windows Tauri
-  bundle builds on push/PR and uploads unsigned bundle artifacts for QA.
-  Signed release installers are still not claimed.
+| Area | Status |
+| --- | --- |
+| Desktop shell | Tauri v2 plus React/Vite is implemented. |
+| Analyzer | Rust sidecar is the v1 production analyzer. ProLeap and mapa remain validated candidates, not production dependencies. |
+| Graph UI | Focus-and-expand Sigma graph, source sync, filters, search, codebase browser, and visible node controls are implemented. |
+| Source and citations | Source panel, citation jumps, relationship details, and focused source highlighting are implemented. |
+| Ask | Graph-backed Ask works without AI. Broader AI Ask is opt-in and requires Settings setup. |
+| Overview | Graph overview works without AI. AI summaries are guarded by citation checks and fall back to cited graph facts when needed. |
+| Settings | One top-bar Settings drawer contains AI provider setup and scan settings. |
+| Export | Markdown, Mermaid, and PNG documentation export is implemented. |
+| Packaging | Linux packaging is locally validated. GitHub Actions builds unsigned Linux and Windows bundles for QA. Signed public installers are not claimed yet. |
 
-## What Works
+## Product Tour
 
-- Open or load a graph JSON for a COBOL/JCL codebase.
-- Configure scan format (`auto`, `fixed`, `free`), source extensions, and
-  UTF-8 or CP037/EBCDIC source encoding before opening or re-scanning a desktop
-  codebase.
-- See a lightweight dialect/features guess in Parse Health, based on detected
-  fixed/free-format COBOL, copybooks, JCL, `EXEC SQL`, `EXEC CICS`, and compiler
-  directives.
-- See desktop indexing progress from the analyzer while scans are running.
-- Skip common build/dependency folders and oversized source-like files during
-  scan discovery and cache fingerprinting, so real repo checkouts stay snappy.
-- Navigate an interactive focus graph.
-- Click nodes and relationships to inspect cited source locations.
-- Inspect lineage and impact relationships for semantic graph signals:
-  `reads`, `writes`, `moves-to`, `queries`, `updates`, `links`, `xctls`,
-  `uses-dd`, `assigned-to`, and `executes`.
-- Trace COBOL `SELECT ... ASSIGN TO` logical files through JCL DD names to
-  physical datasets, with cited source lines.
-- Flag source units with no recorded incoming graph edges as potentially
-  unreferenced, both in the UI and exported Markdown.
-- Generate the M6 fixture graph and use the app to answer:
-  "what depends on this?" and "where does this data flow?"
-- Preflight local/cloud model readiness for AI Ask and summaries, with Stop
-  controls and bounded timeouts so model calls do not leave the UI spinning.
-- When Ollama is reachable, the AI panel can show installed local models after
-  `Check AI`, letting a user switch from a missing or slow configured model
-  without leaving Cobolens.
-- Apply the selected Rosetta language to both grounded Ask and generated
-  summaries while preserving graph-only grounding and citation rules.
-- Resolve "this program" style Ask questions against the current selected graph
-  node, answer graph-backed variants instantly, and require exact inline source
-  citations such as `(src/LINEAGE.cbl:21)` for model-backed answers instead of
-  footnote-style references.
-- Keep Ask and Summary trustworthy when a local or cloud model misses citation
-  rules: Cobolens falls back to cited graph evidence, labels the fallback, and
-  preserves the model note without showing uncited prose as fact.
-- Export Markdown documentation with honest summary provenance, distinguishing
-  graph-derived summaries, accepted AI summaries, and guarded graph fallbacks.
-- Persist non-secret scan/model preferences locally while API keys remain in
-  the OS keychain.
-- Validate parser candidates against the strict M6 fixture and the cloned
-  benchmark suite when available locally.
+The app stays intentionally simple: one workspace, three panes, no project server.
+
+```mermaid
+flowchart LR
+  A["Open Sample or Open Folder"] --> B["Analyze COBOL, copybooks, and JCL"]
+  B --> C["Dependency Map"]
+  C --> D["Source"]
+  C --> E["Overview"]
+  C --> F["Ask"]
+  C --> G["Dependencies"]
+  E --> H["Export"]
+  F --> D
+  G --> D
+```
+
+### Top Bar
+
+- Brand
+- `Search codebase`
+- Current focus, for example `LINEAGE - Program`
+- Local/cloud indicator
+- `Export`
+- `Settings`
+
+### Left Navigator
+
+- Open the bundled sample or a local folder
+- Browse grouped codebase units: programs, copybooks, JCL
+- Filter node types and read the color legend
+- Inspect inventory, parse health, and graph hints
+
+The left rail is navigation and status only. AI and scan settings live in Settings.
+
+### Center Graph
+
+- Focus on one node at a time
+- Expand direct neighbors instead of rendering a hairball
+- Click nodes to change focus
+- Click edge/source relationships to see why two things are connected
+- Use the visible-node list for keyboard-friendly graph navigation
+
+### Right Inspector
+
+The inspector is organized around user tasks:
+
+- `Overview`: graph facts, evidence, optional AI summary
+- `Ask`: cited graph answers immediately, AI only after setup
+- `Dependencies`: depends-on, used-by, lineage, and relationship details
+- `Source`: file/line focus and source-viewer handoff
+
+Graph answers work without AI. AI only runs when the user chooses an AI action.
 
 ## Quick Start
 
@@ -83,20 +94,13 @@ Install dependencies:
 npm install
 ```
 
-Run the app in development:
+Run the desktop app in development:
 
 ```sh
 npm run tauri dev
 ```
 
-If a Vite dev server is already running on port `1420`, smoke-test only the
-desktop shell against it:
-
-```sh
-npm run desktop:smoke
-```
-
-Generate and load the M6 fixture graph:
+Run the browser demo graph:
 
 ```sh
 npm run m6:fixture-graph
@@ -109,10 +113,49 @@ Then open:
 http://127.0.0.1:1420/?graph=/m6-bakeoff-graph.json
 ```
 
+The browser demo can load generated graph/source JSON. Opening arbitrary local folders requires the desktop shell.
+
+## Local AI Is Optional
+
+Cobolens has two answer paths:
+
+| Path | Requires AI? | What it does |
+| --- | --- | --- |
+| Graph Ask | No | Answers structural questions from the parsed dependency graph with citations. |
+| AI Ask / AI Summary | Yes | Sends a retrieved, cited graph/source slice to the configured provider. |
+
+Supported providers:
+
+- Local Ollama
+- Anthropic
+- OpenAI
+- OpenRouter
+
+The default provider setting is Ollama, but Cobolens does not assume Ollama is installed or ready. Until AI is configured, AI actions open Settings or show `Set up AI first`.
+
+Optional local Ollama setup:
+
+```sh
+ollama pull llama3.2
+```
+
+For smaller machines:
+
+```sh
+ollama pull llama3.2:1b
+```
+
+Check the local model path:
+
+```sh
+npm run ollama:check
+npm run ollama:summary-smoke
+npm run ollama:ask-smoke
+```
+
 ## Build And Package On Linux
 
-The Linux packaging path is the supported local build path for this machine.
-Install the Tauri Linux prerequisites first:
+Install Tauri Linux prerequisites:
 
 ```sh
 sudo apt-get update
@@ -128,7 +171,7 @@ sudo apt-get install -y \
   patchelf
 ```
 
-Check readiness:
+Check packaging readiness:
 
 ```sh
 npm run m6:packaging-readiness
@@ -140,192 +183,146 @@ Build release bundles:
 npm run tauri build
 ```
 
-The release build runs `npm run tauri:before-build`, which compiles the
-frontend and the production Rust analyzer sidecar before Tauri packages the
-app. The Linux bundles include both:
+The release build runs:
 
-- `usr/lib/Cobolens/binaries/cobolens-analyze`
-- `usr/lib/Cobolens/samples/mini-bank/`
+```sh
+npm run tauri:before-build
+```
 
-The same resource layout is used for Windows builds, where the generated
-sidecar resource is `binaries/cobolens-analyze.exe`.
+That compiles the frontend and the Rust analyzer sidecar, then packages app resources.
 
-Successful Linux builds produce:
+Expected Linux outputs:
 
 - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
 - `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
 - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
 
+The packaged resource layout includes:
+
+- `binaries/cobolens-analyze`
+- `samples/mini-bank/`
+
+On Windows, the analyzer sidecar resource is `binaries/cobolens-analyze.exe`.
+
 ## Verification
 
-Run the current M6 verification suite:
+Run the main verification suite:
 
 ```sh
 npm run m6:verify
 ```
 
-Run the broader local v1 readiness sweep:
+Run the broader v1 readiness sweep:
 
 ```sh
 npm run v1:readiness
 ```
 
-This first checks the v1 readiness report contract and
-`docs/v1-readiness-audit.md`, then runs `npm run m6:verify` and records
-optional local evidence when the prerequisites are present: the cached COBOL Legacy Benchmark Suite,
-installed Ollama, the M6 fixture graph for local Summary/Ask smokes, and a
-built Linux AppImage plus a desktop display. Missing optional prerequisites are
-reported as skipped rather than treated as proof that v1 is ready. The command
-exits non-zero only when a required gate fails; the final JSON `ready` field is
-stricter and is true only when required gates pass and optional evidence has no
-failures or skips.
-
-Check the optional local Ollama path:
+Useful focused checks:
 
 ```sh
-npm run ollama:check
-npm run ollama:summary-smoke
-npm run ollama:ask-smoke
-```
-
-This verifies that `ollama` is installed in the same Linux environment, the
-local HTTP API is reachable, and the default `llama3.2` model is installed.
-If it fails, install Ollama and run:
-
-```sh
-ollama pull llama3.2
-```
-
-Inside the app, `Check AI` also reads installed Ollama model names from
-localhost. If the configured model is missing or too slow to finish the quick
-probe, use one of the installed-model chips in the AI panel or pull the default
-model above.
-
-On smaller machines, install the lighter Llama 3.2 1B local model and set the
-AI model field to `llama3.2:1b`:
-
-```sh
-ollama pull llama3.2:1b
-```
-
-The optional `ollama:*` smokes report whether the local model produced accepted
-cited prose or whether Cobolens returned a guarded graph-cited fallback. Both
-paths keep answers cited; the `guarded` field tells you how much the model
-itself followed the citation contract.
-
-Smoke-test the desktop shell against an already-running Vite server:
-
-```sh
+npm run build
 npm run desktop:smoke
-```
-
-Smoke-test a built Linux AppImage in a visible Linux desktop or WSLg session:
-
-```sh
 npm run desktop:packaged-smoke
-```
-
-This launches the newest AppImage under
-`src-tauri/target/release/bundle/appimage/`, verifies the AppDir contains the
-analyzer sidecar and bundled `mini-bank` sample, runs that packaged analyzer
-against the packaged sample, and confirms that the packaged GUI process stays
-alive. It is intentionally separate from `npm run m6:verify` because it needs
-desktop WebKit/GStreamer runtime support.
-If `gst-inspect-1.0` is missing but the `appsink` runtime plugin is present,
-the smoke launches the app and lets WebKit/GStreamer prove the runtime directly.
-If it reports that `appsink` itself is missing, install the GStreamer runtime
-plugins, for example `gstreamer1.0-plugins-base`; `gstreamer1.0-tools` adds the
-optional diagnostic command.
-
-`npm run m6:verify` also runs Tauri command-level tests that exercise the
-desktop analysis path against the bundled sample, source snippet reads, and
-path traversal rejection. These tests also cover graph-cache reuse and cache
-invalidation when source manifests change, plus desktop export writing for the
-Markdown, Mermaid, and PNG artifacts.
-The export documentation smoke also verifies that generated Markdown keeps
-summary provenance honest for graph-derived summaries, accepted AI summaries,
-and guarded graph fallbacks.
-It also includes a UI contract smoke for the Ask/Inspector shell so graph-answer
-layout, readable tabs, and relationship citation labels do not regress silently.
-The packaging contract smoke verifies that the Tauri sidecar resource layout
-remains platform-aware before CI or local bundle builds run.
-
-`npm run m6:packaging-readiness` includes a `packagedDebSmoke` gate when a
-Linux `.deb` bundle exists. It extracts the package, verifies
-`usr/lib/Cobolens/binaries/cobolens-analyze` and
-`usr/lib/Cobolens/samples/mini-bank/`, then runs the packaged analyzer against
-the packaged sample. The current local bundle produces 4 parsed files, 25
-nodes, 27 edges, and 0 parse errors.
-
-## CI Packaging
-
-`.github/workflows/package.yml` runs unsigned Tauri packaging builds on
-`ubuntu-22.04` and `windows-latest` for pushes to `main`, pull requests, and
-manual dispatch. The workflow uses `npm ci`, the Rust stable toolchain, the
-packaging contract smoke, and `tauri-apps/tauri-action@v1`. Successful runs
-upload OS-specific unsigned bundle artifacts named
-`cobolens-<platform>-unsigned` for QA.
-
-This is build validation, not a signed public release process. Windows and
-macOS code signing remain separate release gates.
-
-Run the strict fixture bake-off directly:
-
-```sh
-node tools/m6-bakeoff/run.mjs
-```
-
-Run benchmark validation once a benchmark checkout exists locally:
-
-```sh
-npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite
-npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite --report .cache/benchmark-reports/legacy-benchmark-report.json --graph .cache/benchmark-reports/current-graph.json
-npm run m6:compare-candidates -- --root /path/to/COBOL-Legacy-Benchmark-Suite --timeout-ms 70000
-```
-
-If the benchmark lives at `.cache/benchmarks/COBOL-Legacy-Benchmark-Suite`,
-run the shortcut:
-
-```sh
 npm run validate:benchmark:local
+npm run m6:compare-candidates
 ```
 
-The benchmark report records lightweight scan coverage, clean parse coverage,
-listed syntax warnings or parse failures, node/edge type counts, citation
-coverage, source-backed node coverage, external-node counts by type, and the
-semantic signals needed for v1 graph understanding. The optional graph snapshot
-captures the exact `GraphDocument` behind the report. The local benchmark
-checkout and reports live under `.cache/` and are intentionally ignored.
+`npm run m6:verify` covers:
 
-## Parser Notes
+- strict M6 fixture
+- frontend build
+- export docs smoke
+- graph Ask smoke
+- semantic retrieval smoke
+- UI contract smoke
+- accessibility smoke
+- packaging contract smoke
+- model privacy and embedding privacy smokes
+- prompt and guard smokes
+- Rust sidecar tests
+- Tauri command tests
+- parser candidate comparison
+- parser upgrade readiness
 
-Cobolens keeps parser output behind one JSON contract, `GraphDocument`.
-The UI consumes nodes and edges from that contract only.
+## Architecture
 
-Current production path:
+Cobolens is deliberately small:
 
-- Rust sidecar: production v1 analyzer.
+```mermaid
+flowchart TB
+  UI["React + TypeScript UI"]
+  Tauri["Tauri shell"]
+  Sidecar["Rust analyzer sidecar"]
+  Graph["GraphDocument JSON"]
+  Retrieval["Graph-guided retrieval"]
+  Models["Ollama / Anthropic / OpenAI / OpenRouter"]
+  Export["Markdown / Mermaid / PNG export"]
 
-Candidate paths:
+  Tauri --> Sidecar
+  Sidecar --> Graph
+  Graph --> UI
+  Graph --> Retrieval
+  Retrieval --> Models
+  UI --> Export
+```
 
-- ProLeap JVM sidecar: emits the same graph contract and provides richer DB2/CICS
-  signal in benchmark comparison.
-- mapa JVM sidecar: emits the same graph contract and is useful for portfolio/JCL
-  analysis, but currently falls back when upstream `CallTree.jar` times out on
-  the benchmark suite.
+The key contract is `GraphDocument`: the UI, Ask, source citations, dependencies, and export all consume graph nodes and edges from that JSON contract. Parser internals stay behind the sidecar boundary.
 
-More detail:
+Production analyzer decision:
 
+- Use the Rust sidecar for v1.
+- Keep ProLeap and mapa as benchmarked candidates.
+- Do not adopt a JVM analyzer until real-code coverage justifies the packaging and maintenance cost.
+
+## Repository Map
+
+| Path | Purpose |
+| --- | --- |
+| `src/` | React/TypeScript app. |
+| `src/graph/` | Sigma/graphology graph view. |
+| `src/model/` | Provider config, prompts, summaries, embeddings, readiness. |
+| `src/retrieval/` | Graph Ask and semantic retrieval. |
+| `src-tauri/` | Tauri shell, commands, packaged resources. |
+| `sidecar/cobolens-analyze/` | Rust production analyzer. |
+| `sidecar/cobolens-analyze-jvm/` | ProLeap candidate analyzer. |
+| `sidecar/cobolens-analyze-mapa/` | mapa candidate analyzer. |
+| `fixtures/m6-bakeoff/` | Strict lineage/impact fixture. |
+| `samples/mini-bank/` | Bundled sample codebase. |
+| `tools/` | Verification, packaging, benchmark, local-model, and parser comparison scripts. |
+| `docs/` | PRD, agent guide, audits, parser notes, readiness evidence. |
+
+## Documentation Map
+
+- [Current PRD](docs/COBOL-Lens-PRD.md)
+- [Agent guide](docs/AGENTS.md)
+- [V1 readiness audit](docs/v1-readiness-audit.md)
 - [M6 completion audit](docs/m6-completion-audit.md)
-- [M6 parser upgrade readiness](docs/m6-parser-upgrade-readiness.md)
 - [M6 UI QA](docs/m6-ui-qa.md)
+- [Parser upgrade readiness](docs/m6-parser-upgrade-readiness.md)
 
-## Project Shape
+Historical research is kept in `docs/00-*` through `docs/05-*`.
 
-- `src/` - React/TypeScript app.
-- `src-tauri/` - Tauri v2 shell.
-- `sidecar/cobolens-analyze/` - Rust production analyzer sidecar.
-- `sidecar/cobolens-analyze-jvm/` - ProLeap candidate sidecar.
-- `sidecar/cobolens-analyze-mapa/` - mapa candidate sidecar.
-- `fixtures/m6-bakeoff/` - strict M6 lineage/impact fixture.
-- `tools/` - validation, benchmark, parser comparison, and packaging checks.
+## Roadmap
+
+Highest-value next work:
+
+1. Test against several real COBOL/JCL repositories and record parser gaps.
+2. Improve source browsing: full-file mode, symbol clicks, jump-to-definition, references.
+3. Make relationship explanations more obvious directly from the graph canvas.
+4. Harden local AI setup: clearer Ollama missing/running/model-missing states.
+5. Validate signed Windows packaging before public release claims.
+6. Decide whether a JVM parser candidate is worth the extra packaging weight after real-code evidence.
+
+Explicit non-goals for v1:
+
+- COBOL generation or editing
+- COBOL-to-Java translation
+- behavior-equivalence verification
+- live mainframe connectivity
+- team/cloud sync
+- a hosted backend
+
+## License
+
+MIT. See [LICENSE](LICENSE).

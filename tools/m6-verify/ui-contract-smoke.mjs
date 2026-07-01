@@ -100,7 +100,7 @@ const checks = [
     ]) && includesAll(appCss, [".answer-turn", ".answer-turn > span", ".answer-turn > strong"]),
   ],
   [
-    "Summary can show a cited graph explanation for the selected node",
+    "Overview can show a cited graph explanation for the selected node",
     includesAll(appSource, [
       "function explainSelectedNode()",
       "function askAboutSelectedNode()",
@@ -192,7 +192,7 @@ const checks = [
     ]) && includesAll(appCss, [".answer-route", ".answer-route.graph", ".answer-route.model", ".ask-readiness.error", ".ask-focus-strip"]),
   ],
   [
-    "AI panel shows honest usage and bulk token estimate before model calls",
+    "Settings shows honest AI usage and bulk token estimate before model calls",
     includesAll(appSource, [
       'aria-label="AI usage and token estimate"',
       "Cloud calls this session",
@@ -343,7 +343,7 @@ const checks = [
       'className="graph-empty-steps"',
       "Load a sample or folder.",
       "Inspect the dependency map.",
-      "Add a model later for Summary and Ask.",
+      "Add AI later for generated summaries and broader Ask.",
       "onOpenSample",
       "canOpenFolder",
       "Open Folder runs in the desktop app.",

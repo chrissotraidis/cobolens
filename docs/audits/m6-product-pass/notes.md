@@ -2,6 +2,11 @@
 
 Date: 2026-06-30
 
+Current note: this is a historical review snapshot. The live app now keeps the
+three-pane workspace but uses `Overview`, `Ask`, `Dependencies`, and `Source`,
+with AI and scan controls in the top-bar `Settings` drawer. See
+`docs/m6-ui-qa.md` for current QA evidence.
+
 ## Scope
 
 Live browser pass against the M6 fixture at `http://127.0.0.1:1430/?graph=/m6-bakeoff-graph.json`, focused on whether Summary and Ask feel coherent for the v1 goal: local, cited COBOL understanding.

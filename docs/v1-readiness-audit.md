@@ -11,8 +11,9 @@ It is a release-readiness aid, not a release tag. The source of truth remains
 Current verdict: Cobolens is a Linux-validated v1 release candidate for the
 local understanding workflow. The core loop is evidenced: scan or load COBOL,
 copybooks, and JCL; inspect a focus-and-expand dependency map; read cited graph
-facts and summaries; ask graph-grounded questions with clickable citations; use
-local Ollama or configured cloud providers with visible privacy state.
+facts in Overview; ask graph-grounded questions with clickable citations; view
+source; configure optional local Ollama or cloud providers through Settings;
+and export documentation.
 
 Not claimed yet:
 
@@ -50,10 +51,10 @@ Not claimed yet:
 | FR-5 dialect reporting | Parse Health reports dialect/features such as fixed/free, JCL, SQL, CICS, directives. | Evidenced |
 | FR-6 graph nodes/edges | M6 fixture and benchmark validation cover program, paragraph, copybook, data-item, dataset, JCL, DB2, CICS nodes and cited edges. | Evidenced |
 | FR-7 cross-program/JCL wiring | M6 fixture covers JCL step-to-program, DD-to-dataset, and COBOL file assignment bridge. | Evidenced |
-| FR-8 copybook usage | `COPIES` edges and copybook/data-item definitions are shown in graph, impact, Ask, and export. | Evidenced |
+| FR-8 copybook usage | `COPIES` edges and copybook/data-item definitions are shown in graph, Dependencies, Ask, and export. | Evidenced |
 | FR-9 SQL/CICS signals | M6 fixture and parser signals cover DB2 table and CICS command nodes. | Evidenced |
 | FR-10 data lineage | M6 lineage UI, graph Ask, and export smoke cover reads, writes, moves-to, queries, uses-dd, and assigned-to paths. | Evidenced on current semantic graph |
-| FR-11 impact/where-used | Impact panel, relationship details, graph Ask, and UI contract smoke cover where-used relationships. | Evidenced |
+| FR-11 impact/where-used | Dependencies panel, relationship details, graph Ask, and UI contract smoke cover where-used relationships. | Evidenced |
 | FR-12 unreferenced detection | Graph Hints and export list potentially unreferenced source units with cautious wording. | Partial/Should |
 | FR-13 focus-and-expand graph | Sigma focus slice, visible-node controls, skip-link graph landmark, and expand behavior are covered by UI/accessibility contract smokes. | Evidenced |
 | FR-14 clustering/LOD | Focus limits and `+N type` cluster expansion are covered by UI QA and contract smoke. | Evidenced |
@@ -61,20 +62,20 @@ Not claimed yet:
 | FR-16 legend/minimap/colors | Persistent semantic filters/colors and graph orientation/minimap surfaces are covered by UI QA. | Evidenced |
 | FR-17 static export diagrams | Export docs smoke covers Markdown, Mermaid, and PNG artifacts. | Evidenced |
 | FR-18 search/breadcrumb/home | Fuzzy search, breadcrumb history, Home reset, and keyboard skip entry points are covered by UI QA and source contract checks. | Evidenced/Should |
-| FR-19 generated summaries | Summary prompt/guard smokes, local summary smoke, and export provenance cover cited summaries and graph fallbacks. | Evidenced |
-| FR-20 Rosetta mode | Model prompts and Summary/Ask pass the selected Rosetta language. | Evidenced |
+| FR-19 generated summaries | AI summary prompt/guard smokes, local summary smoke, and export provenance cover cited summaries and graph fallbacks. | Evidenced |
+| FR-20 Rosetta mode | Model prompts for AI summary and Ask pass the selected Rosetta language. | Evidenced |
 | FR-21 documentation export | Export docs smoke covers navigable Markdown, diagrams, source ranges, lineage, parse warnings, and summary provenance. | Evidenced |
 | FR-22 grounded Ask retrieval | Graph-guided context assembly, optional semantic vector matches, persistent local chunk-vector cache, graph Ask smoke, semantic retrieval smoke, and model prompt/guard smokes cover grounded Ask without whole-file dumping. | Evidenced |
 | FR-23 clickable citations | Citation buttons jump to source/graph while preserving Ask answer visibility; model guard requires exact inline citations. | Evidenced |
 | FR-24 bidirectional graph/chat links | Overview seeds Ask, Ask citations focus graph/code, and relationship citations preserve conversational context. | Evidenced/Should |
 | FR-25 no invented structure | Graph answer smoke, model prompts, answer guard, and cited graph fallback enforce graph-grounded answers. | Evidenced |
-| FR-26 provider selection | Model settings support Ollama, Anthropic, OpenAI, and OpenRouter. | Evidenced |
+| FR-26 provider selection | Top-bar Settings supports Ollama, Anthropic, OpenAI, and OpenRouter. | Evidenced |
 | FR-27 keychain secrets | Tauri tests reject secret-like app settings; cloud keys are read through OS keychain commands. | Evidenced |
 | FR-28 privacy indicator/local mode | Top-bar mode indicator, local Ollama URL guard, and model privacy smoke cover local/cloud mode invariants. | Evidenced |
-| FR-29 token/cost estimate | AI usage panel shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
+| FR-29 token/cost estimate | Settings shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
 | FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. Model-routed Ask persists graph-derived semantic chunk vectors in local browser storage and reuses them on later searches. | Evidenced |
 | FR-31 bundled sample | `mini-bank` sample is bundled and validated in sample smoke and packaged smoke. | Evidenced |
-| FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Summary/Ask after the map is loaded. | Evidenced/Should |
+| FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Overview/Ask after the map is loaded. | Evidenced/Should |
 
 ## Current Release Risks
 

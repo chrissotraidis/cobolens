@@ -1,1 +1,268 @@
-# Cobolens — Product Requirements Document (PRD)*Name: **Cobolens** — COBOL + lens. Version 0.1 — initial build PRD.*> **Purpose of this document.** This is the single source of truth to start and execute the build. It consolidates all prior research (incumbent teardown, parser landscape, UX study, desktop-shell and model-plumbing analysis, and test corpora) into one executable spec. It is written to be handed directly to a build — every major decision has a recommendation and a rationale, and the genuinely open choices are flagged explicitly.---## 1. One-line definitionA **free, open-source, local desktop app**: point it at a COBOL codebase, and it reads everything, draws an **interactive dependency map** with diagrams and section summaries, and lets you **chat with the code** using your choice of AI brain (Anthropic / OpenAI / OpenRouter / local Ollama) — with the standout draw that it can run **fully local / air-gapped**, so the code never leaves your machine.The tagline frame: **"IBM ADDI, but free, local, and slick — for the individual engineer, not a procurement cycle."**---## 2. Vision & goals**The vision.** A new engineer inherits a 40-year-old COBOL system nobody fully understands, because the people who wrote it retired. Today their options are: a clunky, expensive, server-bound enterprise tool they'll never get budget for, or pasting fragments into a chatbot that barely knows COBOL and can't see how the files connect. Cobolens is the friendly, private, beautiful tool they download and run themselves — it turns "I have no idea what I'm looking at" into "oh, okay, I get it."**Primary goals (v1):**1. Make a COBOL codebase *legible* to someone who is not a COBOL native.2. Show the structure that doesn't live in any single file — the cross-program/JCL/copybook wiring.3. Let the user ask questions in plain English and get grounded, cited answers.4. Run entirely on the user's machine if they choose, with nothing sent anywhere.5. Be genuinely beautiful and fast — Sourcetrail-grade UX, not enterprise-tool UX.**Explicit non-goals (v1):** this is **not** a migration suite, a code generator, or a behavior-equivalence verifier. It is an *understanding* tool. (See Scope.)**Definition of success.** A developer with no COBOL background can, within 10 minutes of opening the app on an unfamiliar codebase, correctly answer "where does X happen and what depends on it?" — and trust the answer because it's cited. Secondary success: it's something people *share* (Show HN, r/cobol, Open Mainframe Project) as the tool they wish they'd had.---## 3. Market context (why this is worth building)COBOL still runs a large share of finance and government — ATMs, card networks, ledgers, benefit payments — and an oft-cited rough estimate puts ~$3T/day in transactions touching it. The pressing problem is not that COBOL is old; it's that **the people who understand it are retiring**, the code encodes decades of undocumented business rules, and replacing it is risky. The mainframe-modernization market is real and large (~$9B in 2026, projected to roughly double by 2034), and "refactoring/understanding" is the biggest slice of it.The honest read (carried over from planning): the *technology* pieces here — COBOL parsers, COBOL-tuned models, "talk to your codebase" RAG — already exist in fragments, and frontier vendors (Anthropic's modernization playbook, AWS Transform, Google, IBM) are actively moving in. **So the differentiation is UX, packaging, and the local/air-gapped guarantee — not a technical moat.** The right framing for this project is *a sharp, beloved, free tool and a credibility/portfolio piece* aimed at the individual engineer everyone else ignores — not a startup competing with venture-backed teams like Mechanical Orchard on the (much harder) verification problem.---## 4. Competitive landscape & positioning### 4.1 The incumbents (and why they hand us an opening)The enterprise version of this idea **already exists and is widely disliked**, which validates demand and gives us a clear enemy:- **IBM ADDI (Application Discovery and Delivery Intelligence)** — dependency analysis, diagrams, impact analysis, business-rule discovery. Requires a multi-server install with a central database (IBM specs a dedicated ~64 GB RAM / ~2 TB DB server for production), driven through a dated Eclipse/Windows thick client. Mid-rebrand into watsonx Code Assistant for Z ("Understand"). Quote-priced; no public pricing, no free tier, no real trial.- **Rocket Enterprise Analyzer** (formerly Micro Focus / OpenText — now on its **third owner in ~2 years** after Rocket's $2.275B acquisition closed in 2024). Same class: heavy install, central DB, thick client. A verified G2 complaint notes slow codebase ingestion and weak large-project dependency scoping.- **Broadcom (CA)** mainframe tooling — noted for steep (30-80%) renewal price increases.- **Others** (brief): Phase Change Software, Raincode, TSRI, Fujitsu, ASG/becubic, BMC. Independent user reviews across this whole category are *strikingly thin*.**Honesty caveat:** exact pricing is unverifiable (everything is quote-based — stated, not invented), and the "people hate them" case rests more on architecture (heavy installs, dated UIs, lock-in, cost model, vendor churn) than on a large public complaint corpus.### 4.2 The free space todayOnly **parsers and editor plugins** exist for free (GnuCOBOL, SuperBOL LSP, ProLeap, Koopa, cb2xml, VS Code extensions). Microsoft's open **Azure-Samples/Legacy-Modernization-Agents** is the closest "talk to your codebase" comparable, but it's a migration-pipeline sample, not a polished local comprehension app. **Nobody ships the full combination** — interactive project-wide dependency map + diagrams + section summaries + bring-your-own-model AI chat, in a beautiful local desktop app. That exact combination is open territory.### 4.3 Positioning angles (weakness ? our answer)| Incumbent weakness | Cobolens answer ||---|---|| Multi-server install, 64 GB central DB | **Zero-install, runs on your laptop** || Eclipse / IE6-era thick-client UI | **Modern, slick, fast — Sourcetrail-grade UX** || Quote-only pricing, renewal hikes, vendor churn | **$0, open source, yours forever** || Single-vendor cloud AI | **Bring your own model — incl. fully-local Ollama** || Heavyweight migration suite, procurement-gated | **Understand-first, for the individual engineer** || Code must go to a vendor/cloud | **Air-gapped mode — code never leaves your machine** |---## 5. Target users**Primary persona — "the parachuted-in engineer."** Knows Python/Java/JS, suddenly responsible for a COBOL system, no COBOL training, often can't send the code to any cloud (bank/gov/insurer policy). Needs to *understand* before touching anything. This is who we build for.**Secondary personas:**- **The retiring COBOL expert's manager** — wants the tribal knowledge captured as living documentation before it walks out the door.- **The curious developer / student** — exploring COBOL, learning, or doing OSS archaeology.- **The consultant / modernization analyst** — wants a fast, free way to size up an estate before a bigger project.**Anti-persona (not for v1):** the enterprise buyer running a full migration program with compliance sign-off. That's the incumbents' and the venture-backed players' game.---## 6. Product principles> **Principle 0 — Lightweight, not over-engineered (this overrides everything below).** Cobolens should be small, fast, and simple enough that one person can understand and maintain the whole thing. Prefer the boring, proven, minimal solution every time. Lean on existing libraries instead of building our own; ship the smallest thing that delivers the end-to-end experience; resist abstraction, configuration, and "future-proofing" we don't need yet. Sourcetrail died of maintenance burden — we will not. Every added dependency, layer, or feature must earn its place. When in doubt, leave it out.1. **Understand, don't migrate.** Every feature serves comprehension. Resist scope creep toward translation/generation in v1.2. **Local-first and private by default.** The air-gapped guarantee is the soul of the product. Privacy state is always visible and honest.3. **Grounded, never hand-wavy.** The map and diagrams are computed deterministically from the parsed code. The AI explains; it does not invent structure. Answers cite sources (file + line).4. **Beautiful and fast.** If it feels like an enterprise tool, we've failed. Speed and visual craft are features.5. **Bring your own brain.** Never lock the user to one model or vendor.6. **Forgiving.** Real COBOL is messy and multi-dialect; the tool degrades gracefully on code it can't fully parse rather than failing hard.---## 7. Scope### 7.1 In scope — v1 (feature-complete)- Open/scan a local COBOL codebase (programs, copybooks, JCL).- Parse it into a structured dependency graph (calls, performs, copybook usage, file/dataset access, JCL job?step?program wiring, embedded SQL/CICS where available).- **Interactive dependency map** (focus-and-expand graph) + **static exportable diagrams**.- **Section summaries** (per program / paragraph / copybook) generated by the chosen model.- **AI chat** grounded on the graph (graph-guided RAG), with citations.- **Model selection**: Anthropic key / OpenAI key / OpenRouter key / local Ollama, switchable.- **Privacy modes**: clear local vs. cloud indication; in local mode nothing leaves the machine.- **Bundled sample COBOL repo** for instant first-run.- **Export**: documentation (Markdown) and diagrams (Mermaid/PNG).### 7.2 Out of scope — v1 (deferred)- Writing or generating COBOL; safe-edit/diff features.- COBOL?Java/other-language translation.- Behavior-equivalence **verification** / characterization-test generation (the hard, venture-backed problem).- Live mainframe/z-OS connectivity; reading directly off a mainframe.- Team/multiplayer/cloud-sync features.- Any paid tier or licensing server.---## 8. Functional requirementsRequirements use IDs (FR-x). "Must" = v1; "Should" = v1 if time allows; "Later" = post-v1.### 8.1 Codebase ingestion- **FR-1 (Must).** User selects a local folder; app recursively discovers COBOL programs (`.cbl`, `.cob`, etc.), copybooks (`.cpy`), and JCL files. Extensions and encodings are configurable (mainframe code is often EBCDIC-origin / fixed-column format).- **FR-2 (Must).** Support both fixed-format (columns 7-72) and free-format COBOL.- **FR-3 (Must).** Indexing runs once, caches results locally, and updates incrementally on re-scan. Show clear progress; never block the UI.- **FR-4 (Must).** Degrade gracefully: files that fail to parse are listed with the reason, and the rest of the codebase still indexes (island/forgiving parsing).- **FR-5 (Should).** Detect and report the COBOL dialect(s) / preprocessor features encountered.### 8.2 Analysis & dependency graph- **FR-6 (Must).** Build a graph of nodes — `program`, `paragraph`, `copybook`, `data-item`, `file/dataset`, `jcl-job`, `jcl-step`, `db2-table`, `cics-txn` — and edges — `CALLS`, `PERFORMS`, `COPIES`, `READS`, `WRITES`, `DEFINES`, `RUNS-AFTER`.- **FR-7 (Must).** Resolve cross-program wiring that isn't in any single file: JCL step?program, and dataset/DD-name matching that links a program's output to another's input.- **FR-8 (Must).** Copybook expansion: know which data layouts each program pulls in.- **FR-9 (Should).** Embedded SQL (`EXEC SQL`) ? DB2 tables touched; CICS (`EXEC CICS`) ? transactions.- **FR-10 (Must).** Data lineage: trace a data item from its copybook definition through the programs that read/write it (including via `LINKAGE`). *Flagship differentiator.*- **FR-11 (Must).** Impact/where-used: for any node, list everything that depends on it ("if I change this copybook, what breaks?").- **FR-12 (Should).** Dead-code / unreferenced-item detection.### 8.3 Visualization- **FR-13 (Must).** Interactive graph with **focus-and-expand**: center on a selected node, show only its direct in/out relationships, expand outward on demand. **Never render the full graph at once.**- **FR-14 (Must).** Clustering / level-of-detail so large estates stay legible (group by program/module; drill down).- **FR-15 (Must).** Click a node ? open its source in a synchronized code panel at the relevant line; click an edge ? explain the relationship.- **FR-16 (Must).** Persistent color legend + semantic color coding by node type; minimap for orientation.- **FR-17 (Must).** Static, **exportable** diagrams per section (Mermaid ? Markdown/PNG).- **FR-18 (Should).** Fuzzy search across all symbols; breadcrumb navigation history; one-click "Home" reset.### 8.4 Summaries & documentation- **FR-19 (Must).** Generate plain-English summaries per program/paragraph/copybook using the chosen model, grounded on parsed facts.- **FR-20 (Must).** "Rosetta mode": explain COBOL constructs in terms of a language the user knows (e.g., "this `PERFORM VARYING` is a `for` loop; this `88-level` is an enum").- **FR-21 (Must).** Export the whole thing as a navigable Markdown documentation set (summaries + call graphs + section diagrams) that regenerates on demand so it never goes stale.### 8.5 AI chat (grounded)- **FR-22 (Must).** Natural-language Q&A over the codebase using **graph-guided retrieval**: identify referenced symbols, retrieve the relevant slice via the graph + embeddings, send only that slice to the model.- **FR-23 (Must).** Every answer cites sources (file + line ranges); citations are clickable and jump into the code/graph.- **FR-24 (Should).** Bidirectional link: clicking a node can seed a chat ("explain this"); a chat answer can drive the graph (highlight/expand the relevant nodes).- **FR-25 (Must).** Never assert structure the graph doesn't support; when unsure, say so.### 8.6 Model selection & privacy- **FR-26 (Must).** Settings let the user choose the brain: Anthropic API key, OpenAI API key, OpenRouter key, or local Ollama (host/model configurable).- **FR-27 (Must).** Keys stored securely in the OS keychain; never written to plaintext logs.- **FR-28 (Must).** A persistent, honest indicator of current mode: **Local (nothing leaves this machine)** vs **Cloud (sending to <provider>)**. In local mode, the app makes no outbound network calls for inference or embeddings.- **FR-29 (Should).** Token/cost estimate shown before large operations (bulk summarization), and a running cost meter for cloud modes.- **FR-30 (Must).** Embeddings respect the same privacy mode (local embeddings via Ollama when in local mode).### 8.7 Onboarding- **FR-31 (Must).** Bundled sample COBOL repo so first-run produces a "whoa" in under a minute with zero setup.- **FR-32 (Should).** Guided first-run: pick sample or your folder ? pick a brain (or skip and explore the map without AI) ? see the map.---## 9. UX / UI design specificationDesign north star: **Sourcetrail** — the beloved (now-archived) code visualizer — extended with an AI chat surface. The cardinal rule, learned from what kills these tools: **never show the whole graph (the hairball); always focus on one thing and expand outward.**### 9.1 Layout — dark, IDE-grade, three-pane workspace```+---------------------------------------------------------------+¦ Top bar: search · breadcrumb history · Home · mode indicator    ¦+---------------------------------------------------------------¦¦ Left nav  ¦                               ¦  Code panel        ¦¦ - search  ¦     CENTER: interactive       ¦  (synced to focus, ¦¦ - tree    ¦     dependency graph          ¦   snippet at each  ¦¦ - filters ¦     (focus-and-expand)        ¦   usage site)      ¦¦ - legend  ¦                               +-------------------¦¦           ¦                               ¦  AI chat +         ¦¦           ¦                               ¦  section summary   ¦¦           ¦                               ¦  dock (linked to   ¦¦           ¦                               ¦  the graph)        ¦+---------------------------------------------------------------+```- **Center (dominant):** the interactive graph. Symbol-centric. Focus-and-expand. Clustering by default; drill into a program to see its paragraphs.- **Top-right:** synchronized code panel — shows the selected symbol's source and the snippet at every usage site.- **Bottom-right:** AI chat + section-summary dock, bidirectionally linked to the graph.- **Left navigator:** fuzzy search, program/copybook tree, node-type filters, persistent color legend.- **Top bar:** global search, breadcrumb history, Home reset, and the privacy/mode indicator.### 9.2 Visual design- **Dark mode as a first-class system:** near-black canvas, off-white (not pure-white) text, elevation via surface lightness rather than borders.- **Monospace** for code and identifiers; a clean sans for UI chrome.- **One restrained accent color** for the focus path; semantic colors for node types (with the legend always visible).- **Level-of-detail rendering**, an always-on **minimap**, and smooth, fast interactions (the app should feel instant).### 9.3 Key interactions- Search or click ? focus a node ? graph re-centers, code panel syncs, summary updates.- Expand/collapse neighbors incrementally.- Click an edge ? inline explanation of the relationship (e.g., "PROG-A writes dataset CUST.MASTER, which PROG-B reads — wired in JOB1 step STEP02").- Ask a question in chat ? answer with clickable citations that drive the graph.### 9.4 Visualization library- **Primary:** **Sigma.js + graphology** (WebGL; scales to tens of thousands of nodes; worker-based ForceAtlas2 layout; React bindings).- **Layout:** **dagre / ELK** for hierarchical dependency layouts.- **Static diagrams:** **Mermaid** for exportable section diagrams.- **Fallback:** **Cytoscape.js** if post-clustering graphs reliably stay under ~2-3k nodes (richer built-in algorithms).- **Lesson from Sourcetrail's death:** it died of maintenance burden (bespoke C++/Qt, many language indexers). Mitigation: **single-language scope (COBOL only)** and maintained web-stack libraries.---## 10. Technical architecture> **Engineering ethos (applies to this whole section): keep it light.** The architecture below is deliberately a thin assembly of mature, off-the-shelf parts (Tauri, a bundled parser, Sigma.js, an AI SDK) glued by a single JSON contract. Do not add a backend server, a database engine, a plugin system, a job queue, microservices, or any other layer unless a concrete v1 requirement forces it. The whole app should be a desktop binary + a spawned parser + local files. If a piece of this feels heavy, that's the signal to simplify it, not to build around it.### 10.1 High-level```Tauri v2 app (Rust shell + web UI)+-- UI (web): Sigma.js graph + synced code panel + chat/summary dock     [§9]+-- Model layer: Vercel AI SDK ? Anthropic / OpenAI / OpenRouter / Ollama [§8.6]+-- Retrieval: graph-guided RAG over the dependency map (the map = index) [§8.5]+-- Cache/store: local index (graph JSON + embeddings) in app data dir+-- Analysis sidecar (spawned): COBOL/JCL parser ? emits graph as JSON    [§8.2]      (+ tree-sitter-cobol embedded in the UI for instant highlighting)Test corpora: COBOL Legacy Benchmark Suite, IBM zopeneditor-sample, bundled demo [§14]```### 10.2 Desktop shell — **Tauri v2**Chosen over Electron: <10 MB installers (vs 80-150 MB), ~30-50 MB RAM (vs 150-300 MB), sub-0.5s startup, secure by default, and a first-class **sidecar** mechanism for bundling/spawning the parser and talking to local Ollama. Tradeoff: minor cross-OS rendering variance from the native WebView — acceptable for a dev utility.### 10.3 Parser — bundled as a swappable "analysis sidecar"Recommendation from the parser research: **ProLeap (MIT)** for COBOL semantics (AST/ASG, data & control flow, copybook expansion) + **mapa (MIT)** for JCL grammar and cross-program call-tree extraction, run as a one-time JVM analysis sidecar that emits the graph as JSON. **tree-sitter-cobol (MIT)** is embedded directly in the UI for instant syntax highlighting/navigation (no JVM needed for that).- **Avoid** GnuCOBOL and jcl-assess as core dependencies — both **GPL** (viral copyleft); using them would force the whole app's license.- **Fallbacks** if ProLeap struggles on real code: **Koopa** (more forgiving island parsing), then the **che4z grammar** (highest IBM-Enterprise-COBOL fidelity, incl. CICS/DB2 awareness; EPL-2.0).- **No single free parser does everything permissively *and* lightly.** This is a real tradeoff (see §11).### 10.4 Model plumbing — **Vercel AI SDK**One TypeScript interface over all four providers (Anthropic + OpenAI first-party; OpenRouter + Ollama as providers), switchable by config. Do not build provider routing from scratch. (If model calls ever need to move to a Python sidecar, **LiteLLM** is the equivalent.)- **Local model:** **Ollama** at `localhost:11434` for chat *and* embeddings; runs ~7B models on ~16 GB RAM (˜8 GB floor), no GPU required, fully air-gapped.- **Cloud convenience tier:** **OpenRouter** (one key, many models) lowers friction for users who don't want to manage multiple provider keys.### 10.5 Retrieval — graph-guided RAGThe dependency map *is* the retrieval index. For a question: identify referenced symbols ? walk the graph for structural neighbors ? vector-search for semantically related chunks ? assemble a grounded context bundle with citations ? send only that slice to the model. This (a) slashes cloud token cost vs. dumping whole files, (b) fits small local-model context windows, and (c) improves answer quality. Use parent-child chunking for context.### 10.6 Privacy enforcementIn **Local mode**, the inference and embedding code paths must hit only `localhost` (Ollama); the app should make this auditable (no outbound inference/embedding calls). The mode indicator in the top bar reflects the live state. Keys live in the OS keychain.---## 11. The key architectural tension (resolve first)The best *semantic* parsers (ProLeap, mapa) are **JVM/Java**, but Tauri's advantage is being **light** — bundling a JRE erodes the size win. Three honest paths:1. **GraalVM native-image** the ProLeap+mapa analyzer ? ship a small native Tauri sidecar. *Best end state; more build complexity.*2. **Bundle a trimmed JRE** as a sidecar. *Simplest; heavier install (~40-70 MB).*3. **Start tree-sitter-only** (syntax + basic `CALL`/`PERFORM`/`COPY` call graph from text), ship fast, add the JVM semantic engine (JCL/data-flow) in a later milestone. *Fastest to a real demo; weaker wiring at first.***Decision (locked):** prototype on **path 3** to make the UI and end-to-end flow real quickly, but **architect the parser as a swappable sidecar from day one** so path 1 drops in without rework. Decide for real after a **half-day parser bake-off on 2-3 real COBOL programs** — dialect reality on actual code overrides any spec-sheet claim. (Dialect coverage is the softest claim in the whole research set: everyone "passes NIST COBOL-85," but real estates use IBM extensions, vendor preprocessors, and embedded CICS/SQL.)---## 12. Data model (parser sidecar output contract)The sidecar emits a single JSON document the UI/retrieval layer consumes. Indicative shape:```jsonc{  "meta": { "scannedAt": "...", "dialectGuess": "IBM Enterprise COBOL", "fileCount": 0, "parseErrors": [] },  "nodes": [    { "id": "prog:PAYROLL", "type": "program", "name": "PAYROLL",      "file": "src/PAYROLL.cbl", "lines": [1, 820],      "paragraphs": ["para:PAYROLL/CALC-FEE", "..."] },    { "id": "copy:FEES",     "type": "copybook", "name": "FEES", "file": "cpy/FEES.cpy", "lines": [1, 40] },    { "id": "data:WS-FEE",   "type": "data-item", "name": "WS-FEE", "pic": "S9(7)V99 COMP-3",      "definedIn": "copy:FEES" },    { "id": "file:CUST.MASTER", "type": "file", "name": "CUST.MASTER" },    { "id": "job:JOB1", "type": "jcl-job", "file": "jcl/JOB1.jcl",      "steps": ["step:JOB1/STEP02"] }  ],  "edges": [    { "from": "prog:PAYROLL", "to": "prog:FEECALC", "type": "CALLS", "site": { "file": "src/PAYROLL.cbl", "line": 410 } },    { "from": "prog:PAYROLL", "to": "copy:FEES",    "type": "COPIES" },    { "from": "prog:PAYROLL", "to": "file:CUST.MASTER", "type": "WRITES" },    { "from": "step:JOB1/STEP02", "to": "prog:PAYROLL", "type": "RUNS-AFTER" }  ]}```Design rules: every edge carries a **source site (file + line)** for citations; the graph is the single ground truth for visualization, lineage, impact, and retrieval. The AI layer reads this; it never invents nodes/edges.---## 13. Recommended tech stack (summary)| Concern | Choice | License/Note ||---|---|---|| Desktop shell | **Tauri v2** (Rust + web UI) | MIT/Apache || UI framework | React + TypeScript | — || Graph viz | **Sigma.js + graphology**; dagre/ELK layout | MIT || Static diagrams | **Mermaid** (export) | MIT || In-UI syntax | **tree-sitter-cobol** | MIT || Semantic parser | **ProLeap** + **mapa** (JVM sidecar) | MIT || Parser fallbacks | Koopa (BSD), che4z grammar (EPL-2.0) | non-viral || Model abstraction | **Vercel AI SDK** | open || Local model | **Ollama** (chat + embeddings) | open || Cloud convenience | **OpenRouter** (+ direct Anthropic/OpenAI) | — || Secrets | OS keychain | — || Local store | graph JSON + embeddings in app data dir | — |**Avoid:** GnuCOBOL, jcl-assess (GPL, viral) as core deps; Electron (heavier); AI-generated diagrams (unreliable).---## 14. Testing & evaluation- **Primary dev target:** **COBOL Legacy Benchmark Suite** (`sentientsergio/COBOL-Legacy-Benchmark-Suite`) — VSAM/DB2/CICS, built to test exactly this. Exercises the hard JCL/copybook/dataset wiring.- **Dialect stress test:** **IBM Z Open Editor sample** (`IBM/zopeneditor-sample`) — confirms the parser handles real IBM Enterprise COBOL, not just NIST COBOL-85.- **First-run demo:** bundle a small, clean sample (a few programs + copybooks + one JCL) inside the app (subset of opensource-cobol or zopeneditor-sample, license permitting).- **AI quality scoring:** run **MainframeBench** (`Fsoft-AIC/MainframeBench`) across each supported brain (Anthropic / OpenAI / OpenRouter / Ollama) to produce an honest "which model is best for COBOL" comparison — itself good marketing.- **Parser bake-off (gate before §11 decision):** run candidate parsers on 2-3 real programs; compare completeness of the emitted graph.- **Verification step:** for each release, visually QA the graph against the source on the benchmark suite, and spot-check that AI citations actually point at the right lines.---## 15. Licensing & distribution- **Code license:** **MIT (decided).** Permissive, keeps options open, and matches the chosen permissive parsers. Do **not** bundle GPL parsers (GnuCOBOL, jcl-assess) as core deps regardless.- **Distribution:** signed installers for macOS / Windows / Linux via Tauri; GitHub Releases; Homebrew cask optional.- **Go-to-market (it's a credibility piece, not a company):** Show HN, r/cobol, the **Open Mainframe Project** (Linux Foundation) and **Zowe** community, dev-tool newsletters. Bundled sample + a great README (lead with the incumbent-pain ? our-answer table from §4.3) + a short demo GIF.---## 16. Risks & mitigations| Risk | Mitigation ||---|---|| Parser can't handle a real estate's dialect | Forgiving/island parsing; report unparsed files; bake-off before locking; fallbacks (Koopa, che4z) || JVM parser bloats the "light local app" promise | Architect parser as swappable sidecar; GraalVM native-image path; start tree-sitter-only || Frontier vendors (Anthropic/AWS/IBM/Google) flatten the space | Compete on UX + free + air-gapped, not tech; target the individual engineer they ignore || Graph becomes a "hairball" on big estates | Focus-and-expand + clustering + LOD; never render full graph || Cloud token costs shock BYO-key users | Graph-guided RAG (send slices, not files); cost meter; local mode || Single-maintainer burnout (the Sourcetrail failure mode) | Single-language scope; maintained web-stack libs; no bespoke engine || Privacy claim challenged | Make local mode auditable (no outbound calls); honest, visible mode indicator || Getting real COBOL to test | Use open corpora (§14); no production code needed |---## 17. Decisions & remaining open items**Resolved:**1. **Name** — **Cobolens** (COBOL + lens). Collision-checked; no conflicting software product.2. **License** — **MIT.**3. **Parser path** — **Path 3 now** (tree-sitter; end-to-end fast) with a **swappable sidecar**, upgrading to the ProLeap + mapa semantic engine (path 1) later. Final specifics confirmed after the bake-off (§14).4. **v1 scope** — **Confirmed:** point it at a COBOL codebase ? parse ? dependency map ? visualizations ? section summaries ? grounded AI chat (BYO model, incl. fully local). No write/generate, no migration, no verification.5. **Distribution / platforms** — **Open-source GitHub repo, compile-from-source (cross-platform via Tauri).** Prebuilt signed installers per platform can come later; not Mac-gated.**Still open:**6. **First-run demo repo** — pick which small sample to bundle (§14).---## 18. Repository structure & scaffoldingSingle app, **not** a monorepo (lightweight ethos). Scaffold with `npm create tauri-app@latest` ? React + TypeScript + Vite.```cobolens/+-- src/                     # React UI (TypeScript)¦   +-- app/                 # shell + 3-pane layout + dark theme¦   +-- graph/               # Sigma.js graph view (focus-and-expand)¦   +-- code/                # code panel (tree-sitter highlighting, line jump)¦   +-- chat/                # AI chat + section-summary dock¦   +-- nav/                 # left navigator: search, tree, filters, legend¦   +-- model/               # Vercel AI SDK provider wiring (BYO brain)¦   +-- retrieval/           # graph-guided RAG (assemble context + citations)¦   +-- store/               # lightweight state (Zustand)¦   +-- lib/                 # parser-output types (from §12), utils+-- src-tauri/               # Rust shell: spawn sidecar, OS keychain, fs, IPC¦   +-- src/¦   +-- tauri.conf.json+-- sidecar/                 # the COBOL/JCL analysis sidecar (the swappable seam, §20)¦   +-- ...                  # tree-sitter-based now; ProLeap+mapa later+-- samples/                 # bundled demo COBOL repo for first-run (§14)+-- LICENSE                  # MIT+-- README.md```**Key dependencies (keep the list short):** `@tauri-apps/api`; `react`, `vite`; `sigma` + `graphology` (+ `graphology-layout-forceatlas2`); `dagre` (hierarchical layout); `mermaid` (static diagrams); `web-tree-sitter` + a COBOL grammar wasm; `ai` (Vercel AI SDK) + provider packages for Anthropic/OpenAI/OpenRouter/Ollama; `zustand` (state). Add nothing else without a concrete need.---## 19. Build plan (ordered milestones)Each milestone is independently shippable and has an acceptance criterion (AC). Build in order.- **M0 — Scaffold.** Tauri app boots; empty dark three-pane layout; cross-platform from source. *AC:* `npm run tauri dev` runs the shell on macOS/Windows/Linux.- **M1 — Ingest + parse (tree-sitter).** Folder picker; discover COBOL/copybook/JCL files; spawn sidecar; emit graph JSON (§12) with `CALLS`/`PERFORMS`/`COPIES` + basic JCL step order; list unparsed files. *AC:* on the COBOL Legacy Benchmark Suite, produces a valid graph JSON; failures are listed, not fatal.- **M2 — Graph view.** Sigma.js focus-and-expand; click node ? code panel jumps to line; color legend; fuzzy search; clustering so it never hairballs. *AC:* navigate the benchmark suite visually without rendering the full graph.- **M3 — Summaries + model wiring.** Settings to choose provider (Anthropic/OpenAI/OpenRouter/Ollama); generate per-unit summaries; Rosetta mode. *AC:* a grounded summary for each program; works fully offline via Ollama.- **M4 — Grounded chat (RAG).** Graph-guided retrieval; cited answers; click citation ? jump to code/graph. *AC:* "where does X happen?" returns a correct, cited answer on the benchmark suite.- **M5 — Polish.** Export docs (Markdown) + diagrams (Mermaid/PNG); bundled first-run sample; privacy/mode indicator; cost meter; performance pass. *AC:* export works; local mode makes zero outbound calls (verified).- **M6 — Semantic parser upgrade (later).** Swap the sidecar to ProLeap + mapa (path 1) for deep JCL/data-flow/SQL/CICS, enabling data lineage (FR-10) and impact analysis (FR-11). *AC:* lineage + impact features live, with no UI rewrite (contract unchanged, §20).---## 20. Parser sidecar interface contractThe UI must depend only on this contract, never on the parser's internals — this is what lets path 3 ? path 1 swap cleanly (§11).- **Invocation (CLI the Tauri shell spawns):**  `cobolens-analyze --root <path> --out <file.json> [--format fixed|free|auto] [--ext .cbl,.cob,.cpy,.jcl] [--encoding utf8|cp037]`- **Progress:** emit JSON-lines to stdout (`{"phase":"parse","done":40,"total":120}`) so the UI shows progress without blocking.- **Output:** the graph JSON in §12, with a top-level `"schemaVersion"`. Every edge carries a source site (file + line) for citations.- **Errors:** per-file failures collected in `meta.parseErrors[]`; exit 0 if *any* file parsed (forgiving). Reserve non-zero exit for "couldn't run at all."- **Determinism:** same input ? same output (stable ordering) so caching and diffs work.---## 21. Indexing & retrieval pipeline1. **Discover** files (respect `scan.extensions`, skip binaries).2. **Analyze:** spawn sidecar ? graph JSON; store in app data dir.3. **Chunk:** by natural units (program / paragraph / copybook), parent-child so a paragraph chunk knows its program.4. **Embed:** each chunk via the active provider's embeddings (Ollama locally in local mode); store vectors alongside the graph. **Start with plain files (JSON) for storage; only introduce `tauri-plugin-sql`/SQLite if file storage proves too slow** (lightweight ethos).5. **Cache:** key embeddings by file content hash; re-index incrementally on rescan.6. **Query:** extract referenced symbols from the question ? gather graph neighbors (structural) + vector top-k (semantic) ? assemble a context bundle with citations ? send only that slice to the model.---## 22. AI prompt & interaction design- **Chat system prompt (intent):** "You explain a COBOL codebase to an engineer who may not know COBOL. Use ONLY the provided context. Cite file + line for every claim. If the context doesn't contain the answer, say so plainly. When useful, explain COBOL constructs in terms of {rosettaLanguage}."- **Summary prompt (per unit):** produce a 2-4 sentence plain-English purpose, key business rules, and inputs/outputs — grounded strictly in the provided source.- **Rosetta:** `rosettaLanguage` is user-configurable (Python/Java/JS/C#); inject into prompts.- **Hard rules:** the model never invents nodes/edges or structure; all diagrams come from the parsed graph; keep prompts short and token-budget aware (the graph slice is the context, not whole files).---## 23. Configuration & settings schemaStored as JSON in the app data dir (API keys are **not** here — they live in the OS keychain via Tauri):```jsonc{  "schemaVersion": 1,  "model": {    "provider": "ollama",                  // ollama | anthropic | openai | openrouter    "model": "xmainframe:7b",              // or claude-*, gpt-*, an openrouter slug, etc.    "baseUrl": "http://localhost:11434"    // for ollama / custom endpoints  },  "privacyMode": "local",                  // local | cloud  "rosettaLanguage": "python",  "scan": { "extensions": [".cbl", ".cob", ".cpy", ".jcl"], "format": "auto", "encoding": "utf8" }}```---## 24. Non-functional requirements- **Footprint:** installer in the low tens of MB (Tauri); modest idle RAM. No bundled JRE in v1 (tree-sitter path).- **Performance:** index a few-hundred-program repo in minutes, not hours; the UI must never block (do analysis/embedding in the background / a worker). Graph stays interactive at thousands of nodes (WebGL + clustering).- **Privacy:** in local mode, zero outbound network calls for inference or embeddings — and make this verifiable.- **Portability:** one codebase builds for macOS/Windows/Linux.- **Maintainability (Principle 0):** minimal dependencies; no backend server, no external DB unless forced; a single person should be able to hold the whole system in their head.---## 25. Edge cases & error handling- **Source format:** support fixed-format (seq cols 1-6, indicator col 7, code 8-72, ignore 73-80) and free-format; `--format auto` should detect.- **Encoding:** mainframe source may be EBCDIC/codepage; make encoding configurable.- **Copybooks:** `COPY` may need search paths and may use `REPLACING`; resolve where possible, else mark the copybook node as **unresolved/external** rather than failing.- **Missing programs/copybooks:** represent as external nodes; never crash.- **Unsupported dialect/preprocessor constructs:** island-parse around them; list affected files as partially parsed.- **Junk in the folder:** skip binaries and oversized files.- **No model configured:** the app stays fully usable for map + navigation + (deterministic) docs; AI features are gated, not required.- **Cloud key invalid / rate-limited:** clear, friendly error; never lose the user's session or index.---## 26. COBOL / mainframe glossary (domain context for the build)So the build has the domain grounding to parse and explain correctly:- **Divisions** — every COBOL program has IDENTIFICATION, ENVIRONMENT, DATA, PROCEDURE divisions.- **Paragraph** — a named block of procedural code; invoked with **PERFORM** (˜ calling a local function) or **PERFORM ... THRU** (a range).- **CALL** — invoke another program (˜ cross-module call); the cross-program edge.- **COPY / copybook** — `COPY` pulls in a **copybook** (`.cpy`), usually shared **data layouts**; the connection isn't "in" the program's own code.- **PIC (picture) clause** — declares a field's type/size, e.g. `PIC S9(7)V99`.- **COMP-3** — packed-decimal numeric storage; exact fixed-point money math (a common source of subtle bugs in naive conversions).- **Level numbers / 88-level** — data hierarchy; an **88-level** is a named condition (˜ an enum/boolean flag).- **REDEFINES / OCCURS** — memory overlay (˜ union) / arrays.- **LINKAGE SECTION** — data passed between programs (how data flows across `CALL`s).- **FD / file / VSAM** — file definitions; **VSAM** is a mainframe file system.- **JCL** — Job Control Language: separate files that orchestrate which programs run, in what order, with which files. **Job ? step ? program**, with **DD statements** mapping logical names to **datasets**. This is where the cross-program wiring lives that isn't in the COBOL itself.- **PROC / GDG** — reusable JCL procedures / generation data groups (versioned datasets).- **CICS (`EXEC CICS`)** — online transaction processing; **DB2 (`EXEC SQL`)** — embedded SQL against DB2 tables.---## 27. Appendix — source researchThis PRD consolidates five companion documents in this folder, each with full inline citations and Sources sections:- `00-synthesis-and-build-decisions.md` — the synthesis this PRD expands on- `01-incumbent-teardown.md` — IBM ADDI, Rocket/Micro Focus EA, Broadcom, others- `02-parser-landscape.md` — parser comparison & recommendation- `03-ux-design-study.md` — Sourcetrail & code-viz UX ? design principles- `04-desktop-shell-and-model-plumbing.md` — Tauri vs Electron + model plumbing- `05-test-repos.md` — open COBOL corpora for build/test/demoKey external references (non-exhaustive; see companion docs for full lists): IBM ADDI / watsonx Code Assistant for Z; Rocket (ex-Micro Focus/OpenText) Enterprise Analyzer; ProLeap (`uwol/proleap-cobol`), mapa (`cschneid-the-elder/mapa`), Koopa, che4z, tree-sitter-cobol; Tauri v2; Vercel AI SDK; Ollama; OpenRouter; Sigma.js/graphology, Cytoscape.js, Mermaid; Sourcetrail; COBOL Legacy Benchmark Suite (`sentientsergio/...`), IBM `zopeneditor-sample`, `Fsoft-AIC/MainframeBench`; Anthropic Code Modernization Playbook.
+# Cobolens Product Requirements Document
+
+Version: 0.1 local v1 release-candidate spec  
+Last updated: 2026-07-01
+
+## One-Line Definition
+
+Cobolens is a free, open-source, local-first desktop app that helps engineers understand COBOL, copybooks, and JCL through an interactive dependency map, cited source inspection, graph-grounded Ask, optional AI summaries, and exportable documentation.
+
+## Product Position
+
+Cobolens is for the individual engineer or small team trying to understand an existing mainframe-adjacent codebase without starting a vendor modernization program.
+
+It is:
+
+- local-first;
+- source-cited;
+- graph-grounded;
+- open source;
+- focused on comprehension.
+
+It is not:
+
+- a migration suite;
+- a COBOL generator;
+- a COBOL-to-Java translator;
+- a behavior-equivalence verifier;
+- a live mainframe connector;
+- a hosted team workspace.
+
+## Primary User
+
+The primary user is a developer who inherits a COBOL/JCL system they did not write and needs to answer practical questions quickly:
+
+- What does this program touch?
+- What depends on this copybook?
+- Where does this dataset come from?
+- What writes this data item?
+- Why are these two things connected?
+- Can I trust the answer because it points to source?
+
+## Product Principles
+
+1. Lightweight, not over-engineered.
+2. Understand, do not migrate.
+3. Local-first and private by default.
+4. The graph is ground truth.
+5. Every important claim should be source-cited.
+6. AI is optional and opt-in.
+7. Real COBOL is messy; degrade gracefully.
+8. Keep the app fast, legible, and maintainable.
+
+## Current V1 Scope
+
+### In Scope
+
+- Open a bundled sample or local folder.
+- Discover COBOL programs, copybooks, and JCL.
+- Configure scan format, extensions, and encoding.
+- Parse into a `GraphDocument` contract.
+- Show parse health and non-fatal parse warnings.
+- Browse programs, copybooks, and JCL source units.
+- Search the codebase.
+- Inspect a focus-and-expand dependency graph.
+- Filter graph node types.
+- Click nodes, relationships, and citations to focus source.
+- View source snippets with highlighted cited lines.
+- Inspect Overview, Ask, Dependencies, and Source.
+- Ask deterministic graph questions without AI.
+- Configure local Ollama or cloud providers for optional AI.
+- Generate guarded AI summaries with cited graph fallback.
+- Export Markdown, Mermaid, and PNG documentation.
+- Validate the app with repeatable smoke suites.
+
+### Out Of Scope
+
+- Editing or writing COBOL.
+- Automated migration.
+- Translation to another language.
+- Behavior-equivalence proof.
+- Mainframe/z/OS connectivity.
+- Team accounts, sync, or hosted backend.
+- Paid licensing.
+
+## UX Requirements
+
+### Top Bar
+
+The top bar must stay minimal:
+
+- Brand
+- Search codebase
+- Current focus
+- Local/cloud indicator
+- Export
+- Settings
+
+### Left Navigator
+
+The left navigator is for navigation and status:
+
+- Ingest actions
+- Codebase browser
+- Filters and legend
+- Inventory
+- Parse health
+- Graph hints
+
+It must not become a settings console. AI and scan controls live in Settings.
+
+### Center Graph
+
+The graph must avoid the hairball problem.
+
+- Always start from a focus node.
+- Show direct relationships and limited expansions.
+- Use level-of-detail cluster nodes where needed.
+- Provide keyboard-accessible visible node controls.
+- Keep graph orientation counts visible.
+
+### Right Pane
+
+The right pane is task-oriented:
+
+- `Overview`: graph facts, evidence, optional AI summary.
+- `Ask`: graph Ask first, AI Ask only after setup.
+- `Dependencies`: depends-on, used-by, lineage, and relationship details.
+- `Source`: file/line focus and source-viewer handoff.
+
+The Source panel remains visible above the inspector where space allows.
+
+## Functional Requirements
+
+| ID | Requirement | V1 Status |
+| --- | --- | --- |
+| FR-1 | Discover COBOL, copybooks, and JCL from a local folder. | Implemented |
+| FR-2 | Support fixed/free COBOL and configurable encoding. | Implemented |
+| FR-3 | Cache and rescan without blocking UI. | Implemented |
+| FR-4 | List parse failures without failing the whole scan. | Implemented |
+| FR-5 | Report dialect/features. | Implemented |
+| FR-6 | Emit a graph of programs, paragraphs, copybooks, data items, datasets, JCL, DB2, and CICS signals. | Implemented on current analyzer contract |
+| FR-7 | Resolve JCL/program/dataset wiring where possible. | Implemented |
+| FR-8 | Record copybook usage. | Implemented |
+| FR-9 | Detect SQL/CICS signals where available. | Implemented on fixture and benchmark signals |
+| FR-10 | Surface data lineage. | Implemented on current graph signals |
+| FR-11 | Surface impact/where-used. | Implemented as Dependencies |
+| FR-12 | Flag potentially unreferenced source units. | Partial but useful |
+| FR-13 | Provide focus-and-expand graph navigation. | Implemented |
+| FR-14 | Avoid full-graph hairballs with LOD/clustering. | Implemented |
+| FR-15 | Click nodes/edges/citations to source. | Implemented |
+| FR-16 | Provide legend, filters, and orientation. | Implemented |
+| FR-17 | Export static diagrams. | Implemented |
+| FR-18 | Provide search, breadcrumbs, and Home reset. | Implemented |
+| FR-19 | Generate grounded summaries. | Implemented with citation guard and fallback |
+| FR-20 | Support Rosetta language setting. | Implemented in prompts |
+| FR-21 | Export documentation. | Implemented |
+| FR-22 | Provide graph-guided Ask. | Implemented |
+| FR-23 | Make citations clickable. | Implemented |
+| FR-24 | Link Ask, graph, and source. | Implemented enough for v1 |
+| FR-25 | Prevent unsupported model claims. | Implemented by prompts and guards |
+| FR-26 | Support Ollama, Anthropic, OpenAI, OpenRouter. | Implemented |
+| FR-27 | Store cloud keys in OS keychain. | Implemented in desktop shell |
+| FR-28 | Show honest local/cloud mode. | Implemented |
+| FR-29 | Show usage and bulk summary estimates. | Implemented |
+| FR-30 | Keep embeddings privacy-aware. | Implemented for local Ollama; cloud embeddings rejected |
+| FR-31 | Bundle a sample codebase. | Implemented |
+| FR-32 | Guide first-run without requiring AI. | Implemented |
+
+## Architecture
+
+```mermaid
+flowchart TB
+  UI["React + TypeScript UI"]
+  Tauri["Tauri v2 shell"]
+  Analyzer["Rust analyzer sidecar"]
+  Graph["GraphDocument JSON"]
+  Retrieval["Graph-guided retrieval"]
+  Model["Optional AI provider"]
+  Export["Docs export"]
+
+  Tauri --> Analyzer
+  Analyzer --> Graph
+  Graph --> UI
+  Graph --> Retrieval
+  Retrieval --> Model
+  UI --> Export
+```
+
+The `GraphDocument` JSON contract is the seam. The UI and retrieval layer consume this contract only. Parser internals must remain replaceable.
+
+## Parser Decision
+
+Current v1 production analyzer: Rust sidecar.
+
+Rationale:
+
+- smallest production footprint;
+- validated against strict M6 fixture;
+- packaged successfully with Tauri;
+- enough semantic graph coverage for the current v1 workflow.
+
+Candidate analyzers:
+
+- ProLeap JVM sidecar;
+- mapa JVM sidecar.
+
+They remain useful benchmark candidates, but adopting either for production requires real-code evidence that the coverage gain is worth the packaging and maintenance cost.
+
+## Privacy Model
+
+Cobolens has two answer routes:
+
+- Graph route: no model, no external inference.
+- AI route: retrieved graph/source context is sent only after the user chooses an AI action and configures a provider.
+
+Local Ollama routes must use localhost. Remote Ollama URLs and cloud embeddings are rejected unless an explicit provider path is implemented and surfaced honestly.
+
+Cloud keys must be stored through the OS keychain, not local app settings.
+
+## Verification Gates
+
+Required before broad product pushes:
+
+```sh
+npm run build
+node tools/m6-verify/ui-contract-smoke.mjs
+npm run m6:verify
+```
+
+Readiness sweep:
+
+```sh
+npm run v1:readiness
+```
+
+Optional evidence:
+
+- local benchmark checkout;
+- local Ollama readiness and model smokes;
+- Linux packaged GUI smoke;
+- parser candidate comparison;
+- unsigned CI package artifacts.
+
+## Release Claims
+
+Currently claimed:
+
+- local v1 release candidate;
+- Linux packaging validated locally;
+- unsigned Linux/Windows bundle builds validated in GitHub Actions;
+- graph/Ask/source/export workflow implemented.
+
+Not yet claimed:
+
+- signed public Windows installer;
+- signed macOS release;
+- real production-corpus parser coverage;
+- enterprise readiness;
+- behavior-equivalence guarantees.
+
+## Next Research
+
+1. Run on several real COBOL/JCL repos and record parser gaps.
+2. Improve source browsing beyond snippets.
+3. Tighten relationship explanations directly on graph interactions.
+4. Harden local AI setup copy and model checks.
+5. Decide whether a JVM analyzer candidate is worth production adoption.
+6. Validate signed installer paths.

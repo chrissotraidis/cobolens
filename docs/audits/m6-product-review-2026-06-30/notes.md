@@ -1,5 +1,9 @@
 # M6 product review pass - 2026-06-30
 
+Current note: this is a historical review snapshot. The live app now uses
+`Overview`, `Ask`, `Dependencies`, and `Source`; relationship details live under
+`Dependencies`; and current behavior is summarized in `docs/m6-ui-qa.md`.
+
 Live target: `http://127.0.0.1:1430/?graph=/m6-bakeoff-graph.json`
 
 Screenshots:

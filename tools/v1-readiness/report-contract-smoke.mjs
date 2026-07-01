@@ -11,9 +11,11 @@ const checks = {
   "ready requires required gates": source.includes("ready: requiredPassed && optionalEvidenceClean && optionalEvidenceComplete"),
   "ready requires optional failures clean": source.includes("const optionalEvidenceClean = failedOptional.length === 0"),
   "ready requires optional skips complete": source.includes("const optionalEvidenceComplete = skippedOptional.length === 0"),
+  "runner includes PRD coverage audit": source.includes('required("V1 PRD coverage audit"') && source.includes("prd-coverage-smoke.mjs"),
   "exit code follows required gates only": source.includes("process.exit(report.requiredPassed ? 0 : 1)"),
   "report exposes optional clean flag": source.includes("optionalEvidenceClean"),
   "report exposes optional complete flag": source.includes("optionalEvidenceComplete"),
+  "docs explain PRD coverage audit": readme.includes("PRD-coverage smoke checks `docs/v1-readiness-audit.md`"),
   "docs explain stricter ready field": readme.includes("The final `ready` field is stricter"),
   "docs explain required-gate exit code": readme.includes("Only required-gate failure exits non-zero"),
 };

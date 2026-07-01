@@ -48,6 +48,7 @@ type GraphViewProps = {
   canOpenFolder: boolean;
   onOpenFolder: () => void;
   onOpenSample: () => void;
+  showNodeList: boolean;
 };
 
 const DIRECT_LIMIT_PER_TYPE = 14;
@@ -65,6 +66,7 @@ export function GraphView({
   canOpenFolder,
   onOpenFolder,
   onOpenSample,
+  showNodeList,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<Sigma<NodeAttributes, EdgeAttributes> | null>(null);
@@ -199,30 +201,32 @@ export function GraphView({
         <span>{graph.nodes.length} indexed</span>
         <span>{slice.hiddenNeighborCount} hidden</span>
       </div>
-      <div className="graph-node-list" aria-label="Visible graph nodes">
-        <span>Visible nodes</span>
-        <div>
-          {visibleNodeControls.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => activateVisibleNode(node.id)}
-              aria-current={node.isFocus ? "true" : undefined}
-              aria-label={
-                node.isCluster
-                  ? `Expand hidden ${node.label} neighbors`
-                  : node.isFocus
-                    ? `Current focus ${node.label}`
-                    : `Focus ${node.label}`
-              }
-              title={node.isCluster ? `Expand ${node.label}` : `Focus ${node.label}`}
-            >
-              <i aria-hidden="true" style={{ background: node.color }} />
-              <span>{node.label}</span>
-            </button>
-          ))}
+      {showNodeList ? (
+        <div className="graph-node-list" aria-label="Visible graph nodes">
+          <span>Visible nodes</span>
+          <div>
+            {visibleNodeControls.map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => activateVisibleNode(node.id)}
+                aria-current={node.isFocus ? "true" : undefined}
+                aria-label={
+                  node.isCluster
+                    ? `Expand hidden ${node.label} neighbors`
+                    : node.isFocus
+                      ? `Current focus ${node.label}`
+                      : `Focus ${node.label}`
+                }
+                title={node.isCluster ? `Expand ${node.label}` : `Focus ${node.label}`}
+              >
+                <i aria-hidden="true" style={{ background: node.color }} />
+                <span>{node.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

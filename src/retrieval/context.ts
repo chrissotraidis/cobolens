@@ -1,5 +1,6 @@
 import type { GraphDocument, GraphEdge, GraphNode, SourceExcerpt } from "../lib/graph";
 import { edgeLabel, matchesFuzzy } from "../lib/graph";
+import type { SemanticMatch } from "./semantic";
 
 export type Citation = {
   file: string;
@@ -14,6 +15,7 @@ export type RetrievedContext = {
   edges: GraphEdge[];
   citations: Citation[];
   prompt: string;
+  semanticMatches?: SemanticMatch[];
 };
 
 export async function retrieveQuestionContext({
@@ -21,14 +23,21 @@ export async function retrieveQuestionContext({
   question,
   preferredNode,
   readExcerpt,
+  semanticSearch,
 }: {
   graph: GraphDocument;
   question: string;
   preferredNode?: GraphNode | null;
   readExcerpt: (node: GraphNode) => Promise<SourceExcerpt>;
+  semanticSearch?: (question: string) => Promise<SemanticMatch[]>;
 }): Promise<RetrievedContext> {
   const rankedNodes = rankNodes(graph, question);
-  const focusNodes = applyPreferredNode(rankedNodes, preferredNode, question).slice(0, 4);
+  const semanticMatches = semanticSearch ? await semanticSearch(question).catch(() => []) : [];
+  const focusNodes = applyPreferredNode(
+    uniqueNodes([...rankedNodes, ...semanticMatches.map((match) => match.node)]),
+    preferredNode,
+    question,
+  ).slice(0, 4);
   const focusIds = new Set(focusNodes.map((node) => node.id));
   const edges = graph.edges
     .filter((edge) => focusIds.has(edge.from) || focusIds.has(edge.to))
@@ -36,6 +45,7 @@ export async function retrieveQuestionContext({
   const neighborIds = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
   const contextNodes = uniqueNodes([
     ...focusNodes,
+    ...semanticMatches.map((match) => match.node),
     ...graph.nodes.filter((node) => neighborIds.has(node.id) || focusIds.has(node.id)),
   ])
     .filter((node) => node.file && !node.external)
@@ -88,9 +98,15 @@ export async function retrieveQuestionContext({
       edges.map((edge) => `- ${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`).join("\n") ||
         "- None",
       "",
+      "Semantic vector matches:",
+      semanticMatches.length
+        ? semanticMatches.map((match) => `- ${match.node.name} (${match.node.type}) score ${match.score.toFixed(3)}: ${match.text}`).join("\n")
+        : "- None",
+      "",
       "Source excerpts (line-numbered):",
       sourceExcerpts.join("\n\n") || "No source excerpt available.",
     ].join("\n"),
+    semanticMatches,
   };
 }
 

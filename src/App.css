@@ -764,6 +764,13 @@ h2,
   min-width: 0;
 }
 
+.graph-toolbar > .graph-toolbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: max-content;
+}
+
 .graph-toolbar span,
 .graph-toolbar small {
   overflow: hidden;
@@ -782,6 +789,16 @@ h2,
   height: 28px;
   min-width: 112px;
   padding: 0 12px;
+}
+
+.graph-toolbar-actions .toggle-button {
+  min-width: 72px;
+}
+
+.toggle-button[aria-pressed="true"] {
+  color: #d9fff1;
+  border-color: rgba(90, 167, 161, 0.58);
+  background: rgba(90, 167, 161, 0.12);
 }
 
 .graph-canvas {
@@ -1327,6 +1344,10 @@ pre {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.summary-action-buttons > button:first-child:nth-last-child(2) {
+  grid-column: 1 / -1;
 }
 
 .summary-wide-action {

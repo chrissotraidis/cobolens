@@ -32,6 +32,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
+import { embedTexts } from "./model/embeddings";
 import {
   RECOMMENDED_SMALL_OLLAMA_MODEL,
   inspectOllamaReadiness,
@@ -41,6 +42,7 @@ import {
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
+import { semanticSearchGraph } from "./retrieval/semantic";
 import "./App.css";
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -94,6 +96,7 @@ const APP_SETTINGS_STORAGE_KEY = "cobolens.settings.v1";
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const MODEL_CALL_TIMEOUT_MS = 45_000;
 const MODEL_READINESS_TIMEOUT_MS = 12_000;
+const SEMANTIC_SEARCH_TIMEOUT_MS = 8_000;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
   extensions: ".cbl,.cob,.cpy,.jcl",
@@ -155,6 +158,7 @@ function App() {
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
+  const [showGraphNodeList, setShowGraphNodeList] = useState(false);
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
@@ -512,6 +516,7 @@ function App() {
     setSelectedEdge(null);
     setExpandedNodeIds(new Set());
     setHiddenNodeTypes(new Set());
+    setShowGraphNodeList(false);
     setHistory(initialFocus ? [initialFocus] : []);
     setSummaries({});
     setBulkSummaryStatus("");
@@ -866,6 +871,19 @@ function App() {
         question,
         preferredNode: selectedNode,
         readExcerpt: sourceExcerptForNode,
+        semanticSearch: isGraphQuestion(question)
+          ? undefined
+          : (semanticQuestion) =>
+              semanticSearchGraph({
+                graph,
+                question: semanticQuestion,
+                embedTexts: (texts) =>
+                  embedTexts({
+                    settings: modelSettings,
+                    texts,
+                    timeoutMs: SEMANTIC_SEARCH_TIMEOUT_MS,
+                  }),
+              }),
       });
       if (isGraphQuestion(question)) {
         const fallback = graphAnswerFallback(graph, question, context);
@@ -1285,15 +1303,27 @@ function App() {
                 <span>Dependency Map</span>
                 <small>{focusedNode.name}</small>
               </div>
-              <button
-                type="button"
-                onClick={toggleExpandFocus}
-                disabled={expandDisabled}
-                title={expandButtonTitle}
-                aria-label={expandButtonTitle}
-              >
-                {expandButtonLabel}
-              </button>
+              <div className="graph-toolbar-actions">
+                <button
+                  type="button"
+                  onClick={toggleExpandFocus}
+                  disabled={expandDisabled}
+                  title={expandButtonTitle}
+                  aria-label={expandButtonTitle}
+                >
+                  {expandButtonLabel}
+                </button>
+                <button
+                  type="button"
+                  className="toggle-button"
+                  onClick={() => setShowGraphNodeList((visible) => !visible)}
+                  aria-pressed={showGraphNodeList}
+                  aria-label={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
+                  title={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
+                >
+                  Nodes
+                </button>
+              </div>
             </div>
           ) : null}
           <div className="graph-canvas">
@@ -1309,6 +1339,7 @@ function App() {
               canOpenFolder={desktopAvailable}
               onOpenFolder={chooseFolder}
               onOpenSample={openSample}
+              showNodeList={showGraphNodeList}
             />
           </div>
         </section>
@@ -1883,6 +1914,7 @@ function SummaryDock({
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
   const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
   const generating = state?.status === "running";
+  const hasStoredSummary = state?.status === "ready" && Boolean(state.summary);
 
   return (
     <section className="summary-card">
@@ -1894,21 +1926,23 @@ function SummaryDock({
           </span>
         </div>
         <div className="summary-action-buttons">
-          <button
-            type="button"
-            onClick={onExplainNode}
-            disabled={!node}
-            title={node ? "Show a cited graph explanation in Summary" : "Select a symbol to summarize it"}
-          >
-            Explain from graph
-          </button>
+          {hasStoredSummary ? (
+            <button
+              type="button"
+              onClick={onExplainNode}
+              disabled={!node}
+              title={node ? "Return Summary to the cited graph overview" : "Select a symbol to summarize it"}
+            >
+              Use graph overview
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onAskFollowUp}
             disabled={!node}
-            title={node ? "Open Ask with an AI-backed plain-English prompt" : "Select a symbol to ask about it"}
+            title={node ? "Open Ask with a plain-English prompt for this symbol" : "Select a symbol to ask about it"}
           >
-            Ask AI follow-up
+            Ask about this
           </button>
           <button
             className="summary-wide-action"
@@ -2050,10 +2084,10 @@ function ChatAnswerPanel({
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
   const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
-  const activeRouteLabel = workingWithModel ? `${PROVIDER_LABELS[settings.provider]} with citations` : "Instant graph answer";
+  const activeRouteLabel = workingWithModel ? "AI answer" : "Graph answer";
   const activeRouteDetail = workingWithModel
-    ? "Uses the retrieved source slice and must return citations; local Ollama can be slow on CPU."
-    : "No model needed for overview, dependency, call, read, write, and usage questions.";
+    ? `${PROVIDER_LABELS[settings.provider]} gets only the retrieved, cited source context.`
+    : "Instant, cited answer from the dependency graph.";
   const answerSubtitle =
     status === "running"
       ? workingWithModel
@@ -2070,8 +2104,8 @@ function ChatAnswerPanel({
             ? "Cited graph fallback"
             : "Answered from the graph"
         : workingWithModel
-          ? `AI will answer with cited graph context`
-          : "Ask graph questions instantly, or type a broader AI follow-up";
+          ? `Ready for a cited ${PROVIDER_LABELS[settings.provider]} answer`
+          : "Ask a graph question or type a broader explanation";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
@@ -2082,13 +2116,13 @@ function ChatAnswerPanel({
     ? workingWithModel
       ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
       : "Ready to answer instantly from the dependency graph."
-    : "Choose a graph shortcut for an instant cited answer. Type a broader explanation request to use the selected AI provider.";
+    : "Ask about data flow, dependencies, files, or behavior. Graph questions answer instantly; broader explanations use the selected AI provider.";
 
   return (
     <section className="answer-card">
       <div className="answer-header">
         <div>
-          <strong>Ask Cobolens</strong>
+          <strong>Ask</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>

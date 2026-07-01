@@ -36,6 +36,11 @@ const checks = [
     args: ["tools/m6-verify/graph-ask-smoke.mjs"],
   },
   {
+    name: "semantic retrieval smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/semantic-retrieval-smoke.mjs"],
+  },
+  {
     name: "UI contract smoke",
     command: process.execPath,
     args: ["tools/m6-verify/ui-contract-smoke.mjs"],

@@ -100,13 +100,16 @@ const checks = [
     ]) && includesAll(appCss, [".answer-turn", ".answer-turn > span", ".answer-turn > strong"]),
   ],
   [
-    "Summary can seed a cited Ask explanation for the selected node",
+    "Summary can show a cited graph explanation for the selected node",
     includesAll(appSource, [
       "function explainSelectedNode()",
       "function askAboutSelectedNode()",
       "function selectedNodeGraphAnswer",
       "I matched the selected",
-      "Open Ask with a cited graph explanation",
+      'provider: "graph"',
+      'model: "deterministic"',
+      "answered from graph facts without a model",
+      "Show a cited graph explanation in Summary",
       "Explain from graph",
       "Ask AI follow-up",
       "AI-backed plain-English prompt",
@@ -115,6 +118,7 @@ const checks = [
       "setChatQuestion(`Explain ${selectedNode.name} in plain English.`)",
       "setChatAnswer(null)",
       'setChatStatus("idle")',
+      'setInspectorTab("summary")',
     ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))", ".summary-wide-action"]),
   ],
   [
@@ -257,17 +261,21 @@ const checks = [
       ]),
   ],
   [
-    "Inspector opens on Overview and keeps Ask as the conversational follow-up",
+    "Inspector opens on Summary and keeps Ask as the conversational follow-up",
     includesAll(appSource, [
       'useState<InspectorTab>("summary")',
       'setInspectorTab("summary")',
-      'label: "Overview"',
+      'label: "Summary"',
       'label: "Ask"',
       'label: "Links"',
       "aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}",
     ]) &&
-      appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Ask" }']) &&
-      includesAll(appCss, [".inspector-tabs", "minmax(94px, 1.18fr)", "minmax(78px, 1fr)"]),
+      appearsInOrder(appSource, ['{ id: "summary", label: "Summary"', '{ id: "ask", label: "Ask" }']) &&
+      includesAll(appCss, [".inspector-tabs", "minmax(92px, 1fr)", "minmax(74px, 0.8fr)"]),
+  ],
+  [
+    "Scrollable panes use dark native scrollbars",
+    includesAll(appCss, ["scrollbar-color: #303843 #101419", "*::-webkit-scrollbar-thumb", "background: #303843"]),
   ],
   [
     "Relationship source buttons expose section-specific accessible labels",

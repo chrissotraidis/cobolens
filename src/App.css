@@ -23,6 +23,27 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: #303843 #101419;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #101419;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid #101419;
+  border-radius: 999px;
+  background: #303843;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3d4652;
 }
 
 body {
@@ -1021,7 +1042,7 @@ pre {
 
 .inspector-tabs {
   display: grid;
-  grid-template-columns: minmax(94px, 1.18fr) minmax(62px, 0.72fr) minmax(78px, 1fr) minmax(58px, 0.72fr);
+  grid-template-columns: minmax(92px, 1fr) minmax(54px, 0.58fr) minmax(72px, 0.84fr) minmax(74px, 0.8fr);
   gap: 6px;
   padding: 9px 12px;
   border-bottom: 1px solid #20262e;

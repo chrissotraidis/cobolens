@@ -959,19 +959,21 @@ function App() {
 
   function explainSelectedNode() {
     if (!selectedNode || !graph) return;
-    const question = `Explain ${selectedNode.name} from the graph.`;
-    const answer: ChatAnswer = {
-      question,
-      ...selectedNodeGraphAnswer(selectedNode, graph),
-      source: "graph",
+    const graphExplanation = selectedNodeGraphAnswer(selectedNode, graph);
+    const summary: UnitSummary = {
+      nodeId: selectedNode.id,
+      text: graphExplanation.text,
+      provider: "graph",
+      model: "deterministic",
+      guarded: true,
+      guardReason: "answered from graph facts without a model",
     };
-    setChatQuestion(question);
-    setChatAnswer(answer);
-    rememberChatAnswer(answer);
-    setChatStatus("ready");
-    setChatError("");
+    setSummaries((current) => ({
+      ...current,
+      [selectedNode.id]: { status: "ready", summary },
+    }));
     focusOnNode(selectedNode.id, { preserveChat: true });
-    setInspectorTab("ask");
+    setInspectorTab("summary");
   }
 
   function askAboutSelectedNode() {
@@ -1815,7 +1817,7 @@ function InspectorTabs({
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
+    { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "ask", label: "Ask" },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
     { id: "relationship", label: "Links", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
@@ -1876,9 +1878,9 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>Overview</strong>
+          <strong>Summary</strong>
           <span>
-            {node ? `${node.name} - graph facts, source evidence, and optional AI summary` : "No symbol selected"}
+            {node ? `${node.name} - graph explanation, source evidence, and optional AI summary` : "No symbol selected"}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1886,7 +1888,7 @@ function SummaryDock({
             type="button"
             onClick={onExplainNode}
             disabled={!node}
-            title={node ? "Open Ask with a cited graph explanation" : "Select a symbol to ask about it"}
+            title={node ? "Show a cited graph explanation in Summary" : "Select a symbol to summarize it"}
           >
             Explain from graph
           </button>

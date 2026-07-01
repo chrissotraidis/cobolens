@@ -45,6 +45,7 @@ type SummaryState = {
   summary?: UnitSummary;
   error?: string;
 };
+type SummaryGenerationResult = "ready" | "fallback" | "stopped";
 type ChatStatus = "idle" | "running" | "ready" | "error";
 type ChatAnswer = {
   question: string;
@@ -748,18 +749,20 @@ function App() {
     if (!graph || !summaryNodes.length) return;
     setInspectorTab("summary");
     setBulkSummaryStatus(`0/${summaryNodes.length}`);
+    let fallbackCount = 0;
     for (let index = 0; index < summaryNodes.length; index += 1) {
       const generated = await generateSummaryForNode(summaryNodes[index]);
-      if (!generated) {
+      if (generated === "stopped") {
         setBulkSummaryStatus(`Stopped at ${index}/${summaryNodes.length}`);
         return;
       }
-      setBulkSummaryStatus(`${index + 1}/${summaryNodes.length}`);
+      if (generated === "fallback") fallbackCount += 1;
+      setBulkSummaryStatus(bulkSummaryProgressLabel(index + 1, summaryNodes.length, fallbackCount));
     }
   }
 
-  async function generateSummaryForNode(node: GraphNode) {
-    if (!graph || !node.file) return false;
+  async function generateSummaryForNode(node: GraphNode): Promise<SummaryGenerationResult> {
+    if (!graph || !node.file) return "stopped";
     setSummaries((current) => ({
       ...current,
       [node.id]: { status: "running" },
@@ -791,7 +794,7 @@ function App() {
         ...current,
         [node.id]: { status: "ready", summary: displayedSummary },
       }));
-      return true;
+      return displayedSummary.guarded ? "fallback" : "ready";
     } catch (err) {
       const fallbackReason = friendlyModelError(err, modelSettings);
       if (isStoppedModelCall(fallbackReason)) {
@@ -799,7 +802,7 @@ function App() {
           ...current,
           [node.id]: { status: "error", error: fallbackReason },
         }));
-        return false;
+        return "stopped";
       }
       const fallbackSummary = graphBackedSummaryFallback(
         graph,
@@ -816,7 +819,7 @@ function App() {
         ...current,
         [node.id]: { status: "ready", summary: fallbackSummary },
       }));
-      return true;
+      return "fallback";
     }
   }
 
@@ -1827,8 +1830,7 @@ function SummaryDock({
         <div>
           <strong>Overview</strong>
           <span>
-            {node ? `${node.name} - graph facts and source evidence` : "No symbol selected"}
-            {node?.file ? `; AI summary uses ${PROVIDER_LABELS[settings.provider]} / ${settings.model} only when run` : ""}
+            {node ? `${node.name} - graph facts, source evidence, and optional AI summary` : "No symbol selected"}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1838,7 +1840,7 @@ function SummaryDock({
             disabled={!node}
             title={node ? "Open Ask with a cited graph explanation" : "Select a symbol to ask about it"}
           >
-            Explain from graph
+            Graph answer
           </button>
           <button
             type="button"
@@ -1846,7 +1848,7 @@ function SummaryDock({
             disabled={!node}
             title={node ? "Open Ask with an AI-backed plain-English prompt" : "Select a symbol to ask about it"}
           >
-            Ask AI follow-up
+            Ask follow-up
           </button>
           <button
             className="summary-wide-action"
@@ -1861,7 +1863,7 @@ function SummaryDock({
                   : "Generate an AI summary for this symbol"
             }
           >
-            {generating ? "Stop" : state?.summary ? "Regenerate Summary" : "Generate AI Summary"}
+            {generating ? "Stop" : state?.summary ? "Refresh AI summary" : "AI summary"}
           </button>
         </div>
       </div>
@@ -2020,25 +2022,16 @@ function ChatAnswerPanel({
     <section className="answer-card">
       <div className="answer-header">
         <div>
-          <strong>Ask</strong>
+          <strong>Ask Cobolens</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>
-      <div className="answer-modes" aria-label="Ask modes">
-        <span className={!workingWithModel ? "is-active" : undefined}>Graph shortcuts</span>
-        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} with citations</span>
-      </div>
-      {showReadiness ? (
-        <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>
-          {modelReadiness.message}
-        </div>
-      ) : null}
       <div className="chat-composer" aria-label="Ask a question">
         <input
           type="text"
           autoFocus
           aria-label="Ask about the codebase"
-          placeholder="Ask about symbols, files, data flow, or business logic..."
+          placeholder="Ask about data flow, dependencies, files, or business logic..."
           value={question}
           onChange={(event) => onQuestionChange(event.currentTarget.value)}
           onKeyDown={(event) => {
@@ -2054,6 +2047,15 @@ function ChatAnswerPanel({
           {askButtonLabel}
         </button>
       </div>
+      <div className="answer-modes" aria-label="Ask routing">
+        <span className={!workingWithModel ? "is-active" : undefined}>Graph answer</span>
+        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} with citations</span>
+      </div>
+      {showReadiness ? (
+        <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>
+          {modelReadiness.message}
+        </div>
+      ) : null}
       <div className="answer-response" aria-live="polite">
         {status === "running" ? (
           <ProgressNote
@@ -2080,18 +2082,21 @@ function ChatAnswerPanel({
         )}
       </div>
       {starterQuestions.length ? (
-        <div className="question-chips" aria-label="Suggested questions">
-          {starterQuestions.map((question) => (
-            <button
-              key={question}
-              type="button"
-              onClick={() => onAskPreset(question)}
-              disabled={status === "running"}
-            >
-              <span>{question}</span>
-              <small>{isGraphQuestion(question) ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
-            </button>
-          ))}
+        <div className="question-shortcuts">
+          <span>Try a cited question</span>
+          <div className="question-chips" aria-label="Suggested questions">
+            {starterQuestions.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => onAskPreset(question)}
+                disabled={status === "running"}
+              >
+                <span>{question}</span>
+                <small>{isGraphQuestion(question) ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       {previousAnswers.length ? (
@@ -2909,6 +2914,11 @@ function friendlyModelError(err: unknown, settings: ModelSettings) {
 
 function isStoppedModelCall(message: string) {
   return /\bwas stopped\.$/i.test(message);
+}
+
+function bulkSummaryProgressLabel(done: number, total: number, fallbackCount: number) {
+  const progress = `${done}/${total}`;
+  return fallbackCount ? `${progress} (${fallbackCount} graph fallback${fallbackCount === 1 ? "" : "s"})` : progress;
 }
 
 function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {

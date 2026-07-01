@@ -431,8 +431,8 @@ h2,
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
 }
 
 .filter-row {
@@ -453,9 +453,8 @@ h2,
 }
 
 .filter-row span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .model-settings {
@@ -1128,6 +1127,7 @@ pre {
 .summary-meta {
   color: #7d8996;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .summary-actions button,
@@ -1249,7 +1249,7 @@ pre {
 
 .answer-card {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 12px;
   border: 1px solid #20262e;
   border-radius: 8px;
@@ -1262,7 +1262,7 @@ pre {
 .answer-response {
   display: grid;
   gap: 10px;
-  min-height: 76px;
+  min-height: 84px;
   padding: 10px;
   border: 1px solid rgba(125, 137, 150, 0.18);
   border-radius: 7px;
@@ -1289,12 +1289,14 @@ pre {
 }
 
 .answer-modes {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .answer-modes span {
+  display: grid;
+  place-items: center;
   min-height: 24px;
   padding: 3px 8px;
   border: 1px solid rgba(125, 137, 150, 0.2);
@@ -1302,6 +1304,7 @@ pre {
   color: #7d8996;
   background: rgba(125, 137, 150, 0.06);
   font-size: 11px;
+  text-align: center;
 }
 
 .answer-modes span.is-active {
@@ -1359,10 +1362,22 @@ pre {
   line-height: 1.45;
 }
 
+.question-shortcuts {
+  display: grid;
+  gap: 7px;
+}
+
+.question-shortcuts > span {
+  color: #7d8996;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .question-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 7px;
 }
 
 .question-chips button {
@@ -1370,9 +1385,9 @@ pre {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
-  min-height: 28px;
+  min-height: 34px;
   max-width: 100%;
-  padding: 0 8px;
+  padding: 6px 8px;
   color: #d8eee8;
   border-color: rgba(90, 167, 161, 0.28);
   background: rgba(90, 167, 161, 0.08);
@@ -1381,9 +1396,8 @@ pre {
 }
 
 .question-chips button > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .question-chips button small {
@@ -1403,20 +1417,20 @@ pre {
 
 .chat-composer {
   position: sticky;
-  top: -6px;
+  top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 86px;
+  grid-template-columns: minmax(0, 1fr) 92px;
   gap: 8px;
   align-items: center;
-  margin: -2px -2px 0;
-  padding: 2px;
+  margin: -4px -2px 0;
+  padding: 4px 2px 2px;
   background: #101419;
 }
 
 .chat-composer input,
 .chat-composer button {
-  height: 34px;
+  height: 36px;
 }
 
 .chat-composer input {

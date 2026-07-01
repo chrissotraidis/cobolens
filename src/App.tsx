@@ -143,7 +143,7 @@ function App() {
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
@@ -944,36 +944,37 @@ function App() {
         <aside className="left-pane" aria-label="Navigator">
           <section className="pane-block">
             <h2>Ingest</h2>
-            <button
-              className={desktopAvailable ? "primary-action" : undefined}
-              type="button"
-              onClick={chooseFolder}
-              disabled={!desktopAvailable}
-              title={desktopAvailable ? "Open a local COBOL codebase" : "Open Folder is available in the desktop app"}
-            >
-              Open Folder
-            </button>
-            <button className={desktopAvailable ? undefined : "primary-action"} type="button" onClick={openSample}>
-              Open Sample
-            </button>
-            <button
-              type="button"
-              onClick={rescanCurrent}
-              disabled={!desktopAvailable || !graph || status === "running"}
-              title={desktopAvailable ? "Re-scan the current folder" : "Re-scan is available after opening a folder in the desktop app"}
-            >
-              Re-scan
-            </button>
-            {!desktopAvailable ? <div className="settings-footnote">Browser preview uses the bundled sample graph.</div> : null}
+            {desktopAvailable ? (
+              <>
+                <button className="primary-action" type="button" onClick={chooseFolder} title="Open a local COBOL codebase">
+                  Open Folder
+                </button>
+                <button type="button" onClick={openSample}>
+                  Open Sample
+                </button>
+                <button type="button" onClick={rescanCurrent} disabled={!graph || status === "running"} title="Re-scan the current folder">
+                  Re-scan
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="primary-action" type="button" onClick={openSample}>
+                  Open Sample
+                </button>
+                <div className="desktop-preview-note">Open Folder, Re-scan, and scan settings run in the desktop app.</div>
+              </>
+            )}
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
             {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
-            <ScanSettingsPanel
-              settings={scanSettings}
-              disabled={!desktopAvailable || status === "running"}
-              onSettingsChange={setScanSettings}
-            />
+            {desktopAvailable ? (
+              <ScanSettingsPanel
+                settings={scanSettings}
+                disabled={status === "running"}
+                onSettingsChange={setScanSettings}
+              />
+            ) : null}
           </section>
 
           <section className="pane-block">
@@ -1515,8 +1516,8 @@ function InspectorTabs({
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "ask", label: "Ask" },
+    { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
     { id: "relationship", label: "Links", badge: hasRelationship ? "1" : undefined },
   ];
@@ -1573,9 +1574,10 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>Summary</strong>
+          <strong>Overview</strong>
           <span>
-            {node ? node.name : "No symbol"} - {PROVIDER_LABELS[settings.provider]} / {settings.model}
+            {node ? `${node.name} - graph facts` : "No symbol selected"}
+            {node?.file ? `; summaries use ${PROVIDER_LABELS[settings.provider]} / ${settings.model}` : ""}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1583,9 +1585,9 @@ function SummaryDock({
             type="button"
             onClick={onExplainNode}
             disabled={!node}
-            title={node ? "Ask Cobolens for a cited graph explanation of this symbol" : "Select a symbol to ask about it"}
+            title={node ? "Open a cited graph explanation in Ask" : "Select a symbol to ask about it"}
           >
-            Ask
+            Explain in Ask
           </button>
           <button
             type="button"
@@ -1623,7 +1625,7 @@ function SummaryDock({
             <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
           </>
         ) : (
-          <p>Select a graph node to inspect its source, relationships, and graph-derived summary.</p>
+          <p>Select a graph node to inspect its source, relationships, and graph overview.</p>
         )}
       </div>
       <div className="summary-meta">

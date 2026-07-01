@@ -129,9 +129,13 @@ export function GraphView({
             <button type="button" className="primary-action" onClick={onOpenSample}>
               Open Sample
             </button>
-            <button type="button" onClick={onOpenFolder} disabled={!canOpenFolder}>
-              Open Folder
-            </button>
+            {canOpenFolder ? (
+              <button type="button" onClick={onOpenFolder}>
+                Open Folder
+              </button>
+            ) : (
+              <span>Open Folder runs in the desktop app.</span>
+            )}
           </div>
         </div>
       </div>

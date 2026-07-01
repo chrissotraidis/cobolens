@@ -46,9 +46,10 @@ const checks = [
     "Summary can seed a cited Ask explanation for the selected node",
     includesAll(appSource, [
       "function explainSelectedNode()",
-      "Ask Cobolens for a cited graph explanation of this symbol",
+      "Open a cited graph explanation in Ask",
+      "Explain in Ask",
       "onExplainNode={explainSelectedNode}",
-    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: 58px minmax(122px, auto)"]),
+    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
   ],
   [
     "AI panel shows honest usage and bulk token estimate before model calls",
@@ -61,9 +62,10 @@ const checks = [
     ]) && includesAll(appCss, [".ai-usage", ".ai-usage p"]),
   ],
   [
-    "Inspector tabs reserve enough width for Summary and Impact",
-    includesAll(appSource, ['label: "Links"']) &&
-      includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),
+    "Inspector opens on Ask and labels graph facts as Overview",
+    includesAll(appSource, ['useState<InspectorTab>("ask")', 'label: "Ask"', 'label: "Overview"', 'label: "Links"']) &&
+      appearsInOrder(appSource, ['{ id: "ask", label: "Ask" }', '{ id: "summary", label: "Overview"']) &&
+      includesAll(appCss, [".inspector-tabs", "minmax(94px, 1.18fr)", "minmax(78px, 1fr)"]),
   ],
   [
     "Relationship source buttons expose section-specific accessible labels",
@@ -75,13 +77,24 @@ const checks = [
     ]),
   ],
   [
-    "Empty graph canvas offers first-run sample and folder actions",
+    "Empty graph canvas offers first-run sample and treats folder open as desktop-only in browser preview",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',
       "Start with the bundled sample or open a COBOL folder.",
       "onOpenSample",
       "canOpenFolder",
-    ]) && includesAll(appCss, [".graph-empty-actions", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
+      "Open Folder runs in the desktop app.",
+    ]) && includesAll(appCss, [".graph-empty-actions", ".graph-empty-actions span"]),
+  ],
+  [
+    "Browser preview does not render desktop-only ingest actions as disabled primary buttons",
+    includesAll(appSource, [
+      "desktopAvailable ?",
+      "Open Folder, Re-scan, and scan settings run in the desktop app.",
+      'className="desktop-preview-note"',
+      "{desktopAvailable ? (",
+      "<ScanSettingsPanel",
+    ]) && includesAll(appCss, [".desktop-preview-note", "background: rgba(125, 137, 150, 0.07)"]),
   ],
   [
     "Graph LOD clusters can drill down by expanding their owner",

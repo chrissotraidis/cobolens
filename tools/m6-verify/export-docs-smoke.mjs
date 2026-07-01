@@ -42,6 +42,20 @@ try {
   const { buildDocumentationExport } = require(resolve(tempRoot, "export", "docs.js"));
   const graph = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-graph.json"), "utf8"));
   const docs = buildDocumentationExport(graph, {}, "prog:LINEAGE");
+  const aiSummaryDocs = buildDocumentationExport(
+    graph,
+    {
+      "prog:LINEAGE": {
+        summary: {
+          nodeId: "prog:LINEAGE",
+          provider: "ollama",
+          model: "llama3.2",
+          text: "LINEAGE is an AI-generated summary body that still needs exported evidence.",
+        },
+      },
+    },
+    "prog:LINEAGE",
+  );
   const orphanGraph = {
     ...graph,
     nodes: [
@@ -76,6 +90,10 @@ try {
   const assertions = [
     ["graph-derived summaries", docs.markdown.includes("Summary: graph-derived, no model required")],
     ["source ranges are exported", docs.markdown.includes("- Source: src/LINEAGE.cbl:1-47")],
+    ["summary evidence section is exported", docs.markdown.includes("#### Evidence")],
+    ["summary evidence cites source range", docs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47")],
+    ["summary evidence cites relationships", docs.markdown.includes("- LINEAGE COPIES CUSTOMER at src/LINEAGE.cbl:11")],
+    ["AI summary still exports evidence", aiSummaryDocs.markdown.includes("AI-generated summary body") && aiSummaryDocs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47")],
     ["lineage and impact section", docs.markdown.includes("## Lineage and Impact")],
     ["cited CUSTOMER-ID flow", docs.markdown.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
     ["no empty generated-summary placeholder", !docs.markdown.includes("No generated summary yet.")],

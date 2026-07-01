@@ -30,6 +30,7 @@ export function buildDocumentationExport(
       const summary = summaries[node.id]?.summary?.text ?? graphDerivedSummary(graph, node);
       const file = sourceLocation(node);
       const relationships = relationshipFacts(graph, node);
+      const evidence = summaryEvidenceRows(graph, node);
       return [
         `### Summary: ${node.name}`,
         "",
@@ -38,6 +39,10 @@ export function buildDocumentationExport(
         summaries[node.id]?.summary ? "- Summary: AI-generated from graph and source context" : "- Summary: graph-derived, no model required",
         "",
         summary,
+        "",
+        "#### Evidence",
+        "",
+        evidence.length ? evidence.map((fact) => `- ${fact}`).join("\n") : "- No cited source evidence recorded.",
         "",
         "#### Relationships",
         "",
@@ -257,6 +262,26 @@ function relationshipFacts(graph: GraphDocument, node: GraphNode) {
     .filter((edge) => edge.from === node.id || edge.to === node.id)
     .slice(0, 16)
     .map((edge) => citedRelationship(graph, edge));
+}
+
+function summaryEvidenceRows(graph: GraphDocument, node: GraphNode) {
+  const evidence = [];
+  if (node.file) {
+    evidence.push(`${node.name} source at ${sourceLocation(node)}`);
+  }
+
+  const seen = new Set(evidence);
+  for (const edge of graph.edges) {
+    if (edge.from !== node.id && edge.to !== node.id) continue;
+    if (!edge.site) continue;
+    const fact = citedRelationship(graph, edge);
+    if (seen.has(fact)) continue;
+    seen.add(fact);
+    evidence.push(fact);
+    if (evidence.length >= 6) break;
+  }
+
+  return evidence;
 }
 
 function sourceLocation(node: GraphNode) {

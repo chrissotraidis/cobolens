@@ -56,6 +56,11 @@ const checks = [
     args: ["tools/m6-verify/model-prompt-smoke.mjs"],
   },
   {
+    name: "summary prompt smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/summary-prompt-smoke.mjs"],
+  },
+  {
     name: "Rust sidecar tests",
     command: "cargo",
     args: ["test"],

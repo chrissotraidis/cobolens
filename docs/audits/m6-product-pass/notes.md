@@ -29,7 +29,7 @@ Live browser pass against the M6 fixture at `http://127.0.0.1:1430/?graph=/m6-ba
 3. Feed/lineage-style questions route to graph mode and include a bounded connection path between matched symbols.
 4. UI and graph Ask smoke contracts cover the stale subtitle fix and the feed-into path.
 5. Ask evidence citations now keep the Ask answer visible while focusing the graph/code on the cited source.
-6. Overview now has an Ask follow-up handoff that opens Ask with the selected symbol in the prompt.
+6. Overview now has an Ask follow-up handoff that opens Ask with a plain-English question about the selected symbol and clears any stale displayed answer.
 
 ## Remaining UX Risk
 

@@ -866,9 +866,10 @@ function App() {
 
   function askAboutSelectedNode() {
     if (!selectedNode) return;
-    setChatQuestion(`Ask about ${selectedNode.name}`);
+    setChatQuestion(`Explain ${selectedNode.name} in plain English.`);
+    setChatAnswer(null);
     setChatError("");
-    if (chatStatus === "error") setChatStatus("idle");
+    setChatStatus("idle");
     setInspectorTab("ask");
   }
 

@@ -96,7 +96,9 @@ const checks = [
       "Ask follow-up",
       "onExplainNode={explainSelectedNode}",
       "onAskFollowUp={askAboutSelectedNode}",
-      "setChatQuestion(`Ask about ${selectedNode.name}`)",
+      "setChatQuestion(`Explain ${selectedNode.name} in plain English.`)",
+      "setChatAnswer(null)",
+      'setChatStatus("idle")',
     ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))", ".summary-wide-action"]),
   ],
   [

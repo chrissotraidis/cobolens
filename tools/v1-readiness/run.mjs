@@ -12,6 +12,7 @@ const defaultLocalModel = process.env.COBOLENS_READINESS_MODEL ?? "llama3.2:1b";
 
 const results = [];
 
+await required("V1 readiness report contract", process.execPath, ["tools/v1-readiness/report-contract-smoke.mjs"]);
 await required("M6 verification suite", process.execPath, ["tools/m6-verify/run.mjs"]);
 
 if (existsSync(benchmarkRoot)) {

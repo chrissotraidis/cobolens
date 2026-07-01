@@ -6,9 +6,9 @@ Run:
 npm run v1:readiness
 ```
 
-This is an umbrella check for the local v1 evidence trail. It always runs the
-current required `m6:verify` suite, then attempts optional gates only when their
-local prerequisites exist:
+This is an umbrella check for the local v1 evidence trail. It first runs a
+fast report-contract smoke, always runs the current required `m6:verify` suite,
+then attempts optional gates only when their local prerequisites exist:
 
 - cached COBOL Legacy Benchmark Suite under `.cache/benchmarks/`;
 - local Ollama for the configured small-model readiness, grounded Summary

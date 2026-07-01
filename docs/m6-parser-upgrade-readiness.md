@@ -118,6 +118,9 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
   the packaged `mini-bank` sample.
 - The packaged analyzer smoke currently parses 4 packaged sample files,
   producing 25 nodes, 27 edges, and 0 parse errors.
+- `npm run desktop:packaged-smoke` launches the AppImage under WSLg, configures
+  the system GStreamer plugin path/scanner when present, and verifies that the
+  packaged GUI stays alive with WebKit/GStreamer runtime complete.
 - The Windows host is still not a validated build target: it is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
@@ -125,6 +128,5 @@ The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C
 Remaining decision work:
 
 1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
-2. Complete a visible packaged-app GUI smoke on a Linux desktop/WSLg host with the WebKit/GStreamer runtime pieces available. Use `npm run desktop:packaged-smoke`; the current gate remains incomplete because this environment cannot verify `gst-inspect-1.0 appsink` / reports `GStreamer element appsink not found`.
-3. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
-4. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.
+2. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
+3. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.

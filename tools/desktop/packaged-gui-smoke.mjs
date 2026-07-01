@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -9,6 +10,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const launchTimeoutMs = Number(process.env.COBOLENS_PACKAGED_LAUNCH_TIMEOUT_MS ?? 25000);
 const holdMs = Number(process.env.COBOLENS_PACKAGED_HOLD_MS ?? 8000);
 const explicitApp = process.env.COBOLENS_PACKAGED_APP;
+const gstPluginPath = "/usr/lib/x86_64-linux-gnu/gstreamer-1.0";
+const gstPluginScanner = "/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner";
 const app = explicitApp ? resolve(repoRoot, explicitApp) : await newestAppImage();
 const report = {
   ready: false,
@@ -43,7 +46,7 @@ if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
 report.checks["desktop display is available"] = true;
 
 const appsink = checkGstreamerAppsink();
-report.checks["GStreamer appsink is inspectable"] = appsink.ok;
+report.checks["GStreamer appsink is available"] = appsink.ok;
 if (!appsink.ok) {
   report.error = appsink.error;
   report.stderrTail = appsink.stderrTail;
@@ -57,6 +60,9 @@ const child = spawn(app, [], {
   cwd: repoRoot,
   env: {
     ...process.env,
+    GST_PLUGIN_PATH_1_0: process.env.GST_PLUGIN_PATH_1_0 ?? (existsSync(gstPluginPath) ? gstPluginPath : undefined),
+    GST_PLUGIN_SCANNER: process.env.GST_PLUGIN_SCANNER ?? (existsSync(gstPluginScanner) ? gstPluginScanner : undefined),
+    GST_PLUGIN_SYSTEM_PATH_1_0: process.env.GST_PLUGIN_SYSTEM_PATH_1_0 ?? (existsSync(gstPluginPath) ? gstPluginPath : undefined),
     NO_AT_BRIDGE: process.env.NO_AT_BRIDGE ?? "1",
     WEBKIT_DISABLE_DMABUF_RENDERER: process.env.WEBKIT_DISABLE_DMABUF_RENDERER ?? "1",
   },
@@ -172,6 +178,17 @@ async function newestAppImage() {
 function checkGstreamerAppsink() {
   const result = spawnSync("gst-inspect-1.0", ["appsink"], { encoding: "utf8" });
   if (result.error) {
+    const pluginPath = `${gstPluginPath}/libgstapp.so`;
+    if (result.error.code === "ENOENT" && existsSync(pluginPath)) {
+      report.hints.push(
+        `gst-inspect-1.0 is not installed, but ${pluginPath} exists; launching the app to verify the runtime directly.`,
+      );
+      return {
+        ok: true,
+        error: undefined,
+        stderrTail: [],
+      };
+    }
     return {
       ok: false,
       error: result.error.code === "ENOENT"

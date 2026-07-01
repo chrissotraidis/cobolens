@@ -5,7 +5,8 @@ codebases. It is an understanding tool, not a migration or code-generation
 tool: point it at COBOL, copybooks, and JCL, then inspect the dependency map,
 source citations, lineage, and impact relationships locally.
 
-The product source of truth is [docs/COBOL-Lens-PRD.md](docs/COBOL-Lens-PRD.md).
+The product source of truth is [docs/COBOL-Lens-PRD.md](docs/COBOL-Lens-PRD.md),
+with [PRD.md](PRD.md) as the stable root entry point for agents and contributors.
 Build milestones follow PRD section 19.
 
 ## Current Status
@@ -176,9 +177,11 @@ This launches the newest AppImage under
 `src-tauri/target/release/bundle/appimage/` and verifies that the packaged GUI
 process stays alive. It is intentionally separate from `npm run m6:verify`
 because it needs desktop WebKit/GStreamer runtime support.
-If it reports that `gst-inspect-1.0` or `appsink` is missing, install the
-GStreamer runtime inspection/plugins packages, for example
-`gstreamer1.0-tools` and `gstreamer1.0-plugins-base`.
+If `gst-inspect-1.0` is missing but the `appsink` runtime plugin is present,
+the smoke launches the app and lets WebKit/GStreamer prove the runtime directly.
+If it reports that `appsink` itself is missing, install the GStreamer runtime
+plugins, for example `gstreamer1.0-plugins-base`; `gstreamer1.0-tools` adds the
+optional diagnostic command.
 
 `npm run m6:verify` also runs Tauri command-level tests that exercise the
 desktop analysis path against the bundled sample, source snippet reads, and

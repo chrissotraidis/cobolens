@@ -1345,7 +1345,7 @@ function App() {
                   aria-label={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
                   title={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
                 >
-                  Nodes
+                  {showGraphNodeList ? "Hide nodes" : "Show nodes"}
                 </button>
               </div>
             </div>
@@ -1413,6 +1413,7 @@ function App() {
                   settings={modelSettings}
                   modelReadiness={modelReadiness}
                   question={chatQuestion}
+                  focusLinkCount={selectedNode ? dependencyCounts(selectedNode, graph).total : 0}
                   canAsk={Boolean(graph)}
                   onQuestionChange={setChatQuestion}
                   onAsk={() => askQuestion()}
@@ -1944,9 +1945,9 @@ function SummaryDock({
     <section className="summary-card">
       <div className="summary-actions">
         <div>
-          <strong>Summary</strong>
+          <strong>Overview</strong>
           <span>
-            {node ? `${node.name} - graph explanation, source evidence, and optional AI summary` : "No symbol selected"}
+            {node ? `${node.name} - graph facts, source evidence, and follow-up questions` : "No symbol selected"}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1964,9 +1965,9 @@ function SummaryDock({
             type="button"
             onClick={onAskFollowUp}
             disabled={!node}
-            title={node ? "Open Ask with a plain-English prompt for this symbol" : "Select a symbol to ask about it"}
+            title={node ? "Open Ask with a plain-English follow-up for this symbol" : "Select a symbol to ask about it"}
           >
-            Ask about this
+            Ask follow-up
           </button>
           <button
             className="summary-wide-action"
@@ -2077,6 +2078,7 @@ function ChatAnswerPanel({
   settings,
   modelReadiness,
   question,
+  focusLinkCount,
   canAsk,
   onQuestionChange,
   onAsk,
@@ -2094,6 +2096,7 @@ function ChatAnswerPanel({
   settings: ModelSettings;
   modelReadiness: ModelReadiness;
   question: string;
+  focusLinkCount: number;
   canAsk: boolean;
   onQuestionChange: (question: string) => void;
   onAsk: () => void;
@@ -2149,6 +2152,11 @@ function ChatAnswerPanel({
           <strong>Ask</strong>
           <span>{answerSubtitle}</span>
         </div>
+      </div>
+      <div className="ask-focus-strip" aria-label="Current Ask focus">
+        <span>Talking about</span>
+        <strong>{node?.name ?? "Codebase"}</strong>
+        <small>{node ? `${node.type} - ${focusLinkCount} graph link${focusLinkCount === 1 ? "" : "s"}` : "All indexed symbols"}</small>
       </div>
       <div className="chat-composer" aria-label="Ask a question">
         <input

@@ -10,6 +10,7 @@ This runner verifies the completed M6 surface:
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
 - UI contract smoke for the Ask/Inspector shell,
 - model privacy smoke for local/cloud mode invariants,
+- embedding privacy smoke for localhost-only local embeddings,
 - model answer guard smoke for exact inline citation enforcement,
 - summary guard smoke for exact inline citation enforcement,
 - Rust sidecar `cargo test`,

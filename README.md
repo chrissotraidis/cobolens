@@ -176,6 +176,9 @@ This launches the newest AppImage under
 `src-tauri/target/release/bundle/appimage/` and verifies that the packaged GUI
 process stays alive. It is intentionally separate from `npm run m6:verify`
 because it needs desktop WebKit/GStreamer runtime support.
+If it reports that `gst-inspect-1.0` or `appsink` is missing, install the
+GStreamer runtime inspection/plugins packages, for example
+`gstreamer1.0-tools` and `gstreamer1.0-plugins-base`.
 
 `npm run m6:verify` also runs Tauri command-level tests that exercise the
 desktop analysis path against the bundled sample, source snippet reads, and

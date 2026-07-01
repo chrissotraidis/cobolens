@@ -822,7 +822,7 @@ pre {
 
 .inspector-tabs {
   display: grid;
-  grid-template-columns: minmax(62px, 0.72fr) minmax(94px, 1.18fr) minmax(78px, 1fr) minmax(58px, 0.72fr);
+  grid-template-columns: minmax(94px, 1.18fr) minmax(62px, 0.72fr) minmax(78px, 1fr) minmax(58px, 0.72fr);
   gap: 6px;
   padding: 9px 12px;
   border-bottom: 1px solid #20262e;

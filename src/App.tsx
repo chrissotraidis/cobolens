@@ -143,7 +143,7 @@ function App() {
   const [chatError, setChatError] = useState("");
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
@@ -497,6 +497,7 @@ function App() {
     setChatQuestion("");
     setChatStatus("idle");
     setChatError("");
+    setInspectorTab("summary");
     setSourceFocus(null);
     setExportStatus("");
     setScanProgress(null);
@@ -516,6 +517,7 @@ function App() {
       setChatAnswer(null);
       setChatStatus("idle");
       setChatError("");
+      setInspectorTab("summary");
     }
   }
 
@@ -594,6 +596,7 @@ function App() {
     setChatAnswer(null);
     setChatStatus("idle");
     setChatError("");
+    setInspectorTab("summary");
     setHistory([homeNodeId]);
   }
 
@@ -826,8 +829,28 @@ function App() {
   }
 
   function explainSelectedNode() {
-    if (!selectedNode) return;
-    askQuestion(`Explain ${selectedNode.name} from the graph.`);
+    if (!selectedNode || !graph) return;
+    const question = `Explain ${selectedNode.name} from the graph.`;
+    const answer: ChatAnswer = {
+      question,
+      ...selectedNodeGraphAnswer(selectedNode, graph),
+      source: "graph",
+    };
+    setChatQuestion(question);
+    setChatAnswer(answer);
+    rememberChatAnswer(answer);
+    setChatStatus("ready");
+    setChatError("");
+    focusOnNode(selectedNode.id, { preserveChat: true });
+    setInspectorTab("ask");
+  }
+
+  function askPresetQuestion(question: string) {
+    if (selectedNode && question === `Explain ${selectedNode.name} from the graph.`) {
+      explainSelectedNode();
+      return;
+    }
+    askQuestion(question);
   }
 
   function cancelAsk() {
@@ -1144,7 +1167,7 @@ function App() {
                   onQuestionChange={setChatQuestion}
                   onAsk={() => askQuestion()}
                   onCancel={cancelAsk}
-                  onAskPreset={askQuestion}
+                  onAskPreset={askPresetQuestion}
                   onRestoreAnswer={restoreChatAnswer}
                   onClearHistory={clearChatHistory}
                   onOpenCitation={jumpToCitation}
@@ -1561,8 +1584,8 @@ function InspectorTabs({
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "ask", label: "Ask AI" },
     { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
+    { id: "ask", label: "Ask" },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
     { id: "relationship", label: "Links", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
   ];
@@ -1621,8 +1644,8 @@ function SummaryDock({
         <div>
           <strong>Overview</strong>
           <span>
-            {node ? `${node.name} - graph facts` : "No symbol selected"}
-            {node?.file ? `; summaries use ${PROVIDER_LABELS[settings.provider]} / ${settings.model}` : ""}
+            {node ? `${node.name} - graph facts first` : "No symbol selected"}
+            {node?.file ? `; AI summary optional via ${PROVIDER_LABELS[settings.provider]} / ${settings.model}` : ""}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1803,7 +1826,7 @@ function ChatAnswerPanel({
             <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
-          <p>Ask graph questions for instant answers, or ask for an explanation to use the selected AI provider with cited context.</p>
+          <p>Ask where something happens, what uses it, or where data flows. Graph questions answer instantly; broader explanations use the selected AI provider with cited context.</p>
         )}
       </div>
       {starterQuestions.length ? (
@@ -2616,6 +2639,62 @@ function friendlyModelError(err: unknown, settings: ModelSettings) {
   return message;
 }
 
+function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {
+  const incoming = graph.edges.filter((edge) => edge.to === node.id);
+  const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+  const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
+  const relatedNames = (edges: GraphEdge[], side: "from" | "to") =>
+    compactNodeNames(
+      edges
+        .map((edge) => graph.nodes.find((candidate) => candidate.id === edge[side])?.name)
+        .filter((name): name is string => Boolean(name)),
+    );
+  const relationshipCitations = [...outgoing, ...incoming]
+    .filter((edge) => edge.site)
+    .slice(0, 8)
+    .map((edge) => ({
+      file: edge.site?.file ?? "",
+      line: edge.site?.line ?? 1,
+      label: edgeLabel(edge, graph),
+      nodeId: edge.from,
+    }));
+  const relationshipLines = relationshipCitations.map((citation) => `- ${citation.label} at ${citation.file}:${citation.line}`);
+  const location = nodeLocationLabel(node);
+  const brief = [
+    `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}. Source: ${location}.`,
+    `The graph records ${incoming.length} incoming and ${outgoing.length} outgoing relationships.`,
+  ];
+  const incomingNames = relatedNames(incoming, "from");
+  const outgoingNames = relatedNames(outgoing, "to");
+  if (incomingNames) brief.push(`Used by or reached from: ${incomingNames}.`);
+  if (outgoingNames) brief.push(`Depends on or reaches: ${outgoingNames}.`);
+  if (lineage.length) {
+    brief.push(`Lineage signals present: ${compactWords(lineage.map((edge) => edge.type))}.`);
+  }
+
+  return {
+    text: [
+      `Graph answer, no model required: I matched the selected ${node.name} (${node.type}) at ${location}.`,
+      "",
+      "Graph-derived brief:",
+      ...brief.map((line) => `- ${line}`),
+      ...(relationshipLines.length ? ["", "Relationships that answer this:", ...relationshipLines] : []),
+    ].join("\n"),
+    citations: dedupeCitations([
+      ...(node.file
+        ? [{
+            file: node.file,
+            line: node.lines?.[0] ?? 1,
+            endLine: node.lines?.[1],
+            label: `${node.name} source`,
+            nodeId: node.id,
+          }]
+        : []),
+      ...relationshipCitations,
+    ]),
+  };
+}
+
 function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
   const incoming = graph.edges.filter((edge) => edge.to === node.id);
   const outgoing = graph.edges.filter((edge) => edge.from === node.id);
@@ -2683,6 +2762,25 @@ function cobolFileBridgeInsight(
   }
 
   return "";
+}
+
+function nodeLocationLabel(node: GraphNode) {
+  if (!node.file) return "external";
+  const start = node.lines?.[0] ?? 1;
+  const end = node.lines?.[1];
+  return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
+}
+
+function compactNodeNames(names: string[]) {
+  const unique = [...new Set(names)];
+  if (!unique.length) return "";
+  const visible = unique.slice(0, 8);
+  const hiddenCount = unique.length - visible.length;
+  return hiddenCount ? `${visible.join(", ")} +${hiddenCount} more` : visible.join(", ");
+}
+
+function compactWords(words: string[]) {
+  return [...new Set(words)].join(", ");
 }
 
 function firstFocusableNode(graph: GraphDocument) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { access, readdir, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -41,6 +41,17 @@ if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
   finish(1);
 }
 report.checks["desktop display is available"] = true;
+
+const appsink = checkGstreamerAppsink();
+report.checks["GStreamer appsink is inspectable"] = appsink.ok;
+if (!appsink.ok) {
+  report.error = appsink.error;
+  report.stderrTail = appsink.stderrTail;
+  report.hints.push(
+    "Install GStreamer inspection/runtime pieces for packaged GUI smoke, for example gstreamer1.0-tools and gstreamer1.0-plugins-base.",
+  );
+  finish(1);
+}
 
 const child = spawn(app, [], {
   cwd: repoRoot,
@@ -156,6 +167,28 @@ async function newestAppImage() {
   } catch {
     return null;
   }
+}
+
+function checkGstreamerAppsink() {
+  const result = spawnSync("gst-inspect-1.0", ["appsink"], { encoding: "utf8" });
+  if (result.error) {
+    return {
+      ok: false,
+      error: result.error.code === "ENOENT"
+        ? "gst-inspect-1.0 is not installed; cannot verify GStreamer appsink."
+        : result.error.message,
+      stderrTail: [],
+    };
+  }
+  return {
+    ok: result.status === 0,
+    error: result.status === 0 ? undefined : "GStreamer appsink is not available.",
+    stderrTail: tailLines(result.stderr),
+  };
+}
+
+function tailLines(text, count = 16) {
+  return text.split(/\r?\n/).filter(Boolean).slice(-count);
 }
 
 function remember(lines, chunk) {

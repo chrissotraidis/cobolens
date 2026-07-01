@@ -142,15 +142,19 @@ Export check:
 
 Graph-backed Ask check:
 
+- The Inspector now opens on `Overview` for the first loaded graph and for new
+  node selections. This gives a new user immediate graph facts, evidence, and
+  source context before asking them to formulate a question.
 - The Ask panel renders the latest answer in a dedicated response block above
   the composer, so the submitted question and graph answer are visible without
   scrolling past the suggested-question buttons.
 - The Ask panel keeps a bounded `Recent answers` trail for the current graph.
   Previous questions can be restored with their cited answer and citation chips,
   which makes the surface behave more like a lightweight code conversation.
-- The Summary panel has an `Ask` action for the selected node. It seeds the
-  existing graph-grounded Ask flow with `Explain <symbol> from the graph.`, so a
-  node selection can drive a cited chat answer without manual tab setup.
+- The Overview panel has an `Explain in Ask` action for the selected node. It
+  now anchors the answer to the exact selected graph node instead of re-running
+  fuzzy retrieval, so `CUSTOMER` explains the copybook without blending in
+  `CUSTOMER-FILE` or `BANK.CUSTOMER.MASTER`.
 - Inspector tabs remain readable at the default desktop preview width, and
   duplicated relationship source controls expose section-specific labels such
   as `Depends On: show ...` and `Lineage: show ...`.
@@ -160,6 +164,9 @@ Graph-backed Ask check:
 - `Explain LINEAGE` now returns a graph-derived, cited brief immediately, so the
   suggested-question button behaves like the other graph shortcuts even when no
   model is configured.
+- The `Explain <symbol>` Ask chip follows the same exact selected-node path as
+  `Explain in Ask`, while typed free-form Ask questions still use fuzzy symbol
+  matching.
 - `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
   `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
   states that `CUSTIN` resolves to `BANK.CUSTOMER.MASTER`.
@@ -182,8 +189,8 @@ Graph-backed Ask check:
 - Unknown symbols such as `FROBULATOR` produce an explicit no-match graph
   answer with no citations, rather than implying unsupported evidence.
 - Selecting `CUSTOMER` from search after a `LINEAGE` Ask clears the old answer,
-  resets the composer, and shows `CUSTOMER` suggested questions instead of a
-  stale `LINEAGE` response.
+  resets the composer, opens `Overview`, and shows `CUSTOMER` graph facts rather
+  than a stale `LINEAGE` response.
 
 Model-backed Ask check:
 

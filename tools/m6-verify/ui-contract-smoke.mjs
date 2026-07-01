@@ -20,7 +20,7 @@ const checks = [
       'status === "running"',
       'status === "error"',
       "answer ?",
-      "Ask graph questions for instant answers",
+      "Graph questions answer instantly",
     ]),
   ],
   [
@@ -53,6 +53,8 @@ const checks = [
     "Summary can seed a cited Ask explanation for the selected node",
     includesAll(appSource, [
       "function explainSelectedNode()",
+      "function selectedNodeGraphAnswer",
+      "I matched the selected",
       "Open a cited graph explanation in Ask",
       "Explain in Ask",
       "onExplainNode={explainSelectedNode}",
@@ -78,9 +80,15 @@ const checks = [
     ]) && includesAll(appSource, ['from "./model/readiness"']),
   ],
   [
-    "Inspector opens on Ask AI and labels graph facts as Overview",
-    includesAll(appSource, ['useState<InspectorTab>("ask")', 'label: "Ask AI"', 'label: "Overview"', 'label: "Links"']) &&
-      appearsInOrder(appSource, ['{ id: "ask", label: "Ask AI" }', '{ id: "summary", label: "Overview"']) &&
+    "Inspector opens on Overview and keeps Ask as the conversational follow-up",
+    includesAll(appSource, [
+      'useState<InspectorTab>("summary")',
+      'setInspectorTab("summary")',
+      'label: "Overview"',
+      'label: "Ask"',
+      'label: "Links"',
+    ]) &&
+      appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Ask" }']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(94px, 1.18fr)", "minmax(78px, 1fr)"]),
   ],
   [

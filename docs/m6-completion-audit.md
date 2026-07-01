@@ -43,7 +43,8 @@ Reasons:
    the WebKit/GStreamer runtime pieces available. Use
    `npm run desktop:packaged-smoke`; the current AppImage process stays alive
    for the smoke window, but the gate remains incomplete because the environment
-   reports `GStreamer element appsink not found`.
+   cannot verify `gst-inspect-1.0 appsink` / reports `GStreamer element appsink
+   not found`.
 
 4. If a JVM analyzer is still desired after those gates, decide between:
 

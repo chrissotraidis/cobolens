@@ -125,6 +125,6 @@ The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C
 Remaining decision work:
 
 1. Decide whether mapa's benchmark CallTree timeout is acceptable as a fallback-only candidate or needs deeper upstream tuning before adoption.
-2. Complete a visible packaged-app GUI smoke on a Linux desktop/WSLg host with the WebKit/GStreamer runtime pieces available. Use `npm run desktop:packaged-smoke`; the current AppImage process stays alive for the smoke window, but the gate remains incomplete because the environment reports `GStreamer element appsink not found`.
+2. Complete a visible packaged-app GUI smoke on a Linux desktop/WSLg host with the WebKit/GStreamer runtime pieces available. Use `npm run desktop:packaged-smoke`; the current gate remains incomplete because this environment cannot verify `gst-inspect-1.0 appsink` / reports `GStreamer element appsink not found`.
 3. If a future release needs Windows installers, validate on a Windows host with Node/npm, Rust, Microsoft C++ Build Tools, and WebView2.
 4. Decide whether to keep Rust, use ProLeap only, use mapa only, or use ProLeap + mapa if the production analyzer changes after v1.

@@ -8,7 +8,7 @@ This runner verifies the completed M6 surface:
 - frontend production build,
 - graph-grounded documentation export smoke,
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
-- semantic retrieval smoke for vector-ranked Ask context,
+- semantic retrieval smoke for vector-ranked Ask context and cached graph chunk vectors,
 - UI contract smoke for the Ask/Inspector shell,
 - model privacy smoke for local/cloud mode invariants,
 - embedding privacy smoke for localhost-only local embeddings,

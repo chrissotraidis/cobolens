@@ -42,7 +42,11 @@ import {
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
-import { semanticSearchGraph } from "./retrieval/semantic";
+import {
+  createLocalStorageSemanticVectorStore,
+  semanticGraphIndexKey,
+  semanticSearchGraph,
+} from "./retrieval/semantic";
 import "./App.css";
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -164,6 +168,13 @@ function App() {
   const activeChatAbortRef = useRef<AbortController | null>(null);
   const activeSummaryAbortRef = useRef<AbortController | null>(null);
   const preserveInspectorForEdgeRef = useRef(false);
+  const semanticVectorStore = useMemo(() => {
+    try {
+      return createLocalStorageSemanticVectorStore(window.localStorage);
+    } catch {
+      return undefined;
+    }
+  }, []);
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -877,6 +888,8 @@ function App() {
               semanticSearchGraph({
                 graph,
                 question: semanticQuestion,
+                indexKey: semanticGraphIndexKey(graph, semanticEmbeddingModelKey(modelSettings)),
+                vectorStore: semanticVectorStore,
                 embedTexts: (texts) =>
                   embedTexts({
                     settings: modelSettings,
@@ -3060,6 +3073,10 @@ function prioritizedOllamaModels(models: string[], currentModel: string) {
     return 2;
   };
   return [...models].sort((left, right) => priority(left) - priority(right));
+}
+
+function semanticEmbeddingModelKey(settings: ModelSettings) {
+  return `${settings.provider}|${settings.baseUrl}|${settings.model}`;
 }
 
 function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {

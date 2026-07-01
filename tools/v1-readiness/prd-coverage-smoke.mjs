@@ -13,8 +13,8 @@ const checks = {
   "audit accounts for all FR ids": Array.from({ length: 32 }, (_, index) => `FR-${index + 1}`).every((id) =>
     audit.includes(`| ${id} `),
   ),
-  "audit distinguishes partial coverage": audit.includes("Partial/Should") && audit.includes("Evidenced/partial storage"),
-  "audit caveats embeddings": audit.includes("Persistent vector index storage is not implemented"),
+  "audit distinguishes partial coverage": audit.includes("Partial/Should") && audit.includes("Windows packaging is explicitly not claimed"),
+  "audit documents persistent local vector cache": audit.includes("persistent local vector cache") && audit.includes("local browser storage"),
   "audit caveats Windows packaging": audit.includes("Windows packaging"),
   "audit documents local Ollama risk": audit.includes("Local Ollama quality and speed"),
 };

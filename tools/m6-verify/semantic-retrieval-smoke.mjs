@@ -42,7 +42,12 @@ try {
 
   const require = createRequire(resolve(tempRoot, "smoke.cjs"));
   const { retrieveQuestionContext } = require(resolve(tempRoot, "retrieval", "context.js"));
-  const { buildSemanticChunks, semanticSearchGraph } = require(resolve(tempRoot, "retrieval", "semantic.js"));
+  const {
+    buildSemanticChunks,
+    createLocalStorageSemanticVectorStore,
+    semanticGraphIndexKey,
+    semanticSearchGraph,
+  } = require(resolve(tempRoot, "retrieval", "semantic.js"));
   const graph = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-graph.json"), "utf8"));
   const sourceBundle = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-source.json"), "utf8"));
   const reportRecord = graph.nodes.find((node) => node.name === "REPORT-RECORD");
@@ -61,6 +66,36 @@ try {
         return [0, 0, 1];
       }),
     }),
+  });
+  const storage = createMemoryStorage();
+  const vectorStore = createLocalStorageSemanticVectorStore(storage);
+  const indexKey = semanticGraphIndexKey(graph, "ollama|http://127.0.0.1:11434/api|fixture-embed");
+  const embedCallSizes = [];
+  const cachedMatches = await semanticSearchGraph({
+    graph,
+    question: "Which record is written to the report output?",
+    topK: 2,
+    indexKey,
+    vectorStore,
+    embedTexts: async (texts) => {
+      embedCallSizes.push(texts.length);
+      return {
+        vectors: texts.map((text) => vectorForText(text)),
+      };
+    },
+  });
+  const reusedMatches = await semanticSearchGraph({
+    graph,
+    question: "Which record is written to the report output?",
+    topK: 2,
+    indexKey,
+    vectorStore,
+    embedTexts: async (texts) => {
+      embedCallSizes.push(texts.length);
+      return {
+        vectors: texts.map((text) => vectorForText(text)),
+      };
+    },
   });
 
   const context = await retrieveQuestionContext({
@@ -89,6 +124,8 @@ try {
   const checks = {
     "semantic chunks include graph relationship facts": chunks.some((chunk) => chunk.node.name === "REPORT-RECORD" && /writes REPORT-RECORD/.test(chunk.text)),
     "semantic search ranks vector-nearest node first": matches[0]?.node.name === "REPORT-RECORD",
+    "semantic index is persisted after first search": Boolean(storage.getItem(indexKey)) && cachedMatches[0]?.node.name === "REPORT-RECORD",
+    "semantic index reuses stored chunk vectors": reusedMatches[0]?.node.name === "REPORT-RECORD" && embedCallSizes.at(-1) === 1,
     "semantic context includes matched node": context.focusNodes.some((node) => node.name === "REPORT-RECORD"),
     "semantic prompt includes vector match section": context.prompt.includes("Semantic vector matches:") && context.prompt.includes("REPORT-RECORD is written by LINEAGE"),
     "semantic citations include matched node source": context.citations.some((citation) => citation.file === "copybook/REPORT.cpy" && citation.nodeId === reportRecord.id),
@@ -103,6 +140,25 @@ try {
   console.log(JSON.stringify({ checks }, null, 2));
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+function vectorForText(text) {
+  if (/Which record is written/i.test(text)) return [1, 0, 0];
+  if (/^REPORT-RECORD is/i.test(text)) return [0.98, 0.02, 0];
+  if (/CUSTOMER/i.test(text)) return [0, 1, 0];
+  return [0, 0, 1];
+}
+
+function createMemoryStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.get(key) ?? null;
+    },
+    setItem(key, value) {
+      values.set(key, value);
+    },
+  };
 }
 
 function sourceExcerpt(sourceBundle, node) {

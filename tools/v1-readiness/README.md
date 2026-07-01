@@ -24,4 +24,4 @@ turning absent local tools into fake product failures.
 
 The PRD-coverage smoke checks `docs/v1-readiness-audit.md`, which maps FR-1
 through FR-32 to current evidence and explicitly calls out partial or unclaimed
-areas such as persistent vector index storage and Windows packaging.
+areas such as Windows packaging and non-certified accessibility evidence.

@@ -18,12 +18,11 @@ Not claimed yet:
 
 - Signed cross-platform installers are not validated. Linux AppImage packaging
   is validated locally; Windows packaging is explicitly not claimed.
-- Persistent vector index storage is not implemented yet. Model-routed Ask can
-  now augment graph-guided context with live vector-ranked graph chunks when a
-  local embedding model is available; failures degrade to graph-only context.
-  The embedding adapter only sends requests to localhost Ollama in local mode,
-  and cloud embeddings are rejected until an explicit provider implementation
-  exists.
+- A persistent local vector cache now stores graph-derived semantic chunk
+  embeddings in the app's local browser storage, keyed by graph fingerprint and
+  embedding model settings. It does not store source excerpts or use an
+  external database. Cloud embeddings remain unimplemented and are rejected
+  until an explicit provider implementation exists.
 - Accessibility evidence is source-level and browser-interaction based; it is
   not a full screen-reader certification pass.
 
@@ -61,7 +60,7 @@ Not claimed yet:
 | FR-19 generated summaries | Summary prompt/guard smokes, local summary smoke, and export provenance cover cited summaries and graph fallbacks. | Evidenced |
 | FR-20 Rosetta mode | Model prompts and Summary/Ask pass the selected Rosetta language. | Evidenced |
 | FR-21 documentation export | Export docs smoke covers navigable Markdown, diagrams, source ranges, lineage, parse warnings, and summary provenance. | Evidenced |
-| FR-22 grounded Ask retrieval | Graph-guided context assembly, optional semantic vector matches, graph Ask smoke, semantic retrieval smoke, and model prompt/guard smokes cover grounded Ask without whole-file dumping. | Evidenced |
+| FR-22 grounded Ask retrieval | Graph-guided context assembly, optional semantic vector matches, persistent local chunk-vector cache, graph Ask smoke, semantic retrieval smoke, and model prompt/guard smokes cover grounded Ask without whole-file dumping. | Evidenced |
 | FR-23 clickable citations | Citation buttons jump to source/graph while preserving Ask answer visibility; model guard requires exact inline citations. | Evidenced |
 | FR-24 bidirectional graph/chat links | Overview seeds Ask, Ask citations focus graph/code, and relationship citations preserve conversational context. | Evidenced/Should |
 | FR-25 no invented structure | Graph answer smoke, model prompts, answer guard, and cited graph fallback enforce graph-grounded answers. | Evidenced |
@@ -69,7 +68,7 @@ Not claimed yet:
 | FR-27 keychain secrets | Tauri tests reject secret-like app settings; cloud keys are read through OS keychain commands. | Evidenced |
 | FR-28 privacy indicator/local mode | Top-bar mode indicator, local Ollama URL guard, and model privacy smoke cover local/cloud mode invariants. | Evidenced |
 | FR-29 token/cost estimate | AI usage panel shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
-| FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. Model-routed Ask can use live semantic matches; persistent vector index storage remains deferred. | Evidenced/partial storage |
+| FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. Model-routed Ask persists graph-derived semantic chunk vectors in local browser storage and reuses them on later searches. | Evidenced |
 | FR-31 bundled sample | `mini-bank` sample is bundled and validated in sample smoke and packaged smoke. | Evidenced |
 | FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Summary/Ask after the map is loaded. | Evidenced/Should |
 

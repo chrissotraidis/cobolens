@@ -156,8 +156,13 @@ export function GraphView({
     return (
       <div className="graph-empty">
         <div className="graph-empty-card">
-          <strong>Select a codebase</strong>
-          <span>Start with the bundled sample or open a COBOL folder.</span>
+          <strong>First run</strong>
+          <span>Start with the bundled sample or open a COBOL folder. AI is optional; the map and cited source work first.</span>
+          <ol className="graph-empty-steps" aria-label="First-run steps">
+            <li>Load a sample or folder.</li>
+            <li>Inspect the dependency map.</li>
+            <li>Add a model later for Summary and Ask.</li>
+          </ol>
           <div className="graph-empty-actions">
             <button type="button" className="primary-action" onClick={onOpenSample}>
               Open Sample

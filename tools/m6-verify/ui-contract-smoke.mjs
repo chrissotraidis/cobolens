@@ -328,24 +328,34 @@ const checks = [
     ]) && includesAll(appCss, [".relationship-flow", ".relationship-node-button", ".relationship-edge-type"]),
   ],
   [
-    "Empty graph canvas offers first-run sample and treats folder open as desktop-only in browser preview",
+    "Empty graph canvas guides first-run sample/folder, optional AI, and desktop-only folder open",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',
-      "Start with the bundled sample or open a COBOL folder.",
+      "First run",
+      "Start with the bundled sample or open a COBOL folder. AI is optional; the map and cited source work first.",
+      'className="graph-empty-steps"',
+      "Load a sample or folder.",
+      "Inspect the dependency map.",
+      "Add a model later for Summary and Ask.",
       "onOpenSample",
       "canOpenFolder",
       "Open Folder runs in the desktop app.",
-    ]) && includesAll(appCss, [".graph-empty-actions", ".graph-empty-actions span"]),
+    ]) &&
+      includesAll(appSource, ['className={`graph-pane${focusedNode ? "" : " is-empty"}`}', "focusedNode ? ("]) &&
+      includesAll(appCss, [".graph-pane.is-empty", ".graph-empty-actions", ".graph-empty-actions span", ".graph-empty-steps"]),
   ],
   [
-    "Browser preview does not render desktop-only ingest actions as disabled primary buttons",
+    "Browser preview does not render desktop-only ingest actions as disabled primary buttons and shows the first-run path",
     includesAll(appSource, [
       "desktopAvailable ?",
       "Open Folder, Re-scan, and scan settings run in the desktop app.",
       'className="desktop-preview-note"',
+      'className="first-run-guide"',
+      "Explore the map and cited source without AI.",
+      "Add Ollama or a cloud key when you want Summary and Ask.",
       "{desktopAvailable ? (",
       "<ScanSettingsPanel",
-    ]) && includesAll(appCss, [".desktop-preview-note", "background: rgba(125, 137, 150, 0.07)"]),
+    ]) && includesAll(appCss, [".desktop-preview-note", "background: rgba(125, 137, 150, 0.07)", ".first-run-guide"]),
   ],
   [
     "Graph LOD clusters can drill down by expanding their owner",

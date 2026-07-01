@@ -1160,6 +1160,16 @@ function App() {
             )}
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
+            {!graph ? (
+              <div className="first-run-guide" aria-label="First run path">
+                <span>First run</span>
+                <ol>
+                  <li>{desktopAvailable ? "Open the sample or choose a COBOL folder." : "Open the sample graph in this browser preview."}</li>
+                  <li>Explore the map and cited source without AI.</li>
+                  <li>Add Ollama or a cloud key when you want Summary and Ask.</li>
+                </ol>
+              </div>
+            ) : null}
             {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
             {desktopAvailable ? (
@@ -1268,7 +1278,7 @@ function App() {
           </section>
         </aside>
 
-        <section className="graph-pane" aria-label="Dependency graph">
+        <section className={`graph-pane${focusedNode ? "" : " is-empty"}`} aria-label="Dependency graph">
           {focusedNode ? (
             <div className="graph-toolbar">
               <div>

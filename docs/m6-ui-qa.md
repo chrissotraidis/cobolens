@@ -32,9 +32,13 @@ In the in-app browser, the M6 fixture graph loaded with inventory counts:
 First-run check:
 
 - With no graph loaded, the center canvas offers `Open Sample` and `Open Folder`
-  actions. In browser preview, `Open Sample` is the primary action and opens the
-  bundled fixture graph while `Open Folder` remains disabled for the desktop
-  shell.
+  actions plus a compact first-run path: load a sample/folder, inspect the map,
+  then add a model later for Summary and Ask. In browser preview, `Open Sample`
+  is the primary action and opens the bundled fixture graph while `Open Folder`
+  remains desktop-only.
+- The Ingest pane mirrors that first-run path and explicitly says the map and
+  cited source can be explored without AI before configuring Ollama or a cloud
+  key.
 - The graph focus toolbar is hidden until a graph node is selected, so first-run
   users see only the sample/open actions rather than a disabled `Focus complete`
   control with no focus.

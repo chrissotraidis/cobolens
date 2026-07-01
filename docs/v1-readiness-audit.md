@@ -70,7 +70,7 @@ Not claimed yet:
 | FR-29 token/cost estimate | AI usage panel shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
 | FR-30 embedding privacy | No embedding calls are currently implemented. Future embeddings must use the same local/cloud privacy guard. | Not implemented/guardrail noted |
 | FR-31 bundled sample | `mini-bank` sample is bundled and validated in sample smoke and packaged smoke. | Evidenced |
-| FR-32 guided first-run | Browser preview and empty graph canvas offer Open Sample/Open Folder path; full guided onboarding wizard is not implemented. | Partial/Should |
+| FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Summary/Ask after the map is loaded. | Evidenced/Should |
 
 ## Current Release Risks
 
@@ -81,4 +81,3 @@ Not claimed yet:
 - The production analyzer remains the lightweight Rust sidecar. ProLeap and
   mapa are validated candidates, but not production dependencies.
 - Windows packaging remains unvalidated in this checkout.
-

@@ -276,6 +276,38 @@ select:focus {
   line-height: 1.35;
 }
 
+.first-run-guide {
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid rgba(90, 167, 161, 0.2);
+  border-radius: 7px;
+  color: #aeb8c3;
+  background: rgba(90, 167, 161, 0.06);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.first-run-guide > span {
+  color: #b8f0dc;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.first-run-guide ol,
+.graph-empty-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.first-run-guide li,
+.graph-empty-steps li {
+  padding-left: 2px;
+}
+
 .path-label {
   min-height: 34px;
   overflow: hidden;
@@ -715,6 +747,10 @@ h2,
   background-size: 32px 32px;
 }
 
+.graph-pane.is-empty {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .graph-toolbar {
   justify-content: space-between;
   padding: 0 16px;
@@ -788,6 +824,12 @@ h2,
   color: #9aa6b2;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.graph-empty-steps {
+  color: #b7c2cd;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .graph-empty-actions {

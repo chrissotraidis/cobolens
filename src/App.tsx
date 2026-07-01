@@ -794,6 +794,13 @@ function App() {
       return true;
     } catch (err) {
       const fallbackReason = friendlyModelError(err, modelSettings);
+      if (isStoppedModelCall(fallbackReason)) {
+        setSummaries((current) => ({
+          ...current,
+          [node.id]: { status: "error", error: fallbackReason },
+        }));
+        return false;
+      }
       const fallbackSummary = graphBackedSummaryFallback(
         graph,
         node,
@@ -809,7 +816,7 @@ function App() {
         ...current,
         [node.id]: { status: "ready", summary: fallbackSummary },
       }));
-      return false;
+      return true;
     }
   }
 
@@ -2898,6 +2905,10 @@ function friendlyModelError(err: unknown, settings: ModelSettings) {
     return `Could not reach ${PROVIDER_LABELS[settings.provider]}. Check the provider settings and try again.`;
   }
   return message;
+}
+
+function isStoppedModelCall(message: string) {
+  return /\bwas stopped\.$/i.test(message);
 }
 
 function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {

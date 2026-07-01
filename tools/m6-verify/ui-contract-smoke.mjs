@@ -130,6 +130,17 @@ const checks = [
     ]) && includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.08)"]),
   ],
   [
+    "Bulk summaries continue after model fallback but stop on explicit cancel",
+    includesAll(appSource, [
+      "function isStoppedModelCall(message: string)",
+      "if (isStoppedModelCall(fallbackReason))",
+      "[node.id]: { status: \"error\", error: fallbackReason }",
+      "[node.id]: { status: \"ready\", summary: fallbackSummary }",
+      "return true;",
+      "setBulkSummaryStatus(`Stopped at ${index}/${summaryNodes.length}`)",
+    ]),
+  ],
+  [
     "Ask clearly distinguishes graph shortcuts from AI-backed questions",
     includesAll(appSource, [
       'className="answer-modes"',

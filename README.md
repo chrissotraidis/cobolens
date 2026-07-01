@@ -170,7 +170,10 @@ This always runs `npm run m6:verify`, then records optional local evidence when
 the prerequisites are present: the cached COBOL Legacy Benchmark Suite,
 installed Ollama, the M6 fixture graph for local Summary/Ask smokes, and a
 built Linux AppImage plus a desktop display. Missing optional prerequisites are
-reported as skipped rather than treated as proof that v1 is ready.
+reported as skipped rather than treated as proof that v1 is ready. The command
+exits non-zero only when a required gate fails; the final JSON `ready` field is
+stricter and is true only when required gates pass and optional evidence has no
+failures or skips.
 
 Check the optional local Ollama path:
 

@@ -56,9 +56,14 @@ if (await hasPackagedAppImage()) {
 const failedRequired = results.filter((result) => result.required && result.status === "failed");
 const failedOptional = results.filter((result) => !result.required && result.status === "failed");
 const skippedOptional = results.filter((result) => !result.required && result.status === "skipped");
+const requiredPassed = failedRequired.length === 0;
+const optionalEvidenceClean = failedOptional.length === 0;
+const optionalEvidenceComplete = skippedOptional.length === 0;
 const report = {
-  ready: failedRequired.length === 0,
-  requiredPassed: failedRequired.length === 0,
+  ready: requiredPassed && optionalEvidenceClean && optionalEvidenceComplete,
+  requiredPassed,
+  optionalEvidenceClean,
+  optionalEvidenceComplete,
   optionalFailed: failedOptional.length,
   optionalSkipped: skippedOptional.length,
   results,
@@ -66,7 +71,7 @@ const report = {
 
 console.log("\n==> v1 readiness report");
 console.log(JSON.stringify(report, null, 2));
-process.exit(report.ready ? 0 : 1);
+process.exit(report.requiredPassed ? 0 : 1);
 
 async function required(name, command, args) {
   return runGate({ name, command, args, required: true });

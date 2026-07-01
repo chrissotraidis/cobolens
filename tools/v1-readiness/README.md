@@ -16,6 +16,7 @@ local prerequisites exist:
 - built Linux AppImage plus a desktop display for packaged GUI smoke.
 
 Optional gates report `passed`, `failed`, or `skipped` in the final JSON report.
-Only required-gate failure exits non-zero. This keeps the command useful across
-developer machines without turning absent local tools into fake product
-failures.
+Only required-gate failure exits non-zero. The final `ready` field is stricter:
+it is true only when required gates pass and optional evidence has no failures
+or skips. This keeps the command useful across developer machines without
+turning absent local tools into fake product failures.

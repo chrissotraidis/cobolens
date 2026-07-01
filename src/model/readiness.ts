@@ -1,6 +1,8 @@
 import type { ModelSettings } from "./config";
 import { assertLocalOllamaUrl, normalizeOllamaBaseUrl } from "./privacy";
 
+export const RECOMMENDED_SMALL_OLLAMA_MODEL = "llama3.2:1b";
+
 type OllamaReadinessOptions = {
   verifyGeneration?: boolean;
   tagsTimeoutMs?: number;
@@ -16,12 +18,19 @@ export type OllamaReadinessResult = {
 export class OllamaReadinessError extends Error {
   configuredModel: string;
   installedModels: string[];
+  suggestedModel: string;
 
-  constructor(message: string, configuredModel: string, installedModels: string[] = []) {
+  constructor(
+    message: string,
+    configuredModel: string,
+    installedModels: string[] = [],
+    suggestedModel = RECOMMENDED_SMALL_OLLAMA_MODEL,
+  ) {
     super(message);
     this.name = "OllamaReadinessError";
     this.configuredModel = configuredModel;
     this.installedModels = installedModels;
+    this.suggestedModel = suggestedModel;
   }
 }
 
@@ -50,10 +59,10 @@ export async function inspectOllamaReadiness(settings: ModelSettings, options: O
   }
 
   const hasModel = modelNames.some(
-    (name) => name === configuredModel || name === `${configuredModel}:latest` || name.startsWith(`${configuredModel}:`),
+    (name) => isSameOllamaModel(name, configuredModel) || name.startsWith(`${configuredModel}:`),
   );
   if (!hasModel) {
-    throw new OllamaReadinessError(`Ollama is reachable, but ${configuredModel} is not installed. Use an installed model below or run: ollama pull ${configuredModel}`, configuredModel, modelNames);
+    throw new OllamaReadinessError(`Ollama is reachable, but ${configuredModel} is not installed. Use an installed model below or run: ollama pull ${configuredModel}.`, configuredModel, modelNames);
   }
 
   if (!options.verifyGeneration) {
@@ -82,18 +91,18 @@ export async function inspectOllamaReadiness(settings: ModelSettings, options: O
     generationTimeoutMs,
     () => {
       throw new OllamaReadinessError(
-        `Ollama is reachable, but ${configuredModel} did not finish a test generation. Use an installed model below or check Ollama logs.`,
+        `Ollama is reachable, but ${configuredModel} did not finish a test generation. Use a listed local model, install the smaller model shown below, or check Ollama logs.`,
         configuredModel,
         modelNames,
       );
     },
   );
   if (!generation.ok) {
-    throw new OllamaReadinessError(`Ollama generation responded with ${generation.status}. Use an installed model below or check Ollama logs.`, configuredModel, modelNames);
+    throw new OllamaReadinessError(`Ollama generation responded with ${generation.status}. Use a listed local model, install the smaller model shown below, or check Ollama logs.`, configuredModel, modelNames);
   }
   const generationBody = (await generation.json()) as { response?: string };
   if (!generationBody.response?.trim()) {
-    throw new OllamaReadinessError(`Ollama generation returned no text for ${configuredModel}. Use an installed model below or check Ollama logs.`, configuredModel, modelNames);
+    throw new OllamaReadinessError(`Ollama generation returned no text for ${configuredModel}. Use a listed local model, install the smaller model shown below, or check Ollama logs.`, configuredModel, modelNames);
   }
 
   return {
@@ -108,12 +117,22 @@ export function ollamaReadinessDetails(err: unknown) {
     return {
       configuredModel: err.configuredModel,
       installedModels: err.installedModels,
+      suggestedModel: err.suggestedModel,
     };
   }
   return {
     configuredModel: "",
     installedModels: [],
+    suggestedModel: "",
   };
+}
+
+export function isSameOllamaModel(left: string, right: string) {
+  return normalizeModelName(left) === normalizeModelName(right);
+}
+
+function normalizeModelName(model: string) {
+  return model.trim().replace(/:latest$/, "");
 }
 
 async function fetchWithTimeout(

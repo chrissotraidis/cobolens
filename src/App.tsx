@@ -32,7 +32,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { checkOllamaReadiness, inspectOllamaReadiness, ollamaReadinessDetails } from "./model/readiness";
+import { checkOllamaReadiness, inspectOllamaReadiness, isSameOllamaModel, ollamaReadinessDetails } from "./model/readiness";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -59,6 +59,7 @@ type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
   message: string;
   installedModels?: string[];
+  suggestedModel?: string;
 };
 type SourceFocus = {
   file: string;
@@ -667,6 +668,7 @@ function App() {
         status: "error",
         message: friendlyModelError(err, modelSettings),
         installedModels: details.installedModels,
+        suggestedModel: details.suggestedModel,
       });
     }
   }
@@ -1546,6 +1548,9 @@ function ModelSettingsPanel({
   const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
   const visibleInstalledModels = installedModels.slice(0, 6);
   const hiddenInstalledModelCount = Math.max(0, installedModels.length - visibleInstalledModels.length);
+  const suggestedModel = !cloud && modelReadiness.status === "error" ? modelReadiness.suggestedModel : "";
+  const showSuggestedModel =
+    Boolean(suggestedModel) && !installedModels.some((model) => suggestedModel && isSameOllamaModel(model, suggestedModel));
 
   return (
     <section className="pane-block model-settings">
@@ -1577,13 +1582,19 @@ function ModelSettingsPanel({
               key={model}
               type="button"
               onClick={() => onSettingsChange({ ...settings, model })}
-              disabled={modelReadiness.status === "checking" || model === settings.model}
+              disabled={modelReadiness.status === "checking" || isSameOllamaModel(model, settings.model)}
               title={`Use ${model}`}
             >
               {model}
             </button>
           ))}
           {hiddenInstalledModelCount ? <span>+{hiddenInstalledModelCount} more</span> : null}
+        </div>
+      ) : null}
+      {showSuggestedModel ? (
+        <div className="model-install-hint" role="status">
+          <span>For a smaller local test model, run:</span>
+          <code>ollama pull {suggestedModel}</code>
         </div>
       ) : null}
       {settings.provider === "ollama" ? (

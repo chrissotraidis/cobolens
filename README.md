@@ -176,6 +176,13 @@ localhost. If the configured model is missing or too slow to finish the quick
 probe, use one of the installed-model chips in the AI panel or pull the default
 model above.
 
+On smaller machines, install the lighter Llama 3.2 1B local model and set the
+AI model field to `llama3.2:1b`:
+
+```sh
+ollama pull llama3.2:1b
+```
+
 Smoke-test the desktop shell against an already-running Vite server:
 
 ```sh

@@ -2,6 +2,8 @@
 import { spawnSync } from "node:child_process";
 
 const model = process.argv[2] ?? "llama3.2";
+const defaultModel = "llama3.2";
+const recommendedSmallModel = "llama3.2:1b";
 const baseUrl = (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434").replace(/\/+$/, "");
 const report = {
   ready: false,
@@ -45,9 +47,12 @@ report.checks[`configured model ${model} is installed`] = models.some(
 
 if (!report.checks["at least one local model is installed"]) {
   report.hints.push(`Install a local model with: ollama pull ${model}`);
+  if (model !== recommendedSmallModel) report.hints.push(`For a smaller local test model, run: ollama pull ${recommendedSmallModel}`);
 }
 if (!report.checks[`configured model ${model} is installed`]) {
-  report.hints.push(`Cobolens defaults to ${model}; install it with: ollama pull ${model}`);
+  const modelLabel = model === defaultModel ? "Cobolens default model" : "Configured model";
+  report.hints.push(`${modelLabel} ${model} is not installed; install it with: ollama pull ${model}`);
+  if (model !== recommendedSmallModel) report.hints.push(`If this machine is resource constrained, try: ollama pull ${recommendedSmallModel}`);
 }
 
 if (report.checks[`configured model ${model} is installed`]) {
@@ -77,7 +82,7 @@ if (report.checks[`configured model ${model} is installed`]) {
   } catch (error) {
     report.checks["local generation completes"] = false;
     report.checks["local generation returned text"] = false;
-    report.hints.push("Ollama is reachable, but local generation failed.");
+    report.hints.push(`Ollama is reachable, but local generation failed. For a smaller local test model, run: ollama pull ${recommendedSmallModel}`);
     report.generationError = error instanceof Error ? error.message : String(error);
   }
 }

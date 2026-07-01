@@ -512,6 +512,26 @@ h2,
   background: rgba(125, 137, 150, 0.06);
 }
 
+.model-install-hint {
+  display: grid;
+  gap: 5px;
+  padding: 8px 9px;
+  border: 1px solid rgba(229, 199, 95, 0.26);
+  border-radius: 7px;
+  color: #d9c985;
+  background: rgba(229, 199, 95, 0.08);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.model-install-hint code {
+  overflow: hidden;
+  color: #fff0ac;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .button-row {
   display: grid;
   gap: 8px;

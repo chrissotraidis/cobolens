@@ -42,7 +42,13 @@ try {
 
   const require = createRequire(resolve(tempRoot, "smoke.cjs"));
   const { DEFAULT_MODEL_SETTINGS } = require(compiledModule("config.js"));
-  const { checkOllamaReadiness, inspectOllamaReadiness, ollamaReadinessDetails } = require(compiledModule("readiness.js"));
+  const {
+    RECOMMENDED_SMALL_OLLAMA_MODEL,
+    checkOllamaReadiness,
+    inspectOllamaReadiness,
+    isSameOllamaModel,
+    ollamaReadinessDetails,
+  } = require(compiledModule("readiness.js"));
 
   const fastRequests = [];
   global.fetch = async (url, init = {}) => {
@@ -116,6 +122,8 @@ try {
     ["missing configured model rejects", missingModel.includes("is not installed")],
     ["empty generation rejects", emptyGeneration.includes("returned no text")],
     ["timeout error preserves installed model choices", timeoutDetails.installedModels.includes("tinyllama:latest")],
+    ["timeout error recommends a smaller local model", timeoutDetails.suggestedModel === RECOMMENDED_SMALL_OLLAMA_MODEL],
+    ["model equivalence treats latest tag as current model", isSameOllamaModel("llama3.2:latest", "llama3.2")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {

@@ -240,6 +240,8 @@ Model-backed Ask check:
   the AI panel. If the configured model is missing or times out, those installed
   models appear as quick-pick chips so the user can switch without leaving the
   app.
+- If no non-equivalent installed model can fix a timeout, the AI panel shows a
+  concrete smaller-model command: `ollama pull llama3.2:1b`.
 - Grounded Ask now passes the selected Rosetta language into the model system
   prompt while keeping the graph-only grounding, citation, and no-invention
   rules.

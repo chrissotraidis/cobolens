@@ -39,8 +39,11 @@ const checks = [
       "return [overviewQuestion, selectedOverview, `What depends on ${name}?`",
       "return [overviewQuestion, selectedOverview, `Where does ${name} flow?`",
       "`What does this ${type} do in plain English?`",
+      "shouldSyncAskFocus(question)",
+      "codebase\\s+overview",
     ]) &&
-      appearsInOrder(appSource, ["{starterQuestions.map((question) => (", "{explainQuestion ? ("]),
+      appearsInOrder(appSource, ["{starterQuestions.map((question) => (", "{explainQuestion ? ("]) &&
+      includesAll(appCss, [".question-chips button small", "text-transform: uppercase"]),
   ],
   [
     "Ask response has a visible framed style",
@@ -188,8 +191,10 @@ const checks = [
   [
     "Graph toolbar explains when the focused slice has no hidden direct neighbors",
     includesAll(appSource, [
+      "focusedNode ? (",
       'const expandButtonLabel = focusExpanded ? "Collapse" : focusExpansion.hiddenByLimit ? "Expand" : "Focus complete"',
       "No hidden direct neighbors for this focus; use search or the Codebase browser to jump elsewhere.",
+      "{focusedNode.name}",
       "aria-label={expandButtonTitle}",
     ]) && includesAll(appCss, [".graph-toolbar button", "min-width: 112px"]),
   ],

@@ -775,7 +775,9 @@ function App() {
         setChatAnswer(graphAnswer);
         rememberChatAnswer(graphAnswer);
         setChatStatus("ready");
-        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
+        if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
+          focusOnNode(context.focusNodes[0].id, { preserveChat: true });
+        }
         return;
       }
       const answerContext = context;
@@ -800,7 +802,9 @@ function App() {
       setChatAnswer(modelAnswer);
       rememberChatAnswer(modelAnswer);
       setChatStatus("ready");
-      if (answerContext.focusNodes[0]) focusOnNode(answerContext.focusNodes[0].id, { preserveChat: true });
+      if (answerContext.focusNodes[0] && shouldSyncAskFocus(question)) {
+        focusOnNode(answerContext.focusNodes[0].id, { preserveChat: true });
+      }
     } catch (err) {
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
@@ -808,7 +812,9 @@ function App() {
         setChatAnswer(fallbackAnswer);
         rememberChatAnswer(fallbackAnswer);
         setChatStatus("ready");
-        if (context.focusNodes[0]) focusOnNode(context.focusNodes[0].id, { preserveChat: true });
+        if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
+          focusOnNode(context.focusNodes[0].id, { preserveChat: true });
+        }
         return;
       }
       setChatError(friendlyModelError(err, modelSettings));
@@ -1124,21 +1130,23 @@ function App() {
         </aside>
 
         <section className="graph-pane" aria-label="Dependency graph">
-          <div className="graph-toolbar">
-            <div>
-              <span>Dependency Map</span>
-              <small>{focusedNode ? focusedNode.name : "No focus"}</small>
+          {focusedNode ? (
+            <div className="graph-toolbar">
+              <div>
+                <span>Dependency Map</span>
+                <small>{focusedNode.name}</small>
+              </div>
+              <button
+                type="button"
+                onClick={toggleExpandFocus}
+                disabled={expandDisabled}
+                title={expandButtonTitle}
+                aria-label={expandButtonTitle}
+              >
+                {expandButtonLabel}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={toggleExpandFocus}
-              disabled={expandDisabled}
-              title={expandButtonTitle}
-              aria-label={expandButtonTitle}
-            >
-              {expandButtonLabel}
-            </button>
-          </div>
+          ) : null}
           <div className="graph-canvas">
             <GraphView
               graph={graph}
@@ -1900,7 +1908,7 @@ function ChatAnswerPanel({
         </button>
       </div>
       {starterQuestions.length ? (
-        <div className="question-chips" aria-label="Suggested graph questions">
+        <div className="question-chips" aria-label="Suggested questions">
           {starterQuestions.map((question) => (
             <button
               key={question}
@@ -1908,7 +1916,8 @@ function ChatAnswerPanel({
               onClick={() => onAskPreset(question)}
               disabled={status === "running"}
             >
-              {question}
+              <span>{question}</span>
+              <small>{isGraphQuestion(question) ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
             </button>
           ))}
           {explainQuestion ? (
@@ -1918,7 +1927,8 @@ function ChatAnswerPanel({
               disabled={status === "running"}
               title="Show a cited graph-derived explanation"
             >
-              Explain {node?.name}
+              <span>Explain {node?.name}</span>
+              <small>Graph</small>
             </button>
           ) : null}
         </div>
@@ -2961,6 +2971,12 @@ function suggestedGraphQuestions(node: GraphNode | null) {
     `Where does ${name} happen?`,
     `What depends on ${name}?`,
   ];
+}
+
+function shouldSyncAskFocus(question: string) {
+  return !/\b(codebase\s+overview|overview\s+of\s+(?:this\s+)?codebase|where\s+should\s+i\s+start|what\s+should\s+i\s+inspect\s+first|inspect\s+first|start(?:ing)?\s+point|entry\s+point|entry\s+points|what\s+is\s+(?:in\s+)?this\s+codebase|how\s+is\s+(?:this\s+)?codebase\s+structured)\b/i.test(
+    question,
+  );
 }
 
 function selectedNodeOverviewQuestion(node: GraphNode) {

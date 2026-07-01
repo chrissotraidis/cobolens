@@ -18,6 +18,13 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
   `08-after-overview-default.png`, `09-search-result-overview.png`,
   `11-explain-selected-exact.png`, `12-explain-chip-exact.png`, and
   `13-filter-reset.png`.
+- `11-focused-overview-followup.png`: follow-up pass starting from the focused
+  sample graph.
+- `12-ask-empty-before-badges.png`: Ask empty state before the route badges.
+- `13-overview-focus-bug.png`: `Give me a codebase overview.` answered
+  correctly but incorrectly moved graph focus from `LINEAGE` to `CUSTOMER`.
+- `14-ask-route-badges.png`: Ask suggestions after adding explicit route badges.
+- `15-overview-keeps-focus.png`: codebase overview answer after the focus fix.
 
 ## Findings And Fixes
 
@@ -42,6 +49,15 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
    retrieval, so `CUSTOMER` could blend the copybook with similarly named
    datasets/files. Fixed by anchoring those preset explanation actions to the
    currently selected graph node and generating a cited graph answer directly.
+
+7. Follow-up testing found that a codebase-wide Ask shortcut answered correctly
+   but changed graph focus to the first retrieved citation. Fixed by preventing
+   overview/orientation questions from synchronizing graph focus, while keeping
+   symbol-targeted questions able to drive the map.
+
+8. The Ask suggestion row did not make its routing visible enough. Fixed by
+   changing the group label to `Suggested questions` and adding compact `Graph`
+   or provider badges on each suggestion.
 
 ## Verification
 

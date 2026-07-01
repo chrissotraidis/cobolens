@@ -35,6 +35,9 @@ First-run check:
   actions. In browser preview, `Open Sample` is the primary action and opens the
   bundled fixture graph while `Open Folder` remains disabled for the desktop
   shell.
+- The graph focus toolbar is hidden until a graph node is selected, so first-run
+  users see only the sample/open actions rather than a disabled `Focus complete`
+  control with no focus.
 
 The right-side Impact panel for `LINEAGE` showed:
 
@@ -200,6 +203,9 @@ Graph-backed Ask check:
   questions say they are ready to ask the selected provider with cited graph and
   source context, while typed graph questions say they are ready to answer from
   the dependency graph.
+- Suggested Ask questions now carry an explicit `Graph` or provider badge, and
+  codebase-wide overview questions keep the current graph focus instead of
+  jumping to whichever symbol appears first in the retrieved context.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it

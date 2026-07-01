@@ -10,6 +10,7 @@ This runner verifies the completed M6 surface:
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
 - semantic retrieval smoke for vector-ranked Ask context and cached graph chunk vectors,
 - UI contract smoke for the Ask/Inspector shell,
+- accessibility smoke for skip links, landmark targets, and named keyboard controls,
 - model privacy smoke for local/cloud mode invariants,
 - embedding privacy smoke for localhost-only local embeddings,
 - model answer guard smoke for exact inline citation enforcement,

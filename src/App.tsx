@@ -1121,6 +1121,12 @@ function App() {
 
   return (
     <main className="workspace" aria-label="Cobolens workspace">
+      <nav className="skip-links" aria-label="Skip links">
+        <a href="#navigator-panel">Skip to navigator</a>
+        <a href="#dependency-graph">Skip to dependency graph</a>
+        <a href="#code-panel">Skip to source code</a>
+        <a href="#inspector-panel">Skip to inspector</a>
+      </nav>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true" />
@@ -1166,7 +1172,7 @@ function App() {
       </header>
 
       <section className={`shell${inspectorTab === "ask" ? " is-ask-focused" : ""}`}>
-        <aside className="left-pane" aria-label="Navigator">
+        <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
           <section className="pane-block">
             <h2>Ingest</h2>
             {desktopAvailable ? (
@@ -1309,7 +1315,12 @@ function App() {
           </section>
         </aside>
 
-        <section className={`graph-pane${focusedNode ? "" : " is-empty"}`} aria-label="Dependency graph">
+        <section
+          id="dependency-graph"
+          className={`graph-pane${focusedNode ? "" : " is-empty"}`}
+          aria-label="Dependency graph"
+          tabIndex={-1}
+        >
           {focusedNode ? (
             <div className="graph-toolbar">
               <div>
@@ -1358,7 +1369,7 @@ function App() {
         </section>
 
         <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Code and summaries">
-          <section className="code-panel">
+          <section id="code-panel" className="code-panel" aria-label="Source code" tabIndex={-1}>
             <div className="panel-title">Code</div>
             {selectedNode ? (
               <CodeSnippet
@@ -1379,7 +1390,7 @@ function App() {
             )}
           </section>
 
-          <section className="chat-panel">
+          <section id="inspector-panel" className="chat-panel" aria-label="Inspector" tabIndex={-1}>
             <div className="panel-title panel-title-row">
               <span>Inspector</span>
               <small>{selectedNode ? `- ${selectedNode.type}` : "- No selection"}</small>

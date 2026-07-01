@@ -105,10 +105,53 @@ select:focus {
 }
 
 .workspace {
+  position: relative;
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr);
   height: 100vh;
   background: #0b0d10;
+}
+
+.skip-links {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.skip-links a {
+  transform: translateY(-48px);
+  padding: 7px 10px;
+  border: 1px solid #66c2a5;
+  border-radius: 6px;
+  color: #08100f;
+  background: #66c2a5;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  opacity: 0;
+  pointer-events: auto;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.skip-links a:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid rgba(216, 238, 232, 0.8);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+.left-pane:focus-visible,
+.graph-pane:focus-visible,
+.code-panel:focus-visible,
+.chat-panel:focus-visible {
+  outline: 2px solid rgba(102, 194, 165, 0.88);
+  outline-offset: -3px;
 }
 
 .topbar {

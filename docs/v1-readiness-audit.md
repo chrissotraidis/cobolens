@@ -23,8 +23,9 @@ Not claimed yet:
   embedding model settings. It does not store source excerpts or use an
   external database. Cloud embeddings remain unimplemented and are rejected
   until an explicit provider implementation exists.
-- Accessibility evidence is source-level and browser-interaction based; it is
-  not a full screen-reader certification pass.
+- Accessibility evidence now includes source-level checks, browser-interaction
+  checks, skip links, focusable landmark targets, and an automated
+  accessibility smoke. It is still not a full screen-reader certification pass.
 
 ## Evidence Commands
 
@@ -34,6 +35,7 @@ Not claimed yet:
   `.cache/benchmarks/COBOL-Legacy-Benchmark-Suite`
 - `npm run desktop:packaged-smoke` after a Linux AppImage build
 - In-app browser checks recorded in `docs/m6-ui-qa.md`
+- `tools/m6-verify/accessibility-smoke.mjs` for keyboard/landmark coverage
 
 ## Functional Requirement Coverage
 
@@ -51,12 +53,12 @@ Not claimed yet:
 | FR-10 data lineage | M6 lineage UI, graph Ask, and export smoke cover reads, writes, moves-to, queries, uses-dd, and assigned-to paths. | Evidenced on current semantic graph |
 | FR-11 impact/where-used | Impact panel, relationship details, graph Ask, and UI contract smoke cover where-used relationships. | Evidenced |
 | FR-12 unreferenced detection | Graph Hints and export list potentially unreferenced source units with cautious wording. | Partial/Should |
-| FR-13 focus-and-expand graph | Sigma focus slice, visible-node controls, and expand behavior are covered by UI contract smoke. | Evidenced |
+| FR-13 focus-and-expand graph | Sigma focus slice, visible-node controls, skip-link graph landmark, and expand behavior are covered by UI/accessibility contract smokes. | Evidenced |
 | FR-14 clustering/LOD | Focus limits and `+N type` cluster expansion are covered by UI QA and contract smoke. | Evidenced |
 | FR-15 click-to-code/edge detail | Node, edge, relationship citation, and Ask citation jumps are covered by UI QA and contract smoke. | Evidenced |
 | FR-16 legend/minimap/colors | Persistent semantic filters/colors and graph orientation/minimap surfaces are covered by UI QA. | Evidenced |
 | FR-17 static export diagrams | Export docs smoke covers Markdown, Mermaid, and PNG artifacts. | Evidenced |
-| FR-18 search/breadcrumb/home | Fuzzy search, breadcrumb history, and Home reset are covered by UI QA and source contract checks. | Evidenced/Should |
+| FR-18 search/breadcrumb/home | Fuzzy search, breadcrumb history, Home reset, and keyboard skip entry points are covered by UI QA and source contract checks. | Evidenced/Should |
 | FR-19 generated summaries | Summary prompt/guard smokes, local summary smoke, and export provenance cover cited summaries and graph fallbacks. | Evidenced |
 | FR-20 Rosetta mode | Model prompts and Summary/Ask pass the selected Rosetta language. | Evidenced |
 | FR-21 documentation export | Export docs smoke covers navigable Markdown, diagrams, source ranges, lineage, parse warnings, and summary provenance. | Evidenced |

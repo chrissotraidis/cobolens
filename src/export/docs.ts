@@ -36,7 +36,7 @@ export function buildDocumentationExport(
         "",
         `- Type: ${node.type}`,
         `- Source: ${file}`,
-        summaries[node.id]?.summary ? "- Summary: AI-generated from graph and source context" : "- Summary: graph-derived, no model required",
+        summaryProvenance(summaries[node.id]?.summary),
         "",
         summary,
         "",
@@ -255,6 +255,14 @@ function graphDerivedSummary(graph: GraphDocument, node: GraphNode) {
     parts.push(`Key cited relationships: ${citedEdges.map((edge) => citedRelationship(graph, edge)).join("; ")}.`);
   }
   return parts.join(" ");
+}
+
+function summaryProvenance(summary?: UnitSummary) {
+  if (!summary) return "- Summary: graph-derived, no model required";
+  if (summary.guarded) {
+    return `- Summary: guarded graph fallback from ${summary.provider} / ${summary.model}${summary.guardReason ? ` (${summary.guardReason})` : ""}`;
+  }
+  return `- Summary: AI-generated from graph and source context via ${summary.provider} / ${summary.model}`;
 }
 
 function relationshipFacts(graph: GraphDocument, node: GraphNode) {

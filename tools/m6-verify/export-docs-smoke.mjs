@@ -56,6 +56,22 @@ try {
     },
     "prog:LINEAGE",
   );
+  const guardedSummaryDocs = buildDocumentationExport(
+    graph,
+    {
+      "prog:LINEAGE": {
+        summary: {
+          nodeId: "prog:LINEAGE",
+          provider: "ollama",
+          model: "llama3.2:1b",
+          text: "LINEAGE is a graph-backed fallback summary.\n\nModel note: model summary had no exact source citations",
+          guarded: true,
+          guardReason: "model summary had no exact source citations",
+        },
+      },
+    },
+    "prog:LINEAGE",
+  );
   const orphanGraph = {
     ...graph,
     nodes: [
@@ -93,7 +109,18 @@ try {
     ["summary evidence section is exported", docs.markdown.includes("#### Evidence")],
     ["summary evidence cites source range", docs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47")],
     ["summary evidence cites relationships", docs.markdown.includes("- LINEAGE COPIES CUSTOMER at src/LINEAGE.cbl:11")],
-    ["AI summary still exports evidence", aiSummaryDocs.markdown.includes("AI-generated summary body") && aiSummaryDocs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47")],
+    [
+      "AI summary still exports evidence",
+      aiSummaryDocs.markdown.includes("AI-generated summary body") &&
+        aiSummaryDocs.markdown.includes("- Summary: AI-generated from graph and source context via ollama / llama3.2") &&
+        aiSummaryDocs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47"),
+    ],
+    [
+      "guarded summary export is labeled as graph fallback",
+      guardedSummaryDocs.markdown.includes("- Summary: guarded graph fallback from ollama / llama3.2:1b (model summary had no exact source citations)") &&
+        guardedSummaryDocs.markdown.includes("LINEAGE is a graph-backed fallback summary.") &&
+        guardedSummaryDocs.markdown.includes("- LINEAGE source at src/LINEAGE.cbl:1-47"),
+    ],
     ["lineage and impact section", docs.markdown.includes("## Lineage and Impact")],
     ["cited CUSTOMER-ID flow", docs.markdown.includes("CUSTOMER-ID moves-to REPORT-ID at src/LINEAGE.cbl:31")],
     ["no empty generated-summary placeholder", !docs.markdown.includes("No generated summary yet.")],

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { access, readdir, stat } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -44,6 +45,17 @@ if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
   finish(1);
 }
 report.checks["desktop display is available"] = true;
+
+const resources = await appDirResourceSmoke(app);
+report.appDirResources = resources;
+for (const [name, passed] of Object.entries(resources.checks ?? {})) {
+  report.checks[name] = passed;
+}
+if (!resources.ok) {
+  report.error = resources.error ?? "packaged AppDir resources are incomplete";
+  if (resources.hint) report.hints.push(resources.hint);
+  finish(1);
+}
 
 const appsink = checkGstreamerAppsink();
 report.checks["GStreamer appsink is available"] = appsink.ok;
@@ -173,6 +185,115 @@ async function newestAppImage() {
   } catch {
     return null;
   }
+}
+
+async function appDirResourceSmoke(appPath) {
+  const appDir = await newestAppDir(dirname(appPath));
+  if (!appDir) {
+    return {
+      ok: false,
+      checks: { "packaged AppDir exists": false },
+      hint: "Run npm run tauri build so the AppImage AppDir is available for resource inspection.",
+    };
+  }
+
+  const analyzerPath = resolve(appDir, "usr", "lib", "Cobolens", "cobolens-analyze");
+  const sampleRoot = resolve(appDir, "usr", "lib", "Cobolens", "samples", "mini-bank");
+  const checks = {
+    "packaged AppDir exists": true,
+    "AppImage analyzer sidecar exists": existsSync(analyzerPath),
+    "AppImage mini-bank sample exists": existsSync(sampleRoot),
+  };
+  if (!checks["AppImage analyzer sidecar exists"] || !checks["AppImage mini-bank sample exists"]) {
+    return { ok: false, appDir, analyzerPath, sampleRoot, checks };
+  }
+
+  const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-appimage-resource-"));
+  try {
+    const out = resolve(tempRoot, "mini-bank-graph.json");
+    const result = await runAnalyzer(analyzerPath, sampleRoot, out);
+    if (!result.ok) {
+      return {
+        ok: false,
+        appDir,
+        analyzerPath,
+        sampleRoot,
+        checks,
+        error: `AppImage packaged analyzer exited with ${result.code}`,
+        stderrTail: result.stderrLines.slice(-12),
+      };
+    }
+
+    const graph = JSON.parse(await readFile(out, "utf8"));
+    const graphChecks = {
+      "AppImage sample files parsed": graph.meta?.fileCount > 0 && graph.meta?.parsedFileCount > 0,
+      "AppImage sample graph has nodes": Array.isArray(graph.nodes) && graph.nodes.length > 0,
+      "AppImage sample graph has edges": Array.isArray(graph.edges) && graph.edges.length > 0,
+    };
+    Object.assign(checks, graphChecks);
+    return {
+      ok: Object.values(checks).every(Boolean),
+      appDir,
+      analyzerPath,
+      sampleRoot,
+      checks,
+      graph: {
+        files: graph.meta?.fileCount ?? 0,
+        parsed: graph.meta?.parsedFileCount ?? 0,
+        parseErrors: graph.meta?.parseErrors?.length ?? 0,
+        nodes: graph.nodes?.length ?? 0,
+        edges: graph.edges?.length ?? 0,
+      },
+    };
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+}
+
+async function newestAppDir(root) {
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    const dirs = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.endsWith(".AppDir")) continue;
+      const path = resolve(root, entry.name);
+      const info = await stat(path);
+      dirs.push({ path, mtimeMs: info.mtimeMs });
+    }
+    dirs.sort((left, right) => right.mtimeMs - left.mtimeMs);
+    return dirs[0]?.path ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function runAnalyzer(commandPath, root, out) {
+  const args = [
+    "--root",
+    root,
+    "--out",
+    out,
+    "--format",
+    "auto",
+    "--ext",
+    ".cbl,.cob,.cpy,.jcl",
+    "--encoding",
+    "utf8",
+  ];
+  return new Promise((resolveRun) => {
+    const stderrLines = [];
+    const child = spawn(commandPath, args, { cwd: repoRoot });
+    child.stderr.on("data", (chunk) => {
+      stderrLines.push(...chunk.toString("utf8").trim().split(/\r?\n/).filter(Boolean));
+    });
+    child.stdout.on("data", () => {});
+    child.on("error", (error) => {
+      resolveRun({ ok: false, code: "spawn-error", stderrLines: [error.message] });
+    });
+    child.on("close", (code) => {
+      resolveRun({ ok: code === 0, code, stderrLines });
+    });
+  });
 }
 
 function checkGstreamerAppsink() {

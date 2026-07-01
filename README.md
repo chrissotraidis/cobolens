@@ -180,9 +180,11 @@ npm run desktop:packaged-smoke
 ```
 
 This launches the newest AppImage under
-`src-tauri/target/release/bundle/appimage/` and verifies that the packaged GUI
-process stays alive. It is intentionally separate from `npm run m6:verify`
-because it needs desktop WebKit/GStreamer runtime support.
+`src-tauri/target/release/bundle/appimage/`, verifies the AppDir contains the
+analyzer sidecar and bundled `mini-bank` sample, runs that packaged analyzer
+against the packaged sample, and confirms that the packaged GUI process stays
+alive. It is intentionally separate from `npm run m6:verify` because it needs
+desktop WebKit/GStreamer runtime support.
 If `gst-inspect-1.0` is missing but the `appsink` runtime plugin is present,
 the smoke launches the app and lets WebKit/GStreamer prove the runtime directly.
 If it reports that `appsink` itself is missing, install the GStreamer runtime

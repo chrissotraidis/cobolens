@@ -111,6 +111,15 @@ const checks = [
     ]) && includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
   ],
   [
+    "Inventory distinguishes source-backed codebase units from external graph references",
+    includesAll(appSource, [
+      'if (node.external || !node.file) return acc;',
+      'Metric label="Source programs"',
+      'Metric label="External refs"',
+      'Metric label="JCL jobs"',
+    ]),
+  ],
+  [
     "Parse health surfaces analyzer dialect metadata",
     includesAll(appSource, ["Dialect: {graph.meta.dialectGuess || \"unknown\"}", "function ParseHealth"]),
   ],

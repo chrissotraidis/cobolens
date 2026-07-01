@@ -23,9 +23,11 @@ http://127.0.0.1:1420/?graph=/m6-bakeoff-graph.json
 In the in-app browser, the M6 fixture graph loaded with inventory counts:
 
 - 4 files
-- 2 programs
+- 1 source program
 - 2 copybooks
+- 1 JCL job
 - 1 JCL step
+- 3 external references
 
 First-run check:
 

@@ -180,11 +180,12 @@ function App() {
     };
     if (!graph) return empty;
     return graph.nodes.reduce((acc, node) => {
+      if (node.external) acc.external += 1;
+      if (node.external || !node.file) return acc;
       if (node.type === "program") acc.programs += 1;
       if (node.type === "copybook") acc.copybooks += 1;
       if (node.type === "jcl-job") acc.jobs += 1;
       if (node.type === "jcl-step") acc.steps += 1;
-      if (node.external) acc.external += 1;
       return acc;
     }, empty);
   }, [graph]);
@@ -998,9 +999,11 @@ function App() {
             <h2>Inventory</h2>
             <Metric label="Files" value={graph?.meta.fileCount ?? 0} />
             <Metric label="Parsed" value={graph?.meta.parsedFileCount ?? 0} />
-            <Metric label="Programs" value={counts.programs} />
+            <Metric label="Source programs" value={counts.programs} />
             <Metric label="Copybooks" value={counts.copybooks} />
+            <Metric label="JCL jobs" value={counts.jobs} />
             <Metric label="JCL steps" value={counts.steps} />
+            <Metric label="External refs" value={counts.external} />
           </section>
 
           <ParseHealth graph={graph} />

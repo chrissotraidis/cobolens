@@ -1,0 +1,20 @@
+# V1 Readiness Sweep
+
+Run:
+
+```sh
+npm run v1:readiness
+```
+
+This is an umbrella check for the local v1 evidence trail. It always runs the
+current required `m6:verify` suite, then attempts optional gates only when their
+local prerequisites exist:
+
+- cached COBOL Legacy Benchmark Suite under `.cache/benchmarks/`;
+- local Ollama for the configured small-model readiness and grounded Ask smoke;
+- built Linux AppImage plus a desktop display for packaged GUI smoke.
+
+Optional gates report `passed`, `failed`, or `skipped` in the final JSON report.
+Only required-gate failure exits non-zero. This keeps the command useful across
+developer machines without turning absent local tools into fake product
+failures.

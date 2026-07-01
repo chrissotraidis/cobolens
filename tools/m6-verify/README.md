@@ -47,3 +47,10 @@ run:
 ```sh
 npm run desktop:smoke
 ```
+
+For a broader local v1 evidence sweep that keeps these environment-specific
+checks visible, run:
+
+```sh
+npm run v1:readiness
+```

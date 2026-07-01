@@ -49,6 +49,8 @@ try {
     ["127.0.0.1 is accepted", doesNotThrow(() => assertLocalOllamaUrl("http://127.0.0.1:11434/api"))],
     ["ipv6 localhost is accepted", doesNotThrow(() => assertLocalOllamaUrl("http://[::1]:11434/api"))],
     ["remote Ollama is rejected", throws(() => assertLocalOllamaUrl("http://192.168.1.10:11434/api"))],
+    ["https localhost is rejected", throws(() => assertLocalOllamaUrl("https://localhost:11434/api"))],
+    ["ftp localhost is rejected", throws(() => assertLocalOllamaUrl("ftp://localhost:11434/api"))],
     ["https remote is rejected", throws(() => assertLocalOllamaUrl("https://ollama.example.com/api"))],
     ["ollama base url normalizes api suffix", normalizeOllamaBaseUrl("http://127.0.0.1:11434") === "http://127.0.0.1:11434/api"],
     ["ollama provider selects local mode", settingsForProvider(DEFAULT_MODEL_SETTINGS, "ollama").privacyMode === "local"],

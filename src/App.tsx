@@ -988,6 +988,14 @@ function App() {
       explainSelectedNode();
       return;
     }
+    if (!isGraphQuestion(question)) {
+      setChatQuestion(question);
+      setChatAnswer(null);
+      setChatError("");
+      setChatStatus("idle");
+      setInspectorTab("ask");
+      return;
+    }
     askQuestion(question);
   }
 
@@ -1124,7 +1132,7 @@ function App() {
         </div>
       </header>
 
-      <section className="shell">
+      <section className={`shell${inspectorTab === "ask" ? " is-ask-focused" : ""}`}>
         <aside className="left-pane" aria-label="Navigator">
           <section className="pane-block">
             <h2>Ingest</h2>
@@ -1880,7 +1888,7 @@ function SummaryDock({
             disabled={!node}
             title={node ? "Open Ask with a cited graph explanation" : "Select a symbol to ask about it"}
           >
-            Graph answer
+            Explain from graph
           </button>
           <button
             type="button"
@@ -1888,7 +1896,7 @@ function SummaryDock({
             disabled={!node}
             title={node ? "Open Ask with an AI-backed plain-English prompt" : "Select a symbol to ask about it"}
           >
-            Ask follow-up
+            Ask AI follow-up
           </button>
           <button
             className="summary-wide-action"
@@ -1903,7 +1911,7 @@ function SummaryDock({
                   : "Generate an AI summary for this symbol"
             }
           >
-            {generating ? "Stop" : state?.summary ? "Refresh AI summary" : "AI summary"}
+            {generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary"}
           </button>
         </div>
       </div>
@@ -2030,11 +2038,15 @@ function ChatAnswerPanel({
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
   const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
+  const activeRouteLabel = workingWithModel ? `${PROVIDER_LABELS[settings.provider]} with citations` : "Instant graph answer";
+  const activeRouteDetail = workingWithModel
+    ? "Uses the retrieved source slice and must return citations; local Ollama can be slow on CPU."
+    : "No model needed for overview, dependency, call, read, write, and usage questions.";
   const answerSubtitle =
     status === "running"
       ? workingWithModel
         ? `${PROVIDER_LABELS[settings.provider]} is answering with cited graph context`
-        : "Answering from graph context"
+        : "Answering instantly from graph context"
       : answer?.guarded
         ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} missed citation rules`
         : answer?.fallbackReason
@@ -2043,11 +2055,11 @@ function ChatAnswerPanel({
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
         : answer?.source === "graph"
           ? answerWasModelQuestion
-            ? "Graph-grounded answer"
+            ? "Cited graph fallback"
             : "Answered from the graph"
         : workingWithModel
-          ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
-          : "Graph shortcuts answer without a model";
+          ? `AI will answer with cited graph context`
+          : "Ask graph questions instantly, or type a broader AI follow-up";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
@@ -2058,7 +2070,7 @@ function ChatAnswerPanel({
     ? workingWithModel
       ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
       : "Ready to answer instantly from the dependency graph."
-    : "Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.";
+    : "Choose a graph shortcut for an instant cited answer. Type a broader explanation request to use the selected AI provider.";
 
   return (
     <section className="answer-card">
@@ -2089,9 +2101,10 @@ function ChatAnswerPanel({
           {askButtonLabel}
         </button>
       </div>
-      <div className="answer-modes" aria-label="Ask routing">
-        <span className={!workingWithModel ? "is-active" : undefined}>Graph answer</span>
-        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} with citations</span>
+      <div className={`answer-route ${workingWithModel ? "model" : "graph"}`} aria-label="Ask routing" aria-live="polite">
+        <strong>{activeRouteLabel}:</strong>
+        {" "}
+        <span>{activeRouteDetail}</span>
       </div>
       {showReadiness ? (
         <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>

@@ -24,6 +24,13 @@ const checks = [
     ]),
   ],
   [
+    "Program Ask suggestions include concrete read/write graph questions",
+    includesAll(appSource, [
+      "`What files does ${name} read?`",
+      "`What does ${name} write?`",
+    ]),
+  ],
+  [
     "Ask response has a visible framed style",
     includesAll(appCss, [".answer-response", "min-height: 76px", "background: rgba(17, 21, 26, 0.68)"]),
   ],
@@ -71,9 +78,9 @@ const checks = [
     ]) && includesAll(appSource, ['from "./model/readiness"']),
   ],
   [
-    "Inspector opens on Ask and labels graph facts as Overview",
-    includesAll(appSource, ['useState<InspectorTab>("ask")', 'label: "Ask"', 'label: "Overview"', 'label: "Links"']) &&
-      appearsInOrder(appSource, ['{ id: "ask", label: "Ask" }', '{ id: "summary", label: "Overview"']) &&
+    "Inspector opens on Ask AI and labels graph facts as Overview",
+    includesAll(appSource, ['useState<InspectorTab>("ask")', 'label: "Ask AI"', 'label: "Overview"', 'label: "Links"']) &&
+      appearsInOrder(appSource, ['{ id: "ask", label: "Ask AI" }', '{ id: "summary", label: "Overview"']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(94px, 1.18fr)", "minmax(78px, 1fr)"]),
   ],
   [

@@ -88,13 +88,15 @@ export function GraphView({
       enableEdgeEvents: true,
       hideEdgesOnMove: true,
       labelColor: { color: "#dbe3ea" },
-      labelDensity: 0.12,
-      labelGridCellSize: 80,
+      labelDensity: 0.08,
+      labelGridCellSize: 96,
       labelRenderedSizeThreshold: 7,
-      labelSize: 12,
+      labelSize: 11,
       renderEdgeLabels: false,
       renderLabels: true,
+      stagePadding: 68,
     });
+    renderer.getCamera().setState({ ratio: 1.18 });
 
     renderer.on("clickNode", ({ node }) => {
       if (slice.syntheticNodeIds.has(node)) {
@@ -283,7 +285,7 @@ function buildFocusSlice(
 function layoutNodes(nodes: GraphNode[], focusNodeId: string) {
   const focus = nodes.find((node) => node.id === focusNodeId) ?? nodes[0];
   const neighbors = nodes.filter((node) => node.id !== focus.id);
-  const radius = Math.max(5, Math.min(12, neighbors.length * 0.42));
+  const radius = Math.max(4.5, Math.min(9.5, neighbors.length * 0.34));
   return [
     { node: focus, x: 0, y: 0 },
     ...neighbors.map((node, index) => {

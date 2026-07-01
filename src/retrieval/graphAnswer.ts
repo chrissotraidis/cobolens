@@ -1,11 +1,13 @@
 import { edgeLabel, type GraphDocument, type GraphEdge, type GraphNode } from "../lib/graph";
 import type { Citation, RetrievedContext } from "./context";
 
-type GraphQuestionIntent = "dependency" | "call" | "flow" | "where" | "general";
+type GraphQuestionIntent = "dependency" | "call" | "read" | "write" | "flow" | "where" | "general";
 
 const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
 const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
 const FLOW_SOURCE_EDGE_TYPES = new Set(["defines", "reads", "uses-dd"]);
+const READ_EDGE_TYPES = new Set(["reads"]);
+const WRITE_EDGE_TYPES = new Set(["writes", "updates"]);
 
 export function graphAnswerFallback(
   graph: GraphDocument,
@@ -70,6 +72,26 @@ export function graphAnswerFallback(
     lines.push("", `Calls or runtime transfers: ${callEdges.length ? callEdges.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
   }
 
+  if (intent === "read") {
+    const readTargets = outgoing.filter(isReadEdge);
+    const readSources = incoming.filter(isReadEdge);
+    lines.push(
+      "",
+      `Reads: ${readTargets.length ? uniqueNodeNames(graph, readTargets.map((edge) => edge.to)).join(", ") : "none recorded"}.`,
+      `Read by: ${readSources.length ? uniqueNodeNames(graph, readSources.map((edge) => edge.from)).join(", ") : "none recorded"}.`,
+    );
+  }
+
+  if (intent === "write") {
+    const writeTargets = outgoing.filter(isWriteEdge);
+    const writeSources = incoming.filter(isWriteEdge);
+    lines.push(
+      "",
+      `Writes or updates: ${writeTargets.length ? uniqueNodeNames(graph, writeTargets.map((edge) => edge.to)).join(", ") : "none recorded"}.`,
+      `Written or updated by: ${writeSources.length ? uniqueNodeNames(graph, writeSources.map((edge) => edge.from)).join(", ") : "none recorded"}.`,
+    );
+  }
+
   if (intent === "flow") {
     const flowEdges = directEdges.filter(isFlowEdge);
     const flowSources = incoming.filter(isFlowSourceEdge);
@@ -108,7 +130,9 @@ function nodeName(graph: GraphDocument, nodeId: string) {
 function graphQuestionIntent(question: string): GraphQuestionIntent {
   if (/\b(depend\w*|impact\w*|used by|uses?)\b/i.test(question)) return "dependency";
   if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
-  if (/\b(flow\w*|read\w*|writ\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
+  if (/\bread\w*\b/i.test(question)) return "read";
+  if (/\b(writ\w*|updat\w*)\b/i.test(question)) return "write";
+  if (/\b(flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
   if (/\b(where|happen\w*)\b/i.test(question)) return "where";
   return "general";
 }
@@ -126,6 +150,8 @@ function relevantEdgesForIntent(
     return dedupeEdges([...incoming, ...outgoing]);
   }
   if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge)]);
+  if (intent === "read") return dedupeEdges([...outgoing.filter(isReadEdge), ...incoming.filter(isReadEdge)]);
+  if (intent === "write") return dedupeEdges([...outgoing.filter(isWriteEdge), ...incoming.filter(isWriteEdge)]);
   if (intent === "flow") return dedupeEdges([...directEdges.filter(isFlowEdge), ...directEdges]);
   return directEdges;
 }
@@ -189,6 +215,14 @@ function isFlowEdge(edge: GraphEdge) {
 
 function isFlowSourceEdge(edge: GraphEdge) {
   return FLOW_SOURCE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function isReadEdge(edge: GraphEdge) {
+  return READ_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
+}
+
+function isWriteEdge(edge: GraphEdge) {
+  return WRITE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
 }
 
 function dedupeEdges(edges: GraphEdge[]) {

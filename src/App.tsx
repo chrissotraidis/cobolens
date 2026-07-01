@@ -1127,7 +1127,7 @@ function App() {
               activeTab={inspectorTab}
               summaryStatus={selectedSummaryState?.status}
               dependencyCount={selectedNode ? dependencyCounts(selectedNode, graph).total : 0}
-              hasRelationship={Boolean(selectedEdge)}
+              selectedRelationship={Boolean(selectedEdge)}
               onChange={setInspectorTab}
             />
             <div className="summary-stack" ref={inspectorBodyRef}>
@@ -1182,7 +1182,24 @@ function App() {
                   }}
                 />
               ) : null}
-              {inspectorTab === "relationship" ? <RelationshipDetails selectedEdge={selectedEdge} graph={graph} /> : null}
+              {inspectorTab === "relationship" ? (
+                <RelationshipDetails
+                  selectedEdge={selectedEdge}
+                  node={selectedNode}
+                  graph={graph}
+                  onFocusNode={focusOnNode}
+                  onOpenEdge={(edge) => {
+                    if (!edge.site || !graph) return;
+                    setSelectedEdge(edge);
+                    jumpToCitation({
+                      file: edge.site.file,
+                      line: edge.site.line,
+                      label: edgeLabel(edge, graph),
+                      nodeId: edge.from,
+                    }, true);
+                  }}
+                />
+              ) : null}
             </div>
           </section>
         </aside>
@@ -1534,20 +1551,20 @@ function InspectorTabs({
   activeTab,
   summaryStatus,
   dependencyCount,
-  hasRelationship,
+  selectedRelationship,
   onChange,
 }: {
   activeTab: InspectorTab;
   summaryStatus?: SummaryStatus;
   dependencyCount: number;
-  hasRelationship: boolean;
+  selectedRelationship: boolean;
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "ask", label: "Ask" },
+    { id: "ask", label: "Ask AI" },
     { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
-    { id: "relationship", label: "Links", badge: hasRelationship ? "1" : undefined },
+    { id: "relationship", label: "Links", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
   ];
 
   return (
@@ -2201,16 +2218,53 @@ function RelationshipList({
 
 function RelationshipDetails({
   selectedEdge,
+  node,
   graph,
+  onFocusNode,
+  onOpenEdge,
 }: {
   selectedEdge: GraphEdge | null;
+  node: GraphNode | null;
   graph: GraphDocument | null;
+  onFocusNode: (nodeId: string) => void;
+  onOpenEdge: (edge: GraphEdge) => void;
 }) {
+  const relationships = useMemo(() => {
+    if (!node || !graph) return null;
+    const incoming = graph.edges.filter((edge) => edge.to === node.id);
+    const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+    return { incoming, outgoing };
+  }, [graph, node]);
+
   return (
     <section className="relationship-card">
-      <div className="relationship-title">Relationship</div>
+      <div className="relationship-title">{selectedEdge ? "Relationship" : "Links"}</div>
       {selectedEdge && graph ? (
         <EdgeExplanation edge={selectedEdge} graph={graph} />
+      ) : relationships && node && graph ? (
+        <>
+          <p className="relationship-help">Select a source line link to jump into code, or select a symbol to refocus the graph.</p>
+          <RelationshipList
+            title="Outgoing"
+            empty="No outgoing links."
+            edges={relationships.outgoing}
+            graph={graph}
+            selectedNodeId={node.id}
+            direction="out"
+            onFocusNode={onFocusNode}
+            onOpenEdge={onOpenEdge}
+          />
+          <RelationshipList
+            title="Incoming"
+            empty="No incoming links."
+            edges={relationships.incoming}
+            graph={graph}
+            selectedNodeId={node.id}
+            direction="in"
+            onFocusNode={onFocusNode}
+            onOpenEdge={onOpenEdge}
+          />
+        </>
       ) : graph?.meta.parseErrors.length ? (
         <ParseErrorSummary graph={graph} />
       ) : (
@@ -2673,7 +2727,7 @@ function suggestedGraphQuestions(node: GraphNode | null) {
   if (!node) return [];
   const name = node.name;
   if (node.type === "program") {
-    return [`What depends on ${name}?`, `What does ${name} call?`, `Where does ${name} happen?`];
+    return [`What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
   }
   if (node.type === "data-item") {
     return [`Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];

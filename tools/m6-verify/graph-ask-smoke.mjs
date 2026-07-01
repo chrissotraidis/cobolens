@@ -79,6 +79,34 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const callAnswer = graphAnswerFallback(graph, callQuestion, callContext);
+  const readQuestion = "What files does LINEAGE read?";
+  const readContext = await retrieveQuestionContext({
+    graph,
+    question: readQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const readAnswer = graphAnswerFallback(graph, readQuestion, readContext);
+  const readByQuestion = "Who reads CUSTOMER-FILE?";
+  const readByContext = await retrieveQuestionContext({
+    graph,
+    question: readByQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const readByAnswer = graphAnswerFallback(graph, readByQuestion, readByContext);
+  const writeQuestion = "What does LINEAGE write?";
+  const writeContext = await retrieveQuestionContext({
+    graph,
+    question: writeQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const writeAnswer = graphAnswerFallback(graph, writeQuestion, writeContext);
+  const writtenByQuestion = "Who writes REPORT-RECORD?";
+  const writtenByContext = await retrieveQuestionContext({
+    graph,
+    question: writtenByQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const writtenByAnswer = graphAnswerFallback(graph, writtenByQuestion, writtenByContext);
   const flowQuestion = "Where does CUSTOMER-ID flow?";
   const flowContext = await retrieveQuestionContext({
     graph,
@@ -128,6 +156,10 @@ try {
     ["where question classified as graph-only", isGraphQuestion(whereQuestion)],
     ["uses question classified as graph-only", isGraphQuestion(usesQuestion)],
     ["explain question classified as graph-only", isGraphQuestion(explainQuestion)],
+    ["read question classified as graph-only", isGraphQuestion(readQuestion)],
+    ["read-by question classified as graph-only", isGraphQuestion(readByQuestion)],
+    ["write question classified as graph-only", isGraphQuestion(writeQuestion)],
+    ["written-by question classified as graph-only", isGraphQuestion(writtenByQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -149,6 +181,20 @@ try {
     ["call citations stay focused", !callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 11)],
     ["cites runtime transfer", callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 40)],
     ["cites plain COBOL call", callAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 43)],
+    ["read answer reports only recorded reads", readAnswer.text.includes("Reads: CUSTOMER-FILE.")],
+    ["read answer reports no incoming readers for program", readAnswer.text.includes("Read by: none recorded.")],
+    ["read answer cites read relationship", readAnswer.text.includes("- LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21")],
+    ["read answer omits write/call relationships", !readAnswer.text.includes("writes REPORT-RECORD") && !readAnswer.text.includes("executes LINK RATEAPI")],
+    ["read answer citations stay focused", readAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 21) && !readAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 26)],
+    ["read-by question matches logical file", readByContext.focusNodes[0]?.name === "CUSTOMER-FILE"],
+    ["read-by answer reports incoming reader", readByAnswer.text.includes("Read by: LINEAGE.")],
+    ["read-by answer cites incoming read", readByAnswer.text.includes("- LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21")],
+    ["write answer reports recorded writes", writeAnswer.text.includes("Writes or updates: REPORT-RECORD.")],
+    ["write answer reports no incoming writers for program", writeAnswer.text.includes("Written or updated by: none recorded.")],
+    ["write answer omits read/call relationships", !writeAnswer.text.includes("reads CUSTOMER-FILE") && !writeAnswer.text.includes("executes LINK RATEAPI")],
+    ["written-by question matches report record", writtenByContext.focusNodes[0]?.name === "REPORT-RECORD"],
+    ["written-by answer reports incoming writer", writtenByAnswer.text.includes("Written or updated by: LINEAGE.")],
+    ["written-by answer cites incoming write", writtenByAnswer.text.includes("- LINEAGE writes REPORT-RECORD at src/LINEAGE.cbl:26")],
     ["reports flow source", flowAnswer.text.includes("Flow sources or definitions: CUSTOMER.")],
     ["reports flow destination", flowAnswer.text.includes("Flow destinations: REPORT-ID.")],
     ["cites flow destination", flowAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],

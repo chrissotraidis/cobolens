@@ -1090,6 +1090,8 @@ pre {
 }
 
 .answer-card {
+  display: grid;
+  gap: 10px;
   padding: 12px;
   border: 1px solid #20262e;
   border-radius: 8px;
@@ -1155,7 +1157,7 @@ pre {
 
 .chat-composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 70px;
+  grid-template-columns: minmax(0, 1fr) 86px;
   gap: 8px;
   align-items: center;
 }
@@ -1373,8 +1375,17 @@ pre {
 }
 
 .relationship-card {
+  display: grid;
+  gap: 12px;
   padding-top: 12px;
   border-top: 1px solid #20262e;
+}
+
+.relationship-help {
+  margin: 0;
+  color: #8c98a5;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 @media (max-width: 900px) {

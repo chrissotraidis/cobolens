@@ -56,6 +56,23 @@ try {
     ],
   };
   const orphanDocs = buildDocumentationExport(orphanGraph, {}, "prog:ORPHAN");
+  const warningDocs = buildDocumentationExport(
+    {
+      ...graph,
+      meta: {
+        ...graph.meta,
+        parseErrors: [
+          {
+            file: "bad/UNSUPPORTED.cbl",
+            line: 12,
+            reason: "unsupported preprocessor directive; lightweight scan completed",
+          },
+        ],
+      },
+    },
+    {},
+    "prog:LINEAGE",
+  );
   const assertions = [
     ["graph-derived summaries", docs.markdown.includes("Summary: graph-derived, no model required")],
     ["source ranges are exported", docs.markdown.includes("- Source: src/LINEAGE.cbl:1-47")],
@@ -67,6 +84,10 @@ try {
     ["links to lineage section", docs.markdown.includes("- [CUSTOMER-ID lineage](#lineage-customer-id)")],
     ["graph hints section", docs.markdown.includes("## Graph Hints")],
     ["unreferenced source units are exported", orphanDocs.markdown.includes("- ORPHAN (program) at src/ORPHAN.cbl:1-8")],
+    [
+      "parse warning source lines are exported",
+      warningDocs.markdown.includes("- bad/UNSUPPORTED.cbl:12: unsupported preprocessor directive; lightweight scan completed"),
+    ],
     ["mermaid diagram", docs.mermaid.includes("flowchart LR")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);

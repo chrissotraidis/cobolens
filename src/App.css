@@ -919,6 +919,25 @@ pre {
   white-space: nowrap;
 }
 
+.parse-warning-list button {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  color: #e8d796;
+  border: 0;
+  background: transparent;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parse-warning-list button:hover {
+  color: #fff0ac;
+  text-decoration: underline;
+}
+
 .parse-warning-more {
   color: #7d8996;
 }

@@ -20,6 +20,7 @@ export type GraphEdge = {
 
 export type ParseError = {
   file: string;
+  line?: number;
   reason: string;
 };
 

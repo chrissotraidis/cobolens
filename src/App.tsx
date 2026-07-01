@@ -1007,7 +1007,7 @@ function App() {
             <Metric label="External refs" value={counts.external} />
           </section>
 
-          <ParseHealth graph={graph} />
+          <ParseHealth graph={graph} onOpenWarning={jumpToCitation} />
 
           <GraphHints
             graph={graph}
@@ -1238,7 +1238,13 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ParseHealth({ graph }: { graph: GraphDocument | null }) {
+function ParseHealth({
+  graph,
+  onOpenWarning,
+}: {
+  graph: GraphDocument | null;
+  onOpenWarning: (citation: Citation) => void;
+}) {
   const parseErrors = graph?.meta.parseErrors ?? [];
   const visibleErrors = parseErrors.slice(0, 5);
   const hiddenCount = Math.max(0, parseErrors.length - visibleErrors.length);
@@ -1256,12 +1262,25 @@ function ParseHealth({ graph }: { graph: GraphDocument | null }) {
         <div className="settings-footnote ready">No parse warnings.</div>
       ) : parseErrors.length ? (
         <ul className="parse-warning-list">
-          {visibleErrors.map((error) => (
-            <li key={`${error.file}:${error.reason}`}>
-              <strong title={error.file}>{error.file}</strong>
-              <span>{error.reason}</span>
-            </li>
-          ))}
+          {visibleErrors.map((error) => {
+            const line = error.line && error.line > 0 ? error.line : undefined;
+            return (
+              <li key={`${error.file}:${error.reason}`}>
+                {line ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenWarning({ file: error.file, line, label: "Parse warning" })}
+                    title={`Show ${parseErrorSite(error)}`}
+                  >
+                    {parseErrorSite(error)}
+                  </button>
+                ) : (
+                  <strong title={error.file}>{error.file}</strong>
+                )}
+                <span>{error.reason}</span>
+              </li>
+            );
+          })}
           {hiddenCount ? <li className="parse-warning-more">+{hiddenCount} more parse warnings</li> : null}
         </ul>
       ) : (
@@ -2251,12 +2270,16 @@ function ParseErrorSummary({ graph }: { graph: GraphDocument }) {
     <ul className="parse-errors">
       {graph.meta.parseErrors.slice(0, 8).map((parseError) => (
         <li key={`${parseError.file}:${parseError.reason}`}>
-          <strong>{parseError.file}</strong>
+          <strong>{parseErrorSite(parseError)}</strong>
           <span>{parseError.reason}</span>
         </li>
       ))}
     </ul>
   );
+}
+
+function parseErrorSite(parseError: { file: string; line?: number }) {
+  return parseError.line ? `${parseError.file}:${parseError.line}` : parseError.file;
 }
 
 function canUseTauri() {

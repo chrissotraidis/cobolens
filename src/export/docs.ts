@@ -48,7 +48,7 @@ export function buildDocumentationExport(
     .join("\n");
 
   const parseErrors = graph.meta.parseErrors.length
-    ? graph.meta.parseErrors.map((error) => `- ${error.file}: ${error.reason}`).join("\n")
+    ? graph.meta.parseErrors.map((error) => `- ${parseErrorSite(error)}: ${error.reason}`).join("\n")
     : "- None";
   const unreferencedSourceUnits = potentiallyUnreferencedSourceUnits(graph);
   const graphHints = unreferencedSourceUnits.length
@@ -264,6 +264,10 @@ function sourceLocation(node: GraphNode) {
   const start = node.lines?.[0] ?? 1;
   const end = node.lines?.[1];
   return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
+}
+
+function parseErrorSite(error: { file: string; line?: number }) {
+  return error.line ? `${error.file}:${error.line}` : error.file;
 }
 
 function citedRelationship(graph: GraphDocument, edge: GraphEdge) {

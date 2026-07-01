@@ -137,6 +137,15 @@ const checks = [
     includesAll(appSource, ["Dialect: {graph.meta.dialectGuess || \"unknown\"}", "function ParseHealth"]),
   ],
   [
+    "Parse health warning rows can jump to cited source lines",
+    includesAll(appSource, [
+      "onOpenWarning={jumpToCitation}",
+      "onOpenWarning: (citation: Citation) => void",
+      "parseErrorSite(error)",
+      'label: "Parse warning"',
+    ]) && includesAll(appCss, [".parse-warning-list button", "text-decoration: underline"]),
+  ],
+  [
     "Graph hints expose potentially unreferenced source units",
     includesAll(appSource, [
       "function GraphHints",

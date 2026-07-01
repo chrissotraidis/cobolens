@@ -70,8 +70,9 @@ Parse-health checks:
   recorded incoming graph edges as potentially unreferenced. The wording stays
   cautious because external schedulers may still call entry programs.
 - Loading a minimal warning graph through the `?graph=` URL shows `1/3 parsed`
-  and lists file/reason rows such as `bad/UNSUPPORTED.cbl` with
-  `unsupported preprocessor directive near line 12`.
+  and lists warning rows such as `bad/UNSUPPORTED.cbl:12` with
+  `unsupported preprocessor directive`; when a line is present, clicking the
+  warning jumps the code panel to that source line.
 
 Legend/filter checks:
 

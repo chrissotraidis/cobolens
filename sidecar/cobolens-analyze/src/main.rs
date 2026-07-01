@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
     process,
 };
-use tree_sitter_patched_arborium::Parser;
+use tree_sitter_patched_arborium::{Node, Parser};
 
 const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 const IGNORED_DIR_NAMES: &[&str] = &[
@@ -70,6 +70,8 @@ struct GraphMeta {
 #[serde(rename_all = "camelCase")]
 struct ParseError {
     file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    line: Option<usize>,
     reason: String,
 }
 
@@ -130,8 +132,14 @@ struct SourceFile {
 
 #[derive(Debug)]
 struct FileAnalysis {
-    warning: Option<String>,
+    warning: Option<ParseWarning>,
     dialect_signals: BTreeSet<String>,
+}
+
+#[derive(Debug)]
+struct ParseWarning {
+    reason: String,
+    line: Option<usize>,
 }
 
 #[derive(Default)]
@@ -292,15 +300,17 @@ fn analyze(options: &AnalyzeOptions, mut progress: impl Write) -> Result<GraphDo
             Ok(analysis) => {
                 parsed_file_count += 1;
                 dialect_signals.extend(analysis.dialect_signals);
-                if let Some(reason) = analysis.warning {
+                if let Some(warning) = analysis.warning {
                     parse_errors.push(ParseError {
                         file: source_file.rel.clone(),
-                        reason,
+                        line: warning.line,
+                        reason: warning.reason,
                     });
                 }
             }
             Err(reason) => parse_errors.push(ParseError {
                 file: source_file.rel.clone(),
+                line: None,
                 reason,
             }),
         }
@@ -346,9 +356,10 @@ fn parse_file(
 
     match source_file.kind {
         FileKind::Cobol | FileKind::Copybook => {
-            let parse_warning = verify_tree_sitter_parse(&content)
-                .err()
-                .map(|reason| format!("{reason}; lightweight scan completed"));
+            let parse_warning = verify_tree_sitter_parse(&content).err().map(|warning| ParseWarning {
+                reason: format!("{}; lightweight scan completed", warning.reason),
+                line: warning.line,
+            });
             parse_cobol_file(source_file, &logical_lines, builder)?;
             Ok(FileAnalysis {
                 warning: parse_warning,
@@ -433,18 +444,44 @@ fn dialect_guess(signals: &BTreeSet<String>) -> String {
     }
 }
 
-fn verify_tree_sitter_parse(content: &str) -> Result<(), String> {
+fn verify_tree_sitter_parse(content: &str) -> Result<(), ParseWarning> {
     let mut parser = Parser::new();
     parser
         .set_language(&arborium_cobol::language().into())
-        .map_err(|err| format!("tree-sitter language setup failed: {err}"))?;
+        .map_err(|err| ParseWarning {
+            reason: format!("tree-sitter language setup failed: {err}"),
+            line: None,
+        })?;
     let tree = parser
         .parse(content, None)
-        .ok_or_else(|| "tree-sitter parser returned no tree".to_string())?;
+        .ok_or_else(|| ParseWarning {
+            reason: "tree-sitter parser returned no tree".to_string(),
+            line: None,
+        })?;
     if tree.root_node().has_error() {
-        return Err("tree-sitter parse contained errors".to_string());
+        return Err(ParseWarning {
+            reason: "tree-sitter parse contained errors".to_string(),
+            line: first_tree_sitter_error_line(tree.root_node()),
+        });
     }
     Ok(())
+}
+
+fn first_tree_sitter_error_line(node: Node<'_>) -> Option<usize> {
+    if node.is_error() || node.is_missing() {
+        return Some(node.start_position().row + 1);
+    }
+    if !node.has_error() {
+        return None;
+    }
+    for index in 0..node.child_count() {
+        if let Some(child) = node.child(index) {
+            if let Some(line) = first_tree_sitter_error_line(child) {
+                return Some(line);
+            }
+        }
+    }
+    Some(node.start_position().row + 1)
 }
 
 fn read_source_text(path: &Path, encoding: &str) -> Result<String, String> {
@@ -1389,6 +1426,48 @@ mod tests {
                     .as_ref()
                     .is_some_and(|site| site.file == "src/CALLER.cbl" && site.line == 4)
         }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn reports_tree_sitter_warning_line_without_blocking_scan() {
+        let root = temp_test_dir("warning-line");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("src").join("BAD.cbl"),
+            [
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. BAD.",
+                "       @@@@@",
+                "       PROCEDURE DIVISION.",
+                "           STOP RUN.",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        let out = root.join("graph.json");
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out,
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string()],
+            encoding: "utf8".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert_eq!(graph.meta.parsed_file_count, 1);
+        assert!(graph
+            .nodes
+            .iter()
+            .any(|node| node.node_type == "program" && node.name == "BAD"));
+        assert_eq!(graph.meta.parse_errors.len(), 1);
+        assert_eq!(graph.meta.parse_errors[0].file, "src/BAD.cbl");
+        assert_eq!(graph.meta.parse_errors[0].line, Some(3));
+        assert!(graph.meta.parse_errors[0]
+            .reason
+            .contains("lightweight scan completed"));
         fs::remove_dir_all(root).unwrap();
     }
 

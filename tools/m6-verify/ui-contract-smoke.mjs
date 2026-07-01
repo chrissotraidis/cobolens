@@ -132,6 +132,15 @@ const checks = [
     ]),
   ],
   [
+    "Relationship citations open the relationship detail",
+    includesAll(appSource, [
+      "const citedEdge = graph?.edges.find",
+      "edgeLabel(edge, graph) === citation.label",
+      "setSelectedEdge(citedEdge)",
+      'setInspectorTab("relationship")',
+    ]),
+  ],
+  [
     "Empty graph canvas offers first-run sample and treats folder open as desktop-only in browser preview",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',

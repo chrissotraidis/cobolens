@@ -871,8 +871,15 @@ function App() {
   }
 
   function jumpToCitation(citation: Citation, keepEdge = false) {
+    const citedEdge = graph?.edges.find(
+      (edge) =>
+        edge.site?.file === citation.file &&
+        edge.site.line === citation.line &&
+        edgeLabel(edge, graph) === citation.label,
+    );
     const citedNode =
       (citation.nodeId ? nodeById.get(citation.nodeId) : undefined) ??
+      (citedEdge ? nodeById.get(citedEdge.from) : undefined) ??
       graph?.nodes.find(
         (node) =>
           node.file === citation.file &&
@@ -885,7 +892,12 @@ function App() {
       setSelectedNodeId(citedNode.id);
       setHistory((current) => [...current.filter((id) => id !== citedNode.id), citedNode.id].slice(-8));
     }
-    if (!keepEdge) setSelectedEdge(null);
+    if (citedEdge) {
+      setSelectedEdge(citedEdge);
+      setInspectorTab("relationship");
+    } else if (!keepEdge) {
+      setSelectedEdge(null);
+    }
     setSourceFocus({ file: citation.file, line: citation.line, nodeId: citedNode?.id });
   }
 

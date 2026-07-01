@@ -131,6 +131,9 @@ Relationship-click check:
 - Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to
   the `Relationship` detail, shows `LINEAGE COPIES CUSTOMER`, and highlights
   `COPY CUSTOMER.` at `src/LINEAGE.cbl:11` in the code pane.
+- Clicking a relationship citation from an Ask answer now follows the same path:
+  it selects the cited graph edge, opens the `Links`/relationship detail, and
+  highlights the cited source line.
 
 Export check:
 

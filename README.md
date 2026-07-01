@@ -28,7 +28,8 @@ As of 2026-07-01, M0-M6 local v1 work is implemented and committed.
   production analyzer sidecar, bundles it with the sample codebase, and
   produced `.deb`, `.rpm`, and `.AppImage` artifacts.
 - GitHub Actions packaging now validates unsigned Linux and Windows Tauri
-  bundle builds on push/PR. Signed release installers are still not claimed.
+  bundle builds on push/PR and uploads unsigned bundle artifacts for QA.
+  Signed release installers are still not claimed.
 
 ## What Works
 
@@ -261,7 +262,9 @@ nodes, 27 edges, and 0 parse errors.
 `.github/workflows/package.yml` runs unsigned Tauri packaging builds on
 `ubuntu-22.04` and `windows-latest` for pushes to `main`, pull requests, and
 manual dispatch. The workflow uses `npm ci`, the Rust stable toolchain, the
-packaging contract smoke, and `tauri-apps/tauri-action@v1`.
+packaging contract smoke, and `tauri-apps/tauri-action@v1`. Successful runs
+upload OS-specific unsigned bundle artifacts named
+`cobolens-<platform>-unsigned` for QA.
 
 This is build validation, not a signed public release process. Windows and
 macOS code signing remain separate release gates.

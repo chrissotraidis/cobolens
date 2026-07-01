@@ -127,7 +127,8 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
   MSI/VBScript support.
 - `.github/workflows/package.yml` now validates unsigned Linux and Windows
   Tauri bundle builds in GitHub Actions using the platform-specific
-  `binaries/cobolens-analyze{.exe}` sidecar resource layout.
+  `binaries/cobolens-analyze{.exe}` sidecar resource layout, then uploads
+  OS-specific unsigned bundle artifacts for QA.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/
 

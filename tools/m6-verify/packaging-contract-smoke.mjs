@@ -43,6 +43,12 @@ const checks = {
     workflow.includes("tauri-apps/tauri-action@v1") &&
     workflow.includes("npm ci") &&
     workflow.includes("tools/m6-verify/packaging-contract-smoke.mjs"),
+  "GitHub packaging workflow uploads unsigned bundles":
+    workflow.includes("actions/upload-artifact@v7") &&
+    workflow.includes("cobolens-${{ matrix.platform }}-unsigned") &&
+    workflow.includes("if-no-files-found: error") &&
+    workflow.includes("src-tauri/target/release/bundle/appimage/*.AppImage") &&
+    workflow.includes("src-tauri/target/release/bundle/nsis/*.exe"),
 };
 
 console.log(JSON.stringify({ checks }, null, 2));

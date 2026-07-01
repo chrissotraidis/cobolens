@@ -18,7 +18,8 @@ Not claimed yet:
 
 - Signed cross-platform installers are not validated. Linux AppImage packaging
   is validated locally, and GitHub Actions now runs unsigned Linux/Windows
-  Tauri bundle builds. Signed Windows release installers are not yet claimed.
+  Tauri bundle builds with OS-specific unsigned bundle artifacts for QA.
+  Signed Windows release installers are not yet claimed.
 - A persistent local vector cache now stores graph-derived semantic chunk
   embeddings in the app's local browser storage, keyed by graph fingerprint and
   embedding model settings. It does not store source excerpts or use an

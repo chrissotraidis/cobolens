@@ -11,7 +11,8 @@ current required `m6:verify` suite, then attempts optional gates only when their
 local prerequisites exist:
 
 - cached COBOL Legacy Benchmark Suite under `.cache/benchmarks/`;
-- local Ollama for the configured small-model readiness and grounded Ask smoke;
+- local Ollama for the configured small-model readiness, grounded Summary
+  smoke, and grounded Ask smoke;
 - built Linux AppImage plus a desktop display for packaged GUI smoke.
 
 Optional gates report `passed`, `failed`, or `skipped` in the final JSON report.

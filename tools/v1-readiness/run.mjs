@@ -31,12 +31,15 @@ if (existsSync(benchmarkRoot)) {
 if (ollamaCommandAvailable()) {
   await optional("local Ollama readiness", process.execPath, ["tools/local-model/ollama-smoke.mjs", defaultLocalModel]);
   if (existsSync(resolve(repoRoot, "public", "m6-bakeoff-graph.json"))) {
+    await optional("local Ollama grounded Summary smoke", process.execPath, ["tools/local-model/ollama-summary-smoke.mjs", defaultLocalModel]);
     await optional("local Ollama grounded Ask smoke", process.execPath, ["tools/local-model/ollama-ask-smoke.mjs", defaultLocalModel]);
   } else {
+    skipped("local Ollama grounded Summary smoke", "missing public/m6-bakeoff-graph.json; run npm run m6:fixture-graph");
     skipped("local Ollama grounded Ask smoke", "missing public/m6-bakeoff-graph.json; run npm run m6:fixture-graph");
   }
 } else {
   skipped("local Ollama readiness", "ollama command not found");
+  skipped("local Ollama grounded Summary smoke", "ollama command not found");
   skipped("local Ollama grounded Ask smoke", "ollama command not found");
 }
 

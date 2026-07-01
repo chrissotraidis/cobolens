@@ -2095,7 +2095,24 @@ pre {
   }
 
   .right-pane.is-ask-focused {
-    grid-template-rows: 150px minmax(0, 1fr);
+    grid-template-rows: 112px minmax(0, 1fr);
+  }
+
+  .right-pane.is-ask-focused .summary-stack {
+    padding: 10px 12px;
+  }
+
+  .right-pane.is-ask-focused .answer-card {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .right-pane.is-ask-focused .ask-focus-strip {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .right-pane.is-ask-focused .ask-focus-strip small {
+    grid-column: 1 / -1;
   }
 
   .button-row.two {

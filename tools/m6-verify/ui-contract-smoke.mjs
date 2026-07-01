@@ -261,6 +261,9 @@ const checks = [
         "position: sticky",
         "top: 0",
         "grid-template-columns: minmax(0, 1fr) 92px",
+        "grid-template-rows: 112px minmax(0, 1fr)",
+        ".right-pane.is-ask-focused .answer-card",
+        ".right-pane.is-ask-focused .ask-focus-strip small",
       ]),
   ],
   [

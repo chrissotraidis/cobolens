@@ -64,9 +64,9 @@ function groundedCitationFallback(context: CitationGuardContext, reason: string,
   const evidence = context.citations.slice(0, 8).map((citation) => `- ${citation.label} (${formatSite(citation)}).`);
 
   return [
-    `Cited graph fallback (${artifactLabel} had ${reason}).`,
+    `I could not use the ${artifactLabel} because it had ${reason}. Here is a cited answer from the graph instead.`,
     "",
-    "Grounded context available:",
+    "What the graph can show:",
     ...(focus.length ? focus : ["- No source-backed matched symbol was available in the retrieved context."]),
     "",
     "Evidence:",

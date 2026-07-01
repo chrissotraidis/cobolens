@@ -46,7 +46,7 @@ export function graphAnswerFallback(
   }
 
   const lines = [
-    modelNote ? "Graph-grounded fallback:" : "Graph answer, no model required:",
+    modelNote ? "I could not use the model response safely, so I answered from the graph instead." : "I answered from the graph without using a model.",
     `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
   ];
 
@@ -63,7 +63,7 @@ export function graphAnswerFallback(
   }
 
   if (relevantEdges.length) {
-    lines.push("", "Relationships that answer this:");
+    lines.push("", "Relevant relationships:");
     for (const edge of relevantEdges) {
       const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
       lines.push(`- ${edgeLabel(edge, graph)}${site}`);
@@ -86,7 +86,7 @@ export function graphAnswerFallback(
 
   if (intent === "call") {
     const callEdges = outgoing.filter(isCallEdge);
-    lines.push("", `Calls or runtime transfers: ${callEdges.length ? callEdges.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
+    lines.push("", `Calls or transfers: ${callEdges.length ? callEdges.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
   }
 
   if (intent === "read") {
@@ -262,7 +262,7 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
   ).slice(0, 4);
 
   const lines = [
-    modelNote ? "Graph-grounded fallback:" : "Graph answer, no model required:",
+    modelNote ? "I could not use the model response safely, so I answered from the graph instead." : "I answered from the graph without using a model.",
     `I found ${programs.length} source program${programs.length === 1 ? "" : "s"}, ${copybooks.length} copybook${copybooks.length === 1 ? "" : "s"}, and ${jobs.length} JCL job${jobs.length === 1 ? "" : "s"}.`,
     "",
     "Best starting points from the dependency graph:",

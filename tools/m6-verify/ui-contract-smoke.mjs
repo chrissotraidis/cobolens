@@ -28,7 +28,7 @@ const checks = [
     includesAll(appSource, [
       "const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question))",
       "answer?.fallbackReason",
-      "Graph answer, no model required",
+      "Answered from the graph",
       "Graph-grounded answer",
     ]) && !appSource.includes("Graph-grounded fallback; model answer unavailable"),
   ],
@@ -105,7 +105,7 @@ const checks = [
     "Guarded AI summaries are clearly labeled as graph fallbacks",
     includesAll(appSource, [
       "state.summary.guarded",
-      "missed citation rules; showing a graph-grounded fallback",
+      "Showing a cited graph answer because",
       'className="summary-guard-note"',
       'role="status"',
     ]) && includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.08)"]),
@@ -142,12 +142,14 @@ const checks = [
       "inspectOllamaReadiness",
       "installedModels: readiness.installedModels",
       "suggestedModel: details.suggestedModel",
+      "installedModels: isCloudProvider(modelSettings.provider) ? [] : current.installedModels",
       "For a smaller local test model, run:",
       "isSameOllamaModel(model, settings.model)",
       "ollamaReadinessDetails",
       "verifyGeneration: true",
       "generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS",
-      "const message = await checkOllamaReadiness(modelSettings);",
+      "const readiness = await inspectOllamaReadiness(modelSettings);",
+      "installedModels: readiness.installedModels",
     ]) && includesAll(appSource, ['from "./model/readiness"', 'aria-label="Installed Ollama models"']) && includesAll(appCss, [".model-chips", ".model-chips button", ".model-install-hint"]),
   ],
   [

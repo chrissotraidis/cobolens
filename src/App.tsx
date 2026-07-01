@@ -32,7 +32,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { checkOllamaReadiness, inspectOllamaReadiness, isSameOllamaModel, ollamaReadinessDetails } from "./model/readiness";
+import { inspectOllamaReadiness, isSameOllamaModel, ollamaReadinessDetails } from "./model/readiness";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -357,7 +357,12 @@ function App() {
   }, [modelSettings.provider]);
 
   useEffect(() => {
-    setModelReadiness({ status: "idle", message: "" });
+    setModelReadiness((current) => ({
+      status: "idle",
+      message: "",
+      installedModels: isCloudProvider(modelSettings.provider) ? [] : current.installedModels,
+      suggestedModel: isCloudProvider(modelSettings.provider) ? "" : current.suggestedModel,
+    }));
   }, [modelSettings.provider, modelSettings.model, modelSettings.baseUrl, hasProviderKey]);
 
   useEffect(() => {
@@ -691,12 +696,18 @@ function App() {
         return apiKey;
       }
 
-      const message = await checkOllamaReadiness(modelSettings);
-      setModelReadiness({ status: "ready", message });
+      const readiness = await inspectOllamaReadiness(modelSettings);
+      setModelReadiness({ status: "ready", message: readiness.message, installedModels: readiness.installedModels });
       return undefined;
     } catch (err) {
       const message = friendlyModelError(err, modelSettings);
-      setModelReadiness({ status: "error", message });
+      const details = ollamaReadinessDetails(err);
+      setModelReadiness((current) => ({
+        status: "error",
+        message,
+        installedModels: details.installedModels.length ? details.installedModels : current.installedModels,
+        suggestedModel: details.suggestedModel || current.suggestedModel,
+      }));
       throw new Error(message);
     }
   }
@@ -1785,7 +1796,7 @@ function SummaryDock({
           <>
             {state.summary.guarded ? (
               <div className="summary-guard-note" role="status">
-                {PROVIDER_LABELS[settings.provider]} missed citation rules; showing a graph-grounded fallback.
+                Showing a cited graph answer because {PROVIDER_LABELS[settings.provider]} missed citation rules.
               </div>
             ) : null}
             <MessageText text={state.summary.text} />
@@ -1909,15 +1920,15 @@ function ChatAnswerPanel({
         ? `${PROVIDER_LABELS[settings.provider]} is answering with cited graph context`
         : "Answering from graph context"
       : answer?.guarded
-        ? `${PROVIDER_LABELS[settings.provider]} missed citation rules; showing graph-grounded fallback`
+        ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} missed citation rules`
         : answer?.fallbackReason
-          ? `Graph-grounded fallback after ${PROVIDER_LABELS[settings.provider]} was unavailable`
+          ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} was unavailable`
         : answer?.source === "model"
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
         : answer?.source === "graph"
           ? answerWasModelQuestion
             ? "Graph-grounded answer"
-            : "Graph answer, no model required"
+            : "Answered from the graph"
         : workingWithModel
           ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
           : "Graph shortcuts answer without a model";
@@ -2040,7 +2051,7 @@ function ChatAnswerPanel({
               >
                 <span>{item.question}</span>
                 <small>
-                  {item.guarded || item.fallbackReason ? "Guarded fallback" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
+                  {item.guarded || item.fallbackReason ? "Cited graph answer" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
                   {item.citations.length === 1 ? "" : "s"}
                 </small>
               </button>
@@ -2868,7 +2879,7 @@ function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<Ch
 
   return {
     text: [
-      `Graph answer, no model required: I matched the selected ${node.name} at ${location}.`,
+      `I answered from the graph: I matched the selected ${node.name} at ${location}.`,
       "",
       `${node.name} at a glance:`,
       ...brief.map((line) => `- ${line}`),

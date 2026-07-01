@@ -57,6 +57,9 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   controls and bounded timeouts so model calls do not leave the UI spinning.
 - Apply the selected Rosetta language to both grounded Ask and generated
   summaries while preserving graph-only grounding and citation rules.
+- Resolve "this program" style model-backed Ask questions against the current
+  selected graph node, and require exact inline source citations such as
+  `(src/LINEAGE.cbl:21)` instead of footnote-style references.
 - Persist non-secret scan/model preferences locally while API keys remain in
   the OS keychain.
 - Validate parser candidates against the strict M6 fixture and the cloned

@@ -30,7 +30,7 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
    keeping `Ask` one click away as the conversational follow-up.
 
 3. The Summary panel mixed graph facts, model summaries, and Ask handoff under ambiguous labels.
-   Fixed by renaming the tab/panel to `Overview`, labeling the bridge action `Explain in Ask`, and keeping `Generate Summary` as the explicit model-backed action.
+   Fixed by renaming the tab/panel to `Overview`, labeling the bridge action `Explain from graph`, and keeping `Generate AI Summary` as the explicit model-backed action.
 
 4. The first Overview layout squeezed the heading when action buttons were present.
    Fixed by stacking the heading/subtitle above two equal-width action buttons.
@@ -38,7 +38,7 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
 5. Filter/reset behavior was checked after the fixes.
    Hiding `Data items` updated the graph orientation count and enabled Reset; Reset restored all types and disabled itself.
 
-6. `Explain in Ask` and the `Explain <symbol>` Ask chip were using fuzzy
+6. `Explain from graph` and the `Explain <symbol>` Ask chip were using fuzzy
    retrieval, so `CUSTOMER` could blend the copybook with similarly named
    datasets/files. Fixed by anchoring those preset explanation actions to the
    currently selected graph node and generating a cited graph answer directly.

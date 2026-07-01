@@ -151,7 +151,7 @@ Graph-backed Ask check:
 - The Ask panel keeps a bounded `Recent answers` trail for the current graph.
   Previous questions can be restored with their cited answer and citation chips,
   which makes the surface behave more like a lightweight code conversation.
-- The Overview panel has an `Explain in Ask` action for the selected node. It
+- The Overview panel has an `Explain from graph` action for the selected node. It
   now anchors the answer to the exact selected graph node instead of re-running
   fuzzy retrieval, so `CUSTOMER` explains the copybook without blending in
   `CUSTOMER-FILE` or `BANK.CUSTOMER.MASTER`.
@@ -165,7 +165,7 @@ Graph-backed Ask check:
   suggested-question button behaves like the other graph shortcuts even when no
   model is configured.
 - The `Explain <symbol>` Ask chip follows the same exact selected-node path as
-  `Explain in Ask`, while typed free-form Ask questions still use fuzzy symbol
+  `Explain from graph`, while typed free-form Ask questions still use fuzzy symbol
   matching.
 - `Where does CUSTOMER-FILE flow?` answers from the graph, includes the
   `CUSTOMER-FILE assigned-to CUSTIN` relationship, and the selected summary
@@ -175,7 +175,8 @@ Graph-backed Ask check:
   dataset` matches `BANK.REPORT.DAILY`, and `report file` matches the logical
   COBOL file node `REPORT-FILE`.
 - Typing a broader explanation question changes the submit button from `Ask` to
-  `Ask AI`, while graph-only questions keep the normal `Ask` label.
+  `Ask AI`, while typed graph-only questions use `Ask Graph` and suggested graph
+  shortcuts still run instantly without a model.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it
@@ -198,10 +199,18 @@ Model-backed Ask check:
 - Grounded Ask now passes the selected Rosetta language into the model system
   prompt while keeping the graph-only grounding, citation, and no-invention
   rules.
+- For pronoun-style questions such as "what does this program do?", Grounded Ask
+  passes the current selected graph node as the selected symbol, labels that
+  symbol in the model context, and keeps its source excerpt ahead of neighboring
+  excerpts.
+- Model-backed Ask requires exact inline citations such as
+  `(src/LINEAGE.cbl:21)` and explicitly rejects `[1]` footnote-style citations,
+  so cited answers stay clickable and auditable against source lines.
 - Asking `Explain LINEAGE in plain English for a new developer.` labels the
   response as an `Ollama answer with cited graph context`, increments the local
-  call counter, cites `src/LINEAGE.cbl:1` plus relationship lines, and does not
-  explain `LINEAGE` as a generic compiler concept.
+  call counter, cites `src/LINEAGE.cbl:1` plus relationship lines with exact
+  inline citation text, and does not explain `LINEAGE` as a generic compiler
+  concept.
 - While a model-backed Ask is running, the submit button changes to `Stop`.
   Stopping the request returns a graph-cited fallback with a model note instead
   of leaving the panel in a permanent loading state.

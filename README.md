@@ -9,6 +9,9 @@ The product source of truth is [docs/COBOL-Lens-PRD.md](docs/COBOL-Lens-PRD.md),
 with [PRD.md](PRD.md) as the stable root entry point for agents and contributors.
 Build milestones follow PRD section 19.
 
+Agent build guidance starts at [AGENTS.md](AGENTS.md), which points to the
+canonical guide under `docs/`.
+
 ## Current Status
 
 As of 2026-06-30, M0-M6 local v1 work is implemented and committed.

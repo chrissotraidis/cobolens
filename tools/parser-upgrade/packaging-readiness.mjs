@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { access, mkdtemp, readdir, rm, stat } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -20,11 +20,13 @@ const report = {
   windowsHost: checkWindowsHost(),
   artifacts: await artifactReport(),
   startupSmoke: await startupReport(),
+  packagedDebSmoke: await packagedDebSmoke(),
 };
 
 report.ready =
   (report.tauriLinuxSystemDeps.ready || report.windowsHost.ready) &&
-  report.startupSmoke.every((entry) => entry.ok);
+  report.startupSmoke.every((entry) => entry.ok) &&
+  (report.packagedDebSmoke.skipped || report.packagedDebSmoke.ok);
 
 console.log(JSON.stringify(report, null, 2));
 
@@ -146,7 +148,7 @@ async function startupReport() {
     for (const [name, commandPath] of candidates) {
       const out = resolve(tempRoot, `${name}.json`);
       const started = performance.now();
-      const result = await runAnalyzer(commandPath, out);
+      const result = await runAnalyzer(commandPath, fixtureRoot, out);
       results.push({
         name,
         ok: result.ok,
@@ -192,10 +194,124 @@ async function directoryBytes(path, filter) {
   return bytes;
 }
 
-function runAnalyzer(commandPath, out) {
+async function packagedDebSmoke() {
+  const bundle = await newestBundleArtifact(resolve(repoRoot, "src-tauri", "target", "release", "bundle", "deb"), ".deb");
+  if (!bundle) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "No .deb bundle found. Run npm run tauri build before validating packaged resources.",
+    };
+  }
+
+  const dpkgDeb = command(["dpkg-deb", "--version"]);
+  if (!dpkgDeb.ok) {
+    return {
+      ok: false,
+      skipped: false,
+      bundle,
+      error: "dpkg-deb is required to inspect the Linux package artifact.",
+    };
+  }
+
+  const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-packaged-deb-"));
+  try {
+    const extractRoot = resolve(tempRoot, "root");
+    const extract = spawnSync("dpkg-deb", ["-x", bundle, extractRoot], { encoding: "utf8" });
+    if (extract.status !== 0) {
+      return {
+        ok: false,
+        skipped: false,
+        bundle,
+        error: "dpkg-deb extraction failed",
+        stderrTail: tailLines(extract.stderr),
+      };
+    }
+
+    const analyzerPath = resolve(extractRoot, "usr", "lib", "Cobolens", "cobolens-analyze");
+    const sampleRoot = resolve(extractRoot, "usr", "lib", "Cobolens", "samples", "mini-bank");
+    const analyzer = await fileArtifact("packaged analyzer", analyzerPath);
+    const sample = await directoryArtifact("packaged mini-bank sample", sampleRoot);
+    if (!analyzer.exists || !sample.exists) {
+      return {
+        ok: false,
+        skipped: false,
+        bundle,
+        analyzer,
+        sample,
+      };
+    }
+
+    const out = resolve(tempRoot, "packaged-sample-graph.json");
+    const result = await runAnalyzer(analyzerPath, sampleRoot, out);
+    if (!result.ok) {
+      return {
+        ok: false,
+        skipped: false,
+        bundle,
+        analyzer,
+        sample,
+        error: `packaged analyzer exited with ${result.code}`,
+        stderrTail: result.stderrLines.slice(-8),
+      };
+    }
+
+    const graph = JSON.parse(await readFile(out, "utf8"));
+    const checks = {
+      "sample files parsed": graph.meta?.fileCount > 0 && graph.meta?.parsedFileCount > 0,
+      "graph has nodes": Array.isArray(graph.nodes) && graph.nodes.length > 0,
+      "graph has edges": Array.isArray(graph.edges) && graph.edges.length > 0,
+      "parse warnings are graceful": Array.isArray(graph.meta?.parseErrors),
+    };
+
+    return {
+      ok: Object.values(checks).every(Boolean),
+      skipped: false,
+      bundle,
+      analyzer,
+      sample,
+      graph: {
+        files: graph.meta?.fileCount ?? 0,
+        parsed: graph.meta?.parsedFileCount ?? 0,
+        parseErrors: graph.meta?.parseErrors?.length ?? 0,
+        nodes: graph.nodes?.length ?? 0,
+        edges: graph.edges?.length ?? 0,
+      },
+      checks,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      skipped: false,
+      bundle,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+}
+
+async function newestBundleArtifact(root, suffix) {
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    const files = [];
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(suffix)) continue;
+      const path = resolve(root, entry.name);
+      const info = await stat(path);
+      files.push({ path, mtimeMs: info.mtimeMs });
+    }
+    files.sort((left, right) => right.mtimeMs - left.mtimeMs);
+    return files[0]?.path ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function runAnalyzer(commandPath, root, out) {
   const args = [
     "--root",
-    fixtureRoot,
+    root,
     "--out",
     out,
     "--format",
@@ -259,6 +375,10 @@ function parseRegistryValue(text, name) {
   if (!line) return null;
   const parts = line.split(/\s+/);
   return parts.length >= 3 ? parts.slice(2).join(" ") : null;
+}
+
+function tailLines(text, count = 8) {
+  return text.split(/\r?\n/).filter(Boolean).slice(-count);
 }
 
 function linuxEnv() {

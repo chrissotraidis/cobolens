@@ -111,12 +111,13 @@ The current probe starts all three analyzer candidates and reports sidecar/JDK s
   - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
   - `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
   - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
-- The Linux bundles include the production analyzer resource at
-  `usr/lib/Cobolens/cobolens-analyze` and the bundled sample at
-  `usr/lib/Cobolens/samples/mini-bank/`.
-- The packaged analyzer extracted from the AppImage parsed the packaged
-  `mini-bank` sample successfully: 4 parsed files, 25 nodes, 27 edges, and 0
-  parse errors.
+- `npm run m6:packaging-readiness` now includes a repeatable `packagedDebSmoke`
+  when a `.deb` bundle exists. It extracts the package, verifies
+  `usr/lib/Cobolens/cobolens-analyze` and
+  `usr/lib/Cobolens/samples/mini-bank/`, and runs the packaged analyzer against
+  the packaged `mini-bank` sample.
+- The packaged analyzer smoke currently parses 4 packaged sample files,
+  producing 25 nodes, 27 edges, and 0 parse errors.
 - The Windows host is still not a validated build target: it is reachable, but `node`, `npm`, `cargo`, `rustc`, Microsoft C++ Build Tools, and WebView2 are not currently detected. `cscript.exe` is available for MSI/VBScript support.
 
 The Windows checklist follows Tauri's current prerequisite guidance: Microsoft C++ Build Tools and WebView2 for Windows builds, with VBScript needed for MSI targets. Source: https://v2.tauri.app/start/prerequisites/

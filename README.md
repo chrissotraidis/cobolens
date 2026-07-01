@@ -174,10 +174,11 @@ Markdown, Mermaid, and PNG artifacts.
 It also includes a UI contract smoke for the Ask/Inspector shell so graph-answer
 layout, readable tabs, and relationship citation labels do not regress silently.
 
-The packaged analyzer/sample smoke used for the current Linux validation ran
-the analyzer extracted from the AppImage against the bundled `mini-bank` sample
-and produced a graph with 4 parsed files, 25 nodes, 27 edges, and 0 parse
-errors.
+`npm run m6:packaging-readiness` includes a `packagedDebSmoke` gate when a
+Linux `.deb` bundle exists. It extracts the package, verifies
+`usr/lib/Cobolens/cobolens-analyze` and `usr/lib/Cobolens/samples/mini-bank/`,
+then runs the packaged analyzer against the packaged sample. The current local
+bundle produces 4 parsed files, 25 nodes, 27 edges, and 0 parse errors.
 
 Run the strict fixture bake-off directly:
 

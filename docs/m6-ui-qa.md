@@ -118,9 +118,9 @@ Scan settings check:
   folders such as `.git`, `node_modules`, `target`, `dist`, and `build`, and
   skip source-like files over 16 MiB so repo checkouts with build output do not
   dominate scan time.
-- In the browser preview those controls stay disabled because the preview is a
-  fixed prebuilt graph JSON. `Re-scan` is disabled there too, so browser users
-  are not offered a scan action that cannot touch a local folder.
+- In the browser preview those desktop scan controls are replaced by a compact
+  note because the preview is a fixed prebuilt graph JSON. Browser users are
+  not offered scan actions that cannot touch a local folder.
 
 Relationship-click check:
 

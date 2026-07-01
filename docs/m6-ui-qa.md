@@ -178,9 +178,10 @@ Graph-backed Ask check:
   now anchors the answer to the exact selected graph node instead of re-running
   fuzzy retrieval, so `CUSTOMER` explains the copybook without blending in
   `CUSTOMER-FILE` or `BANK.CUSTOMER.MASTER`.
-- The Overview panel also has an `Ask follow-up` action. It opens Ask with a
-  plain-English question about the selected symbol, clears any stale displayed
-  answer, and focuses the composer so the user can edit or submit immediately.
+- The Overview panel also has an `Ask AI follow-up` action. It opens Ask with a
+  plain-English model-backed question about the selected symbol, clears any
+  stale displayed answer, and focuses the composer so the user can edit or
+  submit immediately.
 - The Ask composer is rendered before the answer/evidence block, so follow-up
   questions remain immediately reachable while reviewing a longer cited answer.
 - Inspector tabs remain readable at the default desktop preview width, and
@@ -253,6 +254,11 @@ Model-backed Ask check:
 - The optional local Ollama summary/Ask smokes report `guarded` and
   `guardReason`, so a passing local smoke distinguishes an accepted model answer
   from Cobolens' cited graph fallback.
+- Guarded AI Summary results render a cited graph overview in the Overview
+  panel instead of a bare error, with a model note explaining why the model text
+  was not used.
+- Exported Markdown labels summary provenance honestly: graph-derived,
+  AI-generated, or guarded graph fallback.
 - Grounded Ask now passes the selected Rosetta language into the model system
   prompt while keeping the graph-only grounding, citation, and no-invention
   rules.

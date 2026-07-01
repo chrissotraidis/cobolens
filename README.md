@@ -14,7 +14,7 @@ canonical guide under `docs/`.
 
 ## Current Status
 
-As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
+As of 2026-07-01, M0-M6 local v1 work is implemented and committed.
 
 - M0-M5: Tauri/React shell, scanning, graph view, summaries/model wiring,
   grounded chat/export polish, sample workflow, and privacy/mode surfaces are
@@ -64,6 +64,11 @@ As of 2026-06-30, M0-M6 local v1 work is implemented and committed.
   node, answer graph-backed variants instantly, and require exact inline source
   citations such as `(src/LINEAGE.cbl:21)` for model-backed answers instead of
   footnote-style references.
+- Keep Ask and Summary trustworthy when a local or cloud model misses citation
+  rules: Cobolens falls back to cited graph evidence, labels the fallback, and
+  preserves the model note without showing uncited prose as fact.
+- Export Markdown documentation with honest summary provenance, distinguishing
+  graph-derived summaries, accepted AI summaries, and guarded graph fallbacks.
 - Persist non-secret scan/model preferences locally while API keys remain in
   the OS keychain.
 - Validate parser candidates against the strict M6 fixture and the cloned
@@ -217,6 +222,9 @@ desktop analysis path against the bundled sample, source snippet reads, and
 path traversal rejection. These tests also cover graph-cache reuse and cache
 invalidation when source manifests change, plus desktop export writing for the
 Markdown, Mermaid, and PNG artifacts.
+The export documentation smoke also verifies that generated Markdown keeps
+summary provenance honest for graph-derived summaries, accepted AI summaries,
+and guarded graph fallbacks.
 It also includes a UI contract smoke for the Ask/Inspector shell so graph-answer
 layout, readable tabs, and relationship citation labels do not regress silently.
 

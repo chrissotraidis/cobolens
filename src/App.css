@@ -1097,6 +1097,16 @@ pre {
   white-space: pre-line;
 }
 
+.summary-guard-note {
+  padding: 8px 9px;
+  border: 1px solid rgba(229, 199, 95, 0.28);
+  border-radius: 7px;
+  color: #e8d796;
+  background: rgba(229, 199, 95, 0.08);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .message-text {
   display: grid;
   gap: 8px;

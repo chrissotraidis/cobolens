@@ -1713,6 +1713,11 @@ function SummaryDock({
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
           <>
+            {state.summary.guarded ? (
+              <div className="summary-guard-note" role="status">
+                {PROVIDER_LABELS[settings.provider]} missed citation rules; showing a graph-grounded fallback.
+              </div>
+            ) : null}
             <MessageText text={state.summary.text} />
             <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
           </>

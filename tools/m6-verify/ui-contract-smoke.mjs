@@ -77,6 +77,15 @@ const checks = [
     ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
   ],
   [
+    "Guarded AI summaries are clearly labeled as graph fallbacks",
+    includesAll(appSource, [
+      "state.summary.guarded",
+      "missed citation rules; showing a graph-grounded fallback",
+      'className="summary-guard-note"',
+      'role="status"',
+    ]) && includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.08)"]),
+  ],
+  [
     "Ask clearly distinguishes graph shortcuts from AI-backed questions",
     includesAll(appSource, [
       'className="answer-modes"',

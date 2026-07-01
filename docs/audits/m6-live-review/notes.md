@@ -27,6 +27,8 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
 - `15-overview-keeps-focus.png`: codebase overview answer after the focus fix.
 - `16-ask-expanded-layout.png`: Ask selected after the right-pane split gives
   the conversation more vertical room while keeping source visible.
+- `17-guarded-summary-label.png`: local Ollama generated a summary that missed
+  citation rules; the Overview panel labels the graph-grounded fallback.
 
 ## Findings And Fixes
 
@@ -65,6 +67,11 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
    making the right-pane split contextual: Ask mode keeps a compact source
    preview but gives the conversation more vertical space; Overview and other
    inspector tabs keep the balanced code/inspector split.
+
+10. Local Ollama can return useful-looking summary prose without exact citations.
+    The citation guard already replaced unsafe summaries with cited graph
+    fallback text, but the UI did not label that state. Fixed by showing a
+    guarded-summary notice above the fallback.
 
 ## Verification
 

@@ -258,6 +258,9 @@ Model-backed Summary check:
 - Generating a `LINEAGE` summary with local Ollama cites `src/LINEAGE.cbl:1`
   plus relationship lines, avoids generic preamble text, and does not explain
   `LINEAGE` as a generic compiler concept.
+- When the local model misses exact citation rules, the Overview panel labels
+  the generated summary as a graph-grounded fallback instead of presenting it
+  as accepted model prose.
 - Generating a `CUSTOMER` summary cites `copybook/CUSTOMER.cpy:1` plus
   `DEFINES` relationship lines, increments the local call counter, and preserves
   model line breaks in the Summary panel.

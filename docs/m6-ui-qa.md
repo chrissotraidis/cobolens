@@ -240,6 +240,11 @@ Model-backed Ask check:
   the AI panel. If the configured model is missing or times out, those installed
   models appear as quick-pick chips so the user can switch without leaving the
   app.
+- `Refresh models` reads installed local Ollama models without running a
+  generation probe, so model chips can be surfaced quickly before `Check AI`.
+- At the default in-app browser width, the right code/Inspector pane avoids
+  horizontal overflow; source lines wrap in the constrained desktop layout while
+  the three-pane workspace remains intact.
 - If no non-equivalent installed model can fix a timeout, the AI panel shows a
   concrete smaller-model command: `ollama pull llama3.2:1b`.
 - The optional local Ollama summary/Ask smokes report `guarded` and

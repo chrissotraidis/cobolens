@@ -678,6 +678,32 @@ function App() {
     }
   }
 
+  async function refreshInstalledModels() {
+    if (isCloudProvider(modelSettings.provider)) return;
+    try {
+      setModelReadiness((current) => ({
+        status: "checking",
+        message: "Reading installed Ollama models",
+        installedModels: current.installedModels,
+        suggestedModel: current.suggestedModel,
+      }));
+      const readiness = await inspectOllamaReadiness(modelSettings);
+      setModelReadiness({
+        status: "ready",
+        message: `${readiness.installedModels.length} installed Ollama model${readiness.installedModels.length === 1 ? "" : "s"} found.`,
+        installedModels: readiness.installedModels,
+      });
+    } catch (err) {
+      const details = ollamaReadinessDetails(err);
+      setModelReadiness({
+        status: "error",
+        message: friendlyModelError(err, modelSettings),
+        installedModels: details.installedModels,
+        suggestedModel: details.suggestedModel,
+      });
+    }
+  }
+
   async function prepareModelCall() {
     setModelReadiness({ status: "checking", message: "Checking AI settings" });
     try {
@@ -1156,6 +1182,7 @@ function App() {
             onSaveKey={saveKey}
             onClearKey={clearKey}
             onCheckModel={checkModelReadiness}
+            onRefreshModels={refreshInstalledModels}
             modelReadiness={modelReadiness}
             modelCallCount={modelCallCount}
             bulkTokenEstimate={bulkTokenEstimate}
@@ -1539,6 +1566,7 @@ function ModelSettingsPanel({
   onSaveKey,
   onClearKey,
   onCheckModel,
+  onRefreshModels,
   modelReadiness,
 }: {
   settings: ModelSettings;
@@ -1553,6 +1581,7 @@ function ModelSettingsPanel({
   onSaveKey: () => void;
   onClearKey: () => void;
   onCheckModel: () => void;
+  onRefreshModels: () => void;
   modelReadiness: ModelReadiness;
 }) {
   const cloud = isCloudProvider(settings.provider);
@@ -1639,7 +1668,7 @@ function ModelSettingsPanel({
           <option value="c#">C#</option>
         </select>
       </label>
-      <div className={cloud ? "button-row three" : "button-row single"}>
+      <div className={cloud ? "button-row three" : "button-row two"}>
         <button type="button" onClick={onCheckModel} disabled={modelReadiness.status === "checking"}>
           {modelReadiness.status === "checking" ? "Checking" : "Check AI"}
         </button>
@@ -1652,7 +1681,17 @@ function ModelSettingsPanel({
               Clear
             </button>
           </>
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            onClick={onRefreshModels}
+            disabled={modelReadiness.status === "checking"}
+            aria-label="Refresh models"
+            title="Refresh installed Ollama models"
+          >
+            Refresh
+          </button>
+        )}
       </div>
       <div className={`settings-footnote ${modelReadiness.status}`}>
         {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode: model calls stay on this machine.")}

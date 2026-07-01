@@ -140,6 +140,9 @@ const checks = [
     includesAll(appSource, [
       "Checking local generation with a quick probe",
       "inspectOllamaReadiness",
+      "function refreshInstalledModels()",
+      "Reading installed Ollama models",
+      "Refresh models",
       "installedModels: readiness.installedModels",
       "suggestedModel: details.suggestedModel",
       "installedModels: isCloudProvider(modelSettings.provider) ? [] : current.installedModels",
@@ -150,7 +153,16 @@ const checks = [
       "generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS",
       "const readiness = await inspectOllamaReadiness(modelSettings);",
       "installedModels: readiness.installedModels",
-    ]) && includesAll(appSource, ['from "./model/readiness"', 'aria-label="Installed Ollama models"']) && includesAll(appCss, [".model-chips", ".model-chips button", ".model-install-hint"]),
+    ]) && includesAll(appSource, ['from "./model/readiness"', 'aria-label="Installed Ollama models"']) && includesAll(appCss, [".model-chips", ".model-chips button", ".model-install-hint", ".button-row.two"]),
+  ],
+  [
+    "Right pane remains usable at default desktop browser widths",
+    includesAll(appCss, [
+      "@media (max-width: 1280px) and (min-width: 901px)",
+      "minmax(360px, 33vw)",
+      "white-space: pre-wrap",
+      "overflow-wrap: anywhere",
+    ]),
   ],
   [
     "Ask composer remains available while reading answers",

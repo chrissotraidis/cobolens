@@ -541,12 +541,20 @@ h2,
   grid-template-columns: 1fr;
 }
 
+.button-row.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .button-row.three {
   grid-template-columns: 1fr 78px 58px;
 }
 
 .button-row button {
   height: 30px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-footnote {
@@ -1641,6 +1649,34 @@ pre {
   color: #8c98a5;
   font-size: 12px;
   line-height: 1.45;
+}
+
+@media (max-width: 1280px) and (min-width: 901px) {
+  .topbar {
+    grid-template-columns: 164px minmax(220px, 1fr) auto auto;
+    gap: 12px;
+  }
+
+  .shell {
+    grid-template-columns: 232px minmax(320px, 1fr) minmax(360px, 33vw);
+  }
+
+  .right-pane {
+    grid-template-rows: minmax(156px, 0.58fr) minmax(390px, 1.42fr);
+  }
+
+  .right-pane.is-ask-focused {
+    grid-template-rows: minmax(112px, 0.4fr) minmax(430px, 1.6fr);
+  }
+
+  .source-line {
+    min-width: 0;
+  }
+
+  .source-line-text {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
 }
 
 @media (max-width: 900px) {

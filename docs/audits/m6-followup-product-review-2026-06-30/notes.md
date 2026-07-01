@@ -12,7 +12,8 @@ Scope: Local browser demo at `http://127.0.0.1:1430/?graph=/m6-bakeoff-graph.jso
 2. AI readiness with installed models
    - Health before fix: readiness found `llama3.2:1b`, but selecting a model made the installed-model chips disappear.
    - Health after fix: installed-model chips remain visible after switching models.
-   - Evidence: `02-ai-small-model-ready.png`, `07-patched-ai-ready.png`.
+   - Follow-up: `Refresh models` now reads installed Ollama models without running a generation probe, and the default-width right pane no longer reports horizontal overflow.
+   - Evidence: `02-ai-small-model-ready.png`, `07-patched-ai-ready.png`, `11-refresh-models-responsive.png`.
 
 3. Summary generation
    - Health before fix: safe, but fallback copy read like internal guard/debug output.
@@ -31,6 +32,6 @@ Scope: Local browser demo at `http://127.0.0.1:1430/?graph=/m6-bakeoff-graph.jso
 
 ## Remaining Observations
 
-- At the current browser viewport, the right inspector/code area can require horizontal scrolling. The app remains usable, but v1 should revisit responsive pane sizing and overflow behavior.
+- Default browser-width horizontal overflow in the right inspector/code area is fixed for the M6 fixture path checked in this review. Smaller mobile/tablet breakpoints still deserve a separate manual pass before calling v1 done.
 - The small local Ollama model often misses the strict citation contract, so Cobolens correctly falls back to graph-cited answers. Higher-quality model behavior or a tighter response format could make the AI path feel more conversational.
-- Installed Ollama models are still discovered after readiness checks or model calls, not automatically on initial load. That avoids surprise local probes, but a future explicit `Refresh models` affordance would be clearer.
+- Installed Ollama models are discovered by `Refresh models`, `Check AI`, or model-call readiness. The app still avoids surprise background local probes on initial load.

@@ -138,9 +138,12 @@ Relationship-click check:
 - Clicking `COPIES src/LINEAGE.cbl:11` from `LINEAGE` scrolls the inspector to
   the `Relationship` detail, shows `LINEAGE COPIES CUSTOMER`, and highlights
   `COPY CUSTOMER.` at `src/LINEAGE.cbl:11` in the code pane.
-- Clicking a relationship citation from an Ask answer now follows the same path:
-  it selects the cited graph edge, opens the `Links`/relationship detail, and
-  highlights the cited source line.
+- Clicking a relationship citation from an Ask answer selects the cited graph
+  edge and highlights the cited source line while keeping the Ask answer
+  visible. Relationship details are still one click away in `Links`.
+- The relationship-tab auto-open is suppressed for Ask evidence jumps, so a
+  cited relationship can update the graph/code focus without pulling the user
+  out of the conversational answer.
 - Selected relationship details now show the `from` and `to` endpoints as
   graph-refocus buttons, so a cited relationship answer can move directly from
   the evidence line to either symbol in the dependency map.
@@ -175,6 +178,11 @@ Graph-backed Ask check:
   now anchors the answer to the exact selected graph node instead of re-running
   fuzzy retrieval, so `CUSTOMER` explains the copybook without blending in
   `CUSTOMER-FILE` or `BANK.CUSTOMER.MASTER`.
+- The Overview panel also has an `Ask follow-up` action. It opens Ask with a
+  plain-English question about the selected symbol, clears any stale displayed
+  answer, and focuses the composer so the user can edit or submit immediately.
+- The Ask composer is rendered before the answer/evidence block, so follow-up
+  questions remain immediately reachable while reviewing a longer cited answer.
 - Inspector tabs remain readable at the default desktop preview width, and
   duplicated relationship source controls expose section-specific labels such
   as `Depends On: show ...` and `Lineage: show ...`.

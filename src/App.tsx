@@ -151,6 +151,7 @@ function App() {
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
   const activeSummaryAbortRef = useRef<AbortController | null>(null);
+  const preserveInspectorForEdgeRef = useRef(false);
 
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
@@ -370,6 +371,10 @@ function App() {
 
   useEffect(() => {
     if (selectedEdge) {
+      if (preserveInspectorForEdgeRef.current) {
+        preserveInspectorForEdgeRef.current = false;
+        return;
+      }
       setInspectorTab("relationship");
     }
   }, [selectedEdge]);
@@ -912,6 +917,7 @@ function App() {
       setHistory((current) => [...current.filter((id) => id !== citedNode.id), citedNode.id].slice(-8));
     }
     if (citedEdge) {
+      if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true;
       setSelectedEdge(citedEdge);
       if (!preserveInspectorTab) setInspectorTab("relationship");
     } else if (!keepEdge) {
@@ -1054,7 +1060,12 @@ function App() {
             <div className="search-results">
               {searchResults.length ? (
                 searchResults.map((node) => (
-                  <button key={node.id} type="button" onClick={() => focusOnSearchResult(node.id)}>
+                  <button
+                    key={node.id}
+                    type="button"
+                    aria-label={`Search result ${node.name} ${node.type}`}
+                    onClick={() => focusOnSearchResult(node.id)}
+                  >
                     <span className="swatch" style={{ background: nodeColor(node.type) }} />
                     <span>{node.name}</span>
                     <small>{node.type}</small>
@@ -1901,6 +1912,27 @@ function ChatAnswerPanel({
           {modelReadiness.message}
         </div>
       ) : null}
+      <div className="chat-composer" aria-label="Ask a question">
+        <input
+          type="text"
+          autoFocus
+          aria-label="Ask about the codebase"
+          placeholder="Ask about symbols, files, data flow, or business logic..."
+          value={question}
+          onChange={(event) => onQuestionChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onAsk();
+          }}
+          disabled={!canAsk || status === "running"}
+        />
+        <button
+          type="button"
+          onClick={status === "running" ? onCancel : onAsk}
+          disabled={!canAsk || (status !== "running" && !question.trim())}
+        >
+          {askButtonLabel}
+        </button>
+      </div>
       <div className="answer-response" aria-live="polite">
         {status === "running" ? (
           <ProgressNote
@@ -1925,26 +1957,6 @@ function ChatAnswerPanel({
         ) : (
           <p>{emptyResponseText}</p>
         )}
-      </div>
-      <div className="chat-composer" aria-label="Ask a question">
-        <input
-          type="text"
-          aria-label="Ask about the codebase"
-          placeholder="Ask about symbols, files, data flow, or business logic..."
-          value={question}
-          onChange={(event) => onQuestionChange(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") onAsk();
-          }}
-          disabled={!canAsk || status === "running"}
-        />
-        <button
-          type="button"
-          onClick={status === "running" ? onCancel : onAsk}
-          disabled={!canAsk || (status !== "running" && !question.trim())}
-        >
-          {askButtonLabel}
-        </button>
       </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested questions">

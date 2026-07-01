@@ -10,8 +10,8 @@ const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphV
 
 const checks = [
   [
-    "Ask response appears before composer and suggestions",
-    appearsInOrder(appSource, ['className="answer-header"', 'className="answer-response"', 'className="chat-composer"', 'className="question-chips"']),
+    "Ask composer appears before response and suggestions",
+    appearsInOrder(appSource, ['className="answer-header"', 'className="chat-composer"', 'className="answer-response"', 'className="question-chips"']),
   ],
   [
     "Ask response contains progress, error, answer, and empty states",
@@ -146,7 +146,8 @@ const checks = [
   ],
   [
     "Ask composer remains available while reading answers",
-    includesAll(appSource, ['inspectorTab === "ask" ? " is-ask-focused"']) &&
+    includesAll(appSource, ['inspectorTab === "ask" ? " is-ask-focused"', "autoFocus"]) &&
+      appearsInOrder(appSource, ['<div className="chat-composer"', '<div className="answer-response"']) &&
       includesAll(appCss, [
         ".right-pane.is-ask-focused",
         "minmax(132px, 0.46fr) minmax(430px, 1.54fr)",
@@ -192,7 +193,11 @@ const checks = [
     "Ask evidence citations keep the answer visible while focusing code",
     includesAll(appSource, [
       "onOpenCitation={(citation) => jumpToCitation(citation, false, true)}",
+      "const preserveInspectorForEdgeRef = useRef(false)",
+      "if (preserveInspectorForEdgeRef.current)",
+      "preserveInspectorForEdgeRef.current = false",
       "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
+      "if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true",
       'if (!preserveInspectorTab) setInspectorTab("relationship")',
     ]),
   ],

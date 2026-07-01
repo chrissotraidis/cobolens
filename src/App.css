@@ -1130,6 +1130,56 @@ pre {
   font-size: 12px;
 }
 
+.answer-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.answer-modes span {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid rgba(125, 137, 150, 0.2);
+  border-radius: 999px;
+  color: #7d8996;
+  background: rgba(125, 137, 150, 0.06);
+  font-size: 11px;
+}
+
+.answer-modes span.is-active {
+  color: #d8eee8;
+  border-color: rgba(90, 167, 161, 0.34);
+  background: rgba(90, 167, 161, 0.11);
+}
+
+.ask-readiness {
+  padding: 8px 9px;
+  border: 1px solid rgba(125, 137, 150, 0.2);
+  border-radius: 7px;
+  color: #9aa6b2;
+  background: rgba(125, 137, 150, 0.07);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ask-readiness.ready {
+  color: #b8f0dc;
+  border-color: rgba(102, 194, 165, 0.24);
+  background: rgba(102, 194, 165, 0.08);
+}
+
+.ask-readiness.error {
+  color: #ffb4a2;
+  border-color: rgba(252, 141, 98, 0.3);
+  background: rgba(252, 141, 98, 0.09);
+}
+
+.ask-readiness.checking {
+  color: #e8d796;
+  border-color: rgba(229, 199, 95, 0.28);
+  background: rgba(229, 199, 95, 0.08);
+}
+
 .answer-question {
   color: #7d8996;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

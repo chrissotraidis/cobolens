@@ -20,15 +20,25 @@ const checks = [
       'status === "running"',
       'status === "error"',
       "answer ?",
-      "Graph questions answer instantly",
+      "Graph shortcuts answer without a model",
     ]),
   ],
   [
     "Program Ask suggestions include concrete read/write graph questions",
     includesAll(appSource, [
+      '"Give me a codebase overview."',
       "`What files does ${name} read?`",
       "`What does ${name} write?`",
     ]),
+  ],
+  [
+    "Ask suggestions expose a graph-only codebase overview first",
+    includesAll(appSource, [
+      'const overviewQuestion = "Give me a codebase overview."',
+      "return [overviewQuestion, `What depends on ${name}?`",
+      "return [overviewQuestion, `Where does ${name} flow?`",
+    ]) &&
+      appearsInOrder(appSource, ["{starterQuestions.map((question) => (", "{explainQuestion ? ("]),
   ],
   [
     "Ask response has a visible framed style",
@@ -55,10 +65,23 @@ const checks = [
       "function explainSelectedNode()",
       "function selectedNodeGraphAnswer",
       "I matched the selected",
-      "Open a cited graph explanation in Ask",
-      "Explain in Ask",
+      "Open Ask with a cited graph explanation",
+      "Explain from graph",
       "onExplainNode={explainSelectedNode}",
     ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))"]),
+  ],
+  [
+    "Ask clearly distinguishes graph shortcuts from AI-backed questions",
+    includesAll(appSource, [
+      'className="answer-modes"',
+      "Graph instant",
+      "when needed",
+      "Ask Graph",
+      "modelReadiness.status !== \"idle\"",
+      'className={`ask-readiness ${modelReadiness.status}`}',
+      "Use a graph shortcut for instant cited answers",
+      "EvidenceList citations={answer.citations.slice(0, 8)}",
+    ]) && includesAll(appCss, [".answer-modes", ".answer-modes span.is-active", ".ask-readiness.error"]),
   ],
   [
     "AI panel shows honest usage and bulk token estimate before model calls",

@@ -1163,6 +1163,7 @@ function App() {
                   error={chatError}
                   node={selectedNode}
                   settings={modelSettings}
+                  modelReadiness={modelReadiness}
                   question={chatQuestion}
                   canAsk={Boolean(graph)}
                   onQuestionChange={setChatQuestion}
@@ -1645,8 +1646,8 @@ function SummaryDock({
         <div>
           <strong>Overview</strong>
           <span>
-            {node ? `${node.name} - graph facts first` : "No symbol selected"}
-            {node?.file ? `; AI summary optional via ${PROVIDER_LABELS[settings.provider]} / ${settings.model}` : ""}
+            {node ? `${node.name} - graph facts and source evidence` : "No symbol selected"}
+            {node?.file ? `; AI summary uses ${PROVIDER_LABELS[settings.provider]} / ${settings.model} only when run` : ""}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1654,9 +1655,9 @@ function SummaryDock({
             type="button"
             onClick={onExplainNode}
             disabled={!node}
-            title={node ? "Open a cited graph explanation in Ask" : "Select a symbol to ask about it"}
+            title={node ? "Open Ask with a cited graph explanation" : "Select a symbol to ask about it"}
           >
-            Explain in Ask
+            Explain from graph
           </button>
           <button
             type="button"
@@ -1670,7 +1671,7 @@ function SummaryDock({
                   : "Generate an AI summary for this symbol"
             }
           >
-            {generating ? "Stop" : state?.summary ? "Regenerate AI Summary" : "AI Summary"}
+            {generating ? "Stop" : state?.summary ? "Regenerate Summary" : "Generate AI Summary"}
           </button>
         </div>
       </div>
@@ -1699,7 +1700,7 @@ function SummaryDock({
       </div>
       <div className="summary-meta">
         <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
-          AI Summarize All
+          Summarize all with AI
         </button>
         <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
       </div>
@@ -1758,6 +1759,7 @@ function ChatAnswerPanel({
   error,
   node,
   settings,
+  modelReadiness,
   question,
   canAsk,
   onQuestionChange,
@@ -1774,6 +1776,7 @@ function ChatAnswerPanel({
   error: string;
   node: GraphNode | null;
   settings: ModelSettings;
+  modelReadiness: ModelReadiness;
   question: string;
   canAsk: boolean;
   onQuestionChange: (question: string) => void;
@@ -1800,22 +1803,32 @@ function ChatAnswerPanel({
           ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
           : "Graph shortcuts answer without a model";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
-  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : "Ask";
+  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
+  const showReadiness = workingWithModel && modelReadiness.status !== "idle" && modelReadiness.message;
 
   return (
     <section className="answer-card">
       <div className="answer-header">
         <div>
-          <strong>Ask Cobolens</strong>
+          <strong>Ask</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>
+      <div className="answer-modes" aria-label="Ask modes">
+        <span className={!workingWithModel ? "is-active" : undefined}>Graph instant</span>
+        <span className={workingWithModel ? "is-active" : undefined}>{PROVIDER_LABELS[settings.provider]} when needed</span>
+      </div>
+      {showReadiness ? (
+        <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>
+          {modelReadiness.message}
+        </div>
+      ) : null}
       <div className="chat-composer" aria-label="Ask a question">
         <input
           type="text"
           aria-label="Ask about the codebase"
-          placeholder="Ask where something happens, what uses it, or where data flows..."
+          placeholder="Ask about symbols, files, data flow, or business logic..."
           value={question}
           onChange={(event) => onQuestionChange(event.currentTarget.value)}
           onKeyDown={(event) => {
@@ -1833,16 +1846,6 @@ function ChatAnswerPanel({
       </div>
       {starterQuestions.length ? (
         <div className="question-chips" aria-label="Suggested graph questions">
-          {explainQuestion ? (
-            <button
-              type="button"
-              onClick={() => onAskPreset(explainQuestion)}
-              disabled={status === "running"}
-              title="Show a cited graph-derived explanation"
-            >
-              Explain {node?.name}
-            </button>
-          ) : null}
           {starterQuestions.map((question) => (
             <button
               key={question}
@@ -1853,6 +1856,16 @@ function ChatAnswerPanel({
               {question}
             </button>
           ))}
+          {explainQuestion ? (
+            <button
+              type="button"
+              onClick={() => onAskPreset(explainQuestion)}
+              disabled={status === "running"}
+              title="Show a cited graph-derived explanation"
+            >
+              Explain {node?.name}
+            </button>
+          ) : null}
         </div>
       ) : null}
       <div className="answer-response" aria-live="polite">
@@ -1868,10 +1881,10 @@ function ChatAnswerPanel({
           <>
             <div className="answer-question">{answer.question}</div>
             <MessageText text={answer.text} />
-            <CitationList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
+            <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
-          <p>Ask where something happens, what uses it, or where data flows. Graph questions answer instantly; broader explanations use the selected AI provider with cited context.</p>
+          <p>Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.</p>
         )}
       </div>
       {previousAnswers.length ? (
@@ -2675,11 +2688,11 @@ function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<Ch
 
   return {
     text: [
-      `Graph answer, no model required: I matched the selected ${node.name} (${node.type}) at ${location}.`,
+      `Graph answer, no model required: I matched the selected ${node.name} at ${location}.`,
       "",
-      "Graph-derived brief:",
+      `${node.name} at a glance:`,
       ...brief.map((line) => `- ${line}`),
-      ...(relationshipLines.length ? ["", "Relationships that answer this:", ...relationshipLines] : []),
+      ...(relationshipLines.length ? ["", "Evidence highlights:", ...relationshipLines.slice(0, 4)] : []),
     ].join("\n"),
     citations: dedupeCitations([
       ...(node.file
@@ -2823,21 +2836,23 @@ function isSummaryUnit(node: GraphNode) {
 }
 
 function suggestedGraphQuestions(node: GraphNode | null) {
-  if (!node) return [];
+  const overviewQuestion = "Give me a codebase overview.";
+  if (!node) return [overviewQuestion];
   const name = node.name;
   if (node.type === "program") {
-    return [`What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
+    return [overviewQuestion, `What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
   }
   if (node.type === "data-item") {
-    return [`Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
+    return [overviewQuestion, `Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
   }
   if (node.type === "jcl-dd") {
-    return [`What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
+    return [overviewQuestion, `What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
   }
   if (node.type === "dataset") {
-    return [`What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
+    return [overviewQuestion, `What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
   }
   return [
+    overviewQuestion,
     `What uses ${name}?`,
     `Where does ${name} happen?`,
     `What depends on ${name}?`,

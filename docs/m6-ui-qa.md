@@ -96,6 +96,10 @@ Privacy mode checks:
   (`settings.json` in desktop app config, browser local storage in preview).
   Cloud API keys are still saved only through the OS keychain commands and are
   rejected if they appear in app settings.
+- The AI pane shows an explicit usage card with local/cloud call count, bulk
+  summary input token estimate, and a note that graph answers need no model
+  while summaries and non-graph Ask send cited context only when the user runs
+  them.
 
 Scan settings check:
 

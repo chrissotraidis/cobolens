@@ -51,6 +51,16 @@ const checks = [
     ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: 58px minmax(122px, auto)"]),
   ],
   [
+    "AI panel shows honest usage and bulk token estimate before model calls",
+    includesAll(appSource, [
+      'aria-label="AI usage and token estimate"',
+      "Cloud calls this session",
+      "Bulk summary input estimate",
+      "Graph answers need no model",
+      "send cited context to",
+    ]) && includesAll(appCss, [".ai-usage", ".ai-usage p"]),
+  ],
+  [
     "Inspector tabs reserve enough width for Summary and Impact",
     includesAll(appSource, ['label: "Links"']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(82px, 1.15fr)", "minmax(78px, 1fr)"]),

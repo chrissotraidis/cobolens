@@ -506,7 +506,16 @@ h2,
   color: #e8d796;
 }
 
-.cost-meter {
+.ai-usage {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(125, 137, 150, 0.18);
+  border-radius: 7px;
+  background: rgba(17, 21, 26, 0.48);
+}
+
+.ai-usage div {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
@@ -515,8 +524,15 @@ h2,
   font-size: 12px;
 }
 
-.cost-meter strong {
+.ai-usage strong {
   color: #e7ebef;
+}
+
+.ai-usage p {
+  margin: 0;
+  color: #7d8996;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .swatch,

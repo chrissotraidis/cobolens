@@ -1467,23 +1467,33 @@ function ModelSettingsPanel({
         </button>
         {cloud ? (
           <>
-          <button type="button" onClick={onSaveKey} disabled={!keyDraft.trim()}>
-            Save Key
-          </button>
-          <button type="button" onClick={onClearKey} disabled={!hasProviderKey}>
-            Clear
-          </button>
+            <button type="button" onClick={onSaveKey} disabled={!keyDraft.trim()}>
+              Save Key
+            </button>
+            <button type="button" onClick={onClearKey} disabled={!hasProviderKey}>
+              Clear
+            </button>
           </>
         ) : null}
       </div>
       <div className={`settings-footnote ${modelReadiness.status}`}>
         {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode: model calls stay on this machine.")}
       </div>
-      <div className="cost-meter">
-        <span>{cloud ? "Cloud meter" : "Local calls"}</span>
-        <strong>{modelCallCount}</strong>
+      <div className="ai-usage" aria-label="AI usage and token estimate">
+        <div>
+          <span>{cloud ? "Cloud calls this session" : "Local calls this session"}</span>
+          <strong>{modelCallCount}</strong>
+        </div>
+        <div>
+          <span>Bulk summary input estimate</span>
+          <strong>{bulkTokenEstimate.toLocaleString()}</strong>
+        </div>
+        <p>
+          {cloud
+            ? `Non-graph Ask and summaries send cited context to ${PROVIDER_LABELS[settings.provider]} only when you run them.`
+            : "Graph answers need no model; summaries and non-graph Ask use localhost Ollama only when you run them."}
+        </p>
       </div>
-      <div className="settings-footnote">Bulk summary est. {bulkTokenEstimate.toLocaleString()} tokens</div>
     </section>
   );
 }

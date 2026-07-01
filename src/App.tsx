@@ -2306,7 +2306,7 @@ function RelationshipDetails({
     <section className="relationship-card">
       <div className="relationship-title">{selectedEdge ? "Relationship" : "Links"}</div>
       {selectedEdge && graph ? (
-        <EdgeExplanation edge={selectedEdge} graph={graph} />
+        <EdgeExplanation edge={selectedEdge} graph={graph} onFocusNode={onFocusNode} />
       ) : relationships && node && graph ? (
         <>
           <p className="relationship-help">Select a source line link to jump into code, or select a symbol to refocus the graph.</p>
@@ -2379,10 +2379,55 @@ function CodeSnippet({ node, snippet, loading }: { node: GraphNode; snippet: Sou
   );
 }
 
-function EdgeExplanation({ edge, graph }: { edge: GraphEdge; graph: GraphDocument }) {
+function EdgeExplanation({
+  edge,
+  graph,
+  onFocusNode,
+}: {
+  edge: GraphEdge;
+  graph: GraphDocument;
+  onFocusNode: (nodeId: string) => void;
+}) {
+  const fromNode = graph.nodes.find((candidate) => candidate.id === edge.from);
+  const toNode = graph.nodes.find((candidate) => candidate.id === edge.to);
+  const fromName = fromNode?.name ?? edge.from;
+  const toName = toNode?.name ?? edge.to;
+
   return (
     <div className="edge-explanation">
       <strong>{edgeLabel(edge, graph)}</strong>
+      <p>
+        This graph relationship records <span>{fromName}</span> as the source and <span>{toName}</span> as the target.
+      </p>
+      <div className="relationship-flow" aria-label="Relationship endpoints">
+        <button
+          type="button"
+          className="relationship-node-button"
+          aria-label={`Focus relationship source ${fromName}`}
+          onClick={() => onFocusNode(edge.from)}
+        >
+          <span className="relationship-node-role">From</span>
+          <span className="relationship-node-name">
+            <span className="swatch" style={{ background: nodeColor(fromNode?.type ?? "") }} />
+            <span>{fromName}</span>
+          </span>
+          <small>{fromNode ? nodeLocationLabel(fromNode) : edge.from}</small>
+        </button>
+        <span className="relationship-edge-type">{edge.type}</span>
+        <button
+          type="button"
+          className="relationship-node-button"
+          aria-label={`Focus relationship target ${toName}`}
+          onClick={() => onFocusNode(edge.to)}
+        >
+          <span className="relationship-node-role">To</span>
+          <span className="relationship-node-name">
+            <span className="swatch" style={{ background: nodeColor(toNode?.type ?? "") }} />
+            <span>{toName}</span>
+          </span>
+          <small>{toNode ? nodeLocationLabel(toNode) : edge.to}</small>
+        </button>
+      </div>
       {edge.site ? (
         <span>
           Cited at {edge.site.file}:{edge.site.line}.

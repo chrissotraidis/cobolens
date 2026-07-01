@@ -134,6 +134,9 @@ Relationship-click check:
 - Clicking a relationship citation from an Ask answer now follows the same path:
   it selects the cited graph edge, opens the `Links`/relationship detail, and
   highlights the cited source line.
+- Selected relationship details now show the `from` and `to` endpoints as
+  graph-refocus buttons, so a cited relationship answer can move directly from
+  the evidence line to either symbol in the dependency map.
 
 Export check:
 

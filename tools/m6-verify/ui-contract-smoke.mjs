@@ -141,6 +141,20 @@ const checks = [
     ]),
   ],
   [
+    "Selected relationship detail explains endpoints and can refocus either node",
+    includesAll(appSource, [
+      "const fromNode = graph.nodes.find",
+      "const toNode = graph.nodes.find",
+      'className="relationship-flow"',
+      'aria-label="Relationship endpoints"',
+      "aria-label={`Focus relationship source ${fromName}`}",
+      "aria-label={`Focus relationship target ${toName}`}",
+      "onFocusNode(edge.from)",
+      "onFocusNode(edge.to)",
+      "This graph relationship records",
+    ]) && includesAll(appCss, [".relationship-flow", ".relationship-node-button", ".relationship-edge-type"]),
+  ],
+  [
     "Empty graph canvas offers first-run sample and treats folder open as desktop-only in browser preview",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',

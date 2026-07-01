@@ -228,6 +228,9 @@ Graph-backed Ask check:
 - Suggested Ask questions now carry an explicit `Graph` or provider badge, and
   codebase-wide overview questions keep the current graph focus instead of
   jumping to whichever symbol appears first in the retrieved context.
+- Suggested Ask question buttons also expose their behavior to tooltips and
+  assistive technology: graph suggestions answer instantly, while provider
+  suggestions prepare the AI prompt for review before the user runs `Ask AI`.
 - `What does LINEAGE call?` now answers only with
   `LINEAGE executes LINK RATEAPI at src/LINEAGE.cbl:40` and
   `LINEAGE CALLS RATEAUDIT at src/LINEAGE.cbl:43` with focused citations; it

@@ -2140,17 +2140,25 @@ function ChatAnswerPanel({
         <div className="question-shortcuts">
           <span>{starterQuestionsLabel}</span>
           <div className="question-chips" aria-label="Suggested questions">
-            {visibleStarterQuestions.map((question) => (
-              <button
-                key={question}
-                type="button"
-                onClick={() => onAskPreset(question)}
-                disabled={status === "running"}
-              >
-                <span>{question}</span>
-                <small>{isGraphQuestion(question) ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
-              </button>
-            ))}
+            {visibleStarterQuestions.map((question) => {
+              const graphQuestion = isGraphQuestion(question);
+              const chipAction = graphQuestion
+                ? "Answer instantly from the graph"
+                : `Prepare ${PROVIDER_LABELS[settings.provider]} prompt`;
+              return (
+                <button
+                  key={question}
+                  type="button"
+                  onClick={() => onAskPreset(question)}
+                  disabled={status === "running"}
+                  title={`${chipAction}: ${question}`}
+                  aria-label={`${chipAction}: ${question}`}
+                >
+                  <span>{question}</span>
+                  <small>{graphQuestion ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}

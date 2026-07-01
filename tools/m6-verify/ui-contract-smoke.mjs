@@ -51,7 +51,7 @@ const checks = [
       "shouldSyncAskFocus(question)",
       "codebase\\s+overview",
     ]) &&
-      includesAll(appSource, ["{visibleStarterQuestions.map((question) => (", "PROVIDER_LABELS[settings.provider]"]) &&
+      includesAll(appSource, ["{visibleStarterQuestions.map((question) => {", "PROVIDER_LABELS[settings.provider]"]) &&
       !appSource.includes("const explainQuestion =") &&
       includesAll(appCss, [".question-chips button small", "text-transform: uppercase"]),
   ],
@@ -164,7 +164,11 @@ const checks = [
       "Choose a graph shortcut for an instant cited answer.",
       "const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question)",
       'const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question"',
-      "{visibleStarterQuestions.map((question) => (",
+      "{visibleStarterQuestions.map((question) => {",
+      "const graphQuestion = isGraphQuestion(question)",
+      "Answer instantly from the graph",
+      "Prepare ${PROVIDER_LABELS[settings.provider]} prompt",
+      "aria-label={`${chipAction}: ${question}`}",
       "if (!isGraphQuestion(question))",
       'setChatStatus("idle")',
       "if (isStoppedModelCall(fallbackReason))",

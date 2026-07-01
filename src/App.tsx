@@ -2106,6 +2106,7 @@ function ChatAnswerPanel({
   onClearHistory: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const starterQuestions = suggestedGraphQuestions(node);
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
@@ -2162,6 +2163,7 @@ function ChatAnswerPanel({
         <input
           type="text"
           autoFocus
+          ref={inputRef}
           aria-label="Ask about the codebase"
           placeholder="Ask about data flow, dependencies, files, or business logic..."
           value={question}
@@ -2222,12 +2224,17 @@ function ChatAnswerPanel({
               const graphQuestion = isGraphQuestion(question);
               const chipAction = graphQuestion
                 ? "Answer instantly from the graph"
-                : `Prepare ${PROVIDER_LABELS[settings.provider]} prompt`;
+                : `Draft ${PROVIDER_LABELS[settings.provider]} question`;
               return (
                 <button
                   key={question}
                   type="button"
-                  onClick={() => onAskPreset(question)}
+                  onClick={() => {
+                    onAskPreset(question);
+                    if (!graphQuestion) {
+                      window.requestAnimationFrame(() => inputRef.current?.focus());
+                    }
+                  }}
                   disabled={status === "running"}
                   title={`${chipAction}: ${question}`}
                   aria-label={`${chipAction}: ${question}`}

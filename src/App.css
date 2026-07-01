@@ -248,14 +248,14 @@ select:focus {
 
 .shell {
   display: grid;
-  grid-template-columns: 248px minmax(360px, 1fr) minmax(400px, 34vw);
+  grid-template-columns: 248px minmax(340px, 1fr) minmax(420px, 38vw);
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
 .shell.is-ask-focused {
-  grid-template-columns: 248px minmax(320px, 1fr) minmax(460px, 44vw);
+  grid-template-columns: 248px minmax(340px, 1fr) minmax(420px, 38vw);
 }
 
 .left-pane,
@@ -996,13 +996,13 @@ h2,
 
 .right-pane {
   display: grid;
-  grid-template-rows: minmax(178px, 0.72fr) minmax(360px, 1.28fr);
+  grid-template-rows: minmax(190px, 0.68fr) minmax(390px, 1.32fr);
   border-left: 1px solid #20262e;
   overflow: hidden;
 }
 
 .right-pane.is-ask-focused {
-  grid-template-rows: minmax(132px, 0.46fr) minmax(430px, 1.54fr);
+  grid-template-rows: minmax(190px, 0.68fr) minmax(390px, 1.32fr);
 }
 
 .code-panel,
@@ -1974,19 +1974,19 @@ pre {
   }
 
   .shell {
-    grid-template-columns: 232px minmax(320px, 1fr) minmax(360px, 33vw);
+    grid-template-columns: 232px minmax(300px, 1fr) minmax(400px, 40vw);
   }
 
   .shell.is-ask-focused {
-    grid-template-columns: 216px minmax(260px, 1fr) minmax(410px, 46vw);
+    grid-template-columns: 232px minmax(300px, 1fr) minmax(400px, 40vw);
   }
 
   .right-pane {
-    grid-template-rows: minmax(156px, 0.58fr) minmax(390px, 1.42fr);
+    grid-template-rows: minmax(178px, 0.62fr) minmax(390px, 1.38fr);
   }
 
   .right-pane.is-ask-focused {
-    grid-template-rows: minmax(112px, 0.4fr) minmax(430px, 1.6fr);
+    grid-template-rows: minmax(178px, 0.62fr) minmax(390px, 1.38fr);
   }
 
   .source-line {
@@ -2095,7 +2095,7 @@ pre {
   }
 
   .right-pane.is-ask-focused {
-    grid-template-rows: 120px minmax(0, 1fr);
+    grid-template-rows: 150px minmax(0, 1fr);
   }
 
   .button-row.two {

@@ -175,7 +175,7 @@ const checks = [
       "{visibleStarterQuestions.map((question) => {",
       "const graphQuestion = isGraphQuestion(question)",
       "Answer instantly from the graph",
-      "Prepare ${PROVIDER_LABELS[settings.provider]} prompt",
+      "Draft ${PROVIDER_LABELS[settings.provider]} question",
       "aria-label={`${chipAction}: ${question}`}",
       "if (!isGraphQuestion(question))",
       'setChatStatus("idle")',
@@ -230,9 +230,9 @@ const checks = [
     "Right pane remains usable at default desktop browser widths",
     includesAll(appCss, [
       "@media (max-width: 1280px) and (min-width: 901px)",
-      "minmax(360px, 33vw)",
+      "minmax(400px, 40vw)",
       ".shell.is-ask-focused",
-      "minmax(410px, 46vw)",
+      "minmax(400px, 40vw)",
       "white-space: pre-wrap",
       "overflow-wrap: anywhere",
     ]),
@@ -256,7 +256,7 @@ const checks = [
       appearsInOrder(appSource, ['<div className="chat-composer"', '<div className="answer-response"']) &&
       includesAll(appCss, [
         ".right-pane.is-ask-focused",
-        "minmax(132px, 0.46fr) minmax(430px, 1.54fr)",
+        "minmax(178px, 0.62fr) minmax(390px, 1.38fr)",
         ".chat-composer",
         "position: sticky",
         "top: 0",

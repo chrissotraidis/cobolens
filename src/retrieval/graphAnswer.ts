@@ -144,7 +144,7 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
 }
 
 function isOrientationQuestion(question: string) {
-  return /\b(where\s+should\s+i\s+start|what\s+should\s+i\s+inspect\s+first|inspect\s+first|start(?:ing)?\s+point|entry\s+point|entry\s+points|first\s+thing\s+to\s+inspect)\b/i.test(
+  return /\b(where\s+should\s+i\s+start|what\s+should\s+i\s+inspect\s+first|inspect\s+first|start(?:ing)?\s+point|entry\s+point|entry\s+points|first\s+thing\s+to\s+inspect|codebase\s+overview|overview\s+of\s+(?:this\s+)?codebase|summari[sz]e\s+(?:this\s+)?codebase|what\s+is\s+(?:in\s+)?this\s+codebase|how\s+is\s+(?:this\s+)?codebase\s+structured)\b/i.test(
     question,
   );
 }

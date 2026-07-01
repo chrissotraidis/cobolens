@@ -156,6 +156,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const orientationAnswer = graphAnswerFallback(graph, orientationQuestion, orientationContext);
+  const codebaseOverviewQuestion = "Give me a codebase overview.";
+  const codebaseOverviewContext = await retrieveQuestionContext({
+    graph,
+    question: codebaseOverviewQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const codebaseOverviewAnswer = graphAnswerFallback(graph, codebaseOverviewQuestion, codebaseOverviewContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -168,6 +175,7 @@ try {
     ["write question classified as graph-only", isGraphQuestion(writeQuestion)],
     ["written-by question classified as graph-only", isGraphQuestion(writtenByQuestion)],
     ["orientation question classified as graph-only", isGraphQuestion(orientationQuestion)],
+    ["codebase overview question classified as graph-only", isGraphQuestion(codebaseOverviewQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -222,6 +230,9 @@ try {
     ["orientation answer recommends JCL entry wiring", orientationAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
     ["orientation answer points to high-connection source units", orientationAnswer.text.includes("LINEAGE (program) has")],
     ["orientation answer cites the entry edge", orientationAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
+    ["codebase overview answer is graph-only", codebaseOverviewAnswer.text.includes("Graph answer, no model required:")],
+    ["codebase overview gives inventory", codebaseOverviewAnswer.text.includes("I found 1 source program, 2 copybooks, and 1 JCL job.")],
+    ["codebase overview has citations", codebaseOverviewAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

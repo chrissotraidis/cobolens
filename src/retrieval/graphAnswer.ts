@@ -1,7 +1,7 @@
 import { edgeLabel, type GraphDocument, type GraphEdge, type GraphNode } from "../lib/graph";
 import type { Citation, RetrievedContext } from "./context";
 
-type GraphQuestionIntent = "dependency" | "call" | "read" | "write" | "flow" | "where" | "general";
+type GraphQuestionIntent = "orientation" | "dependency" | "call" | "read" | "write" | "flow" | "where" | "general";
 
 const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
 const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
@@ -25,6 +25,10 @@ export function graphAnswerFallback(
   const dependencyScope = dependencyScopeForQuestion(question, matched[0]);
   const relevantEdges = relevantEdgesForIntent(intent, dependencyScope, directEdges, incoming, outgoing).slice(0, 8);
   const includeFallbackCitations = intent === "general";
+
+  if (intent === "orientation") {
+    return graphOrientationAnswer(graph, modelNote);
+  }
 
   if (!matched.length) {
     return {
@@ -118,6 +122,7 @@ export function graphAnswerFallback(
 }
 
 export function isGraphQuestion(question: string) {
+  if (isOrientationQuestion(question)) return true;
   return /\b(explain\w*|summar\w*|overview|purpose|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
@@ -128,6 +133,7 @@ function nodeName(graph: GraphDocument, nodeId: string) {
 }
 
 function graphQuestionIntent(question: string): GraphQuestionIntent {
+  if (isOrientationQuestion(question)) return "orientation";
   if (/\b(depend\w*|impact\w*|used by|uses?)\b/i.test(question)) return "dependency";
   if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
   if (/\bread\w*\b/i.test(question)) return "read";
@@ -135,6 +141,12 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
   if (/\b(flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
   if (/\b(where|happen\w*)\b/i.test(question)) return "where";
   return "general";
+}
+
+function isOrientationQuestion(question: string) {
+  return /\b(where\s+should\s+i\s+start|what\s+should\s+i\s+inspect\s+first|inspect\s+first|start(?:ing)?\s+point|entry\s+point|entry\s+points|first\s+thing\s+to\s+inspect)\b/i.test(
+    question,
+  );
 }
 
 function relevantEdgesForIntent(
@@ -185,6 +197,92 @@ function graphBriefLines(
   }
 
   return lines;
+}
+
+function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const programs = sourceNodesByType(graph, "program");
+  const copybooks = sourceNodesByType(graph, "copybook");
+  const jobs = sourceNodesByType(graph, "jcl-job");
+  const entryEdges = dedupeEdges(
+    graph.edges.filter((edge) => edge.type.toLocaleLowerCase() === "runs" && nodeById.get(edge.to)?.type === "program"),
+  ).slice(0, 3);
+  const highConnectionNodes = graph.nodes
+    .filter((node) => node.file && !node.external && ["program", "copybook", "jcl-job", "jcl-step"].includes(node.type))
+    .map((node) => ({ node, degree: graph.edges.filter((edge) => edge.from === node.id || edge.to === node.id).length }))
+    .filter(({ degree }) => degree > 0)
+    .sort((left, right) => right.degree - left.degree || left.node.name.localeCompare(right.node.name))
+    .slice(0, 4);
+  const sharedCopybooks = copybooks
+    .map((node) => ({
+      node,
+      incomingCopies: graph.edges.filter((edge) => edge.to === node.id && edge.type.toLocaleLowerCase() === "copies"),
+    }))
+    .filter(({ incomingCopies }) => incomingCopies.length)
+    .sort((left, right) => right.incomingCopies.length - left.incomingCopies.length || left.node.name.localeCompare(right.node.name))
+    .slice(0, 3);
+  const dataStoreEdges = dedupeEdges(
+    graph.edges.filter((edge) => {
+      const type = edge.type.toLocaleLowerCase();
+      const targetType = nodeById.get(edge.to)?.type;
+      return ["reads", "writes", "uses-dd", "assigned-to"].includes(type) && ["dataset", "jcl-dd"].includes(targetType ?? "");
+    }),
+  ).slice(0, 4);
+
+  const lines = [
+    "Graph answer, no model required:",
+    `I found ${programs.length} source program${programs.length === 1 ? "" : "s"}, ${copybooks.length} copybook${copybooks.length === 1 ? "" : "s"}, and ${jobs.length} JCL job${jobs.length === 1 ? "" : "s"}.`,
+    "",
+    "Best starting points from the dependency graph:",
+  ];
+
+  if (entryEdges.length) {
+    lines.push("Start with the JCL entry wiring:");
+    for (const edge of entryEdges) {
+      const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
+      lines.push(`- ${edgeLabel(edge, graph)}${site}`);
+    }
+  } else if (programs.length) {
+    lines.push("Start with the source programs that have the most recorded relationships:");
+  }
+
+  if (highConnectionNodes.length) {
+    lines.push("", "Then inspect the highest-connection source units:");
+    for (const { node, degree } of highConnectionNodes) {
+      lines.push(`- ${node.name} (${friendlyNodeType(node.type)}) has ${degree} recorded relationship${degree === 1 ? "" : "s"} at ${formatNodeLocation(node)}.`);
+    }
+  }
+
+  if (sharedCopybooks.length) {
+    lines.push("", "Shared copybooks are good schema/layout anchors:");
+    for (const { node, incomingCopies } of sharedCopybooks) {
+      lines.push(`- ${node.name} is copied by ${uniqueNodeNames(graph, incomingCopies.map((edge) => edge.from)).join(", ")}.`);
+    }
+  }
+
+  if (dataStoreEdges.length) {
+    lines.push("", "Data-store wiring worth checking next:");
+    for (const edge of dataStoreEdges) {
+      const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
+      lines.push(`- ${edgeLabel(edge, graph)}${site}`);
+    }
+  }
+
+  if (modelNote) lines.push("", `Model note: ${modelNote}`);
+
+  return {
+    text: lines.join("\n"),
+    citations: graphAnswerCitations(
+      graph,
+      highConnectionNodes.map(({ node }) => node),
+      [...entryEdges, ...dataStoreEdges, ...sharedCopybooks.flatMap(({ incomingCopies }) => incomingCopies)],
+      [],
+    ),
+  };
+}
+
+function sourceNodesByType(graph: GraphDocument, type: string) {
+  return graph.nodes.filter((node) => node.type === type && node.file && !node.external);
 }
 
 function uniqueNodeNames(graph: GraphDocument, nodeIds: string[]) {

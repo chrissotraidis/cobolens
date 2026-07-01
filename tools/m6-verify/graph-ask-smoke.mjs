@@ -149,6 +149,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const unknownAnswer = graphAnswerFallback(graph, unknownQuestion, unknownContext);
+  const orientationQuestion = "What should I inspect first in this codebase?";
+  const orientationContext = await retrieveQuestionContext({
+    graph,
+    question: orientationQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const orientationAnswer = graphAnswerFallback(graph, orientationQuestion, orientationContext);
   const assertions = [
     ["question classified as graph-only", isGraphQuestion(question)],
     ["call question classified as graph-only", isGraphQuestion(callQuestion)],
@@ -160,6 +167,7 @@ try {
     ["read-by question classified as graph-only", isGraphQuestion(readByQuestion)],
     ["write question classified as graph-only", isGraphQuestion(writeQuestion)],
     ["written-by question classified as graph-only", isGraphQuestion(writtenByQuestion)],
+    ["orientation question classified as graph-only", isGraphQuestion(orientationQuestion)],
     ["matched CUSTOMER-ID", answer.text.includes("CUSTOMER-ID (data-item) at copybook/CUSTOMER.cpy:2")],
     ["reports upstream definition", answer.text.includes("Upstream or used by: CUSTOMER.")],
     ["reports downstream impact", answer.text.includes("Downstream impact: REPORT-ID.")],
@@ -210,6 +218,10 @@ try {
     ["unknown symbol has no matched focus", unknownContext.focusNodes.length === 0],
     ["unknown symbol says it could not match", unknownAnswer.text.includes("I could not match that question to a symbol in the graph.")],
     ["unknown symbol has no citations", unknownAnswer.citations.length === 0],
+    ["orientation answer is graph-only", orientationAnswer.text.includes("Graph answer, no model required:")],
+    ["orientation answer recommends JCL entry wiring", orientationAnswer.text.includes("STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2")],
+    ["orientation answer points to high-connection source units", orientationAnswer.text.includes("LINEAGE (program) has")],
+    ["orientation answer cites the entry edge", orientationAnswer.citations.some((citation) => citation.file === "jcl/DAILYLN.jcl" && citation.line === 2)],
     ["keeps model out of graph answer", !answer.text.includes("Model note")],
     ["has clickable citations", answer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 31)],
   ];

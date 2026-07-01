@@ -1268,10 +1268,25 @@ pre {
   background: rgba(229, 199, 95, 0.08);
 }
 
-.answer-question {
+.answer-turn {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.answer-turn > span {
   color: #7d8996;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.answer-turn > strong {
+  color: #d6dde4;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .question-chips {

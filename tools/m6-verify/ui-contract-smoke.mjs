@@ -24,6 +24,15 @@ const checks = [
     ]),
   ],
   [
+    "Ask answer subtitle follows the displayed answer, not stale draft text",
+    includesAll(appSource, [
+      "const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question))",
+      "answer?.fallbackReason",
+      "Graph answer, no model required",
+      "Graph-grounded answer",
+    ]) && !appSource.includes("Graph-grounded fallback; model answer unavailable"),
+  ],
+  [
     "Program Ask suggestions include concrete read/write graph questions",
     includesAll(appSource, [
       '"Give me a codebase overview."',
@@ -60,10 +69,20 @@ const checks = [
       "const [chatHistory, setChatHistory] = useState<ChatAnswer[]>([])",
       "function rememberChatAnswer(answer: ChatAnswer)",
       "function restoreChatAnswer(answer: ChatAnswer)",
+      "fallbackReason?: string",
       'aria-label="Recent Ask answers"',
       "<summary>",
       "item.citations.length",
     ]) && includesAll(appCss, [".answer-history", ".answer-history summary", ".answer-history-list button"]),
+  ],
+  [
+    "Ask answers read as a labeled question and answer exchange",
+    includesAll(appSource, [
+      'className="answer-turn"',
+      "<span>Question</span>",
+      "<span>Answer</span>",
+      "MessageText text={answer.text}",
+    ]) && includesAll(appCss, [".answer-turn", ".answer-turn > span", ".answer-turn > strong"]),
   ],
   [
     "Summary can seed a cited Ask explanation for the selected node",

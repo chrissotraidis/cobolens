@@ -8,6 +8,7 @@ const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "upda
 const FLOW_SOURCE_EDGE_TYPES = new Set(["defines", "reads", "uses-dd"]);
 const READ_EDGE_TYPES = new Set(["reads"]);
 const WRITE_EDGE_TYPES = new Set(["writes", "updates"]);
+const MAX_CONNECTION_PATH_EDGES = 5;
 
 export function graphAnswerFallback(
   graph: GraphDocument,
@@ -24,6 +25,10 @@ export function graphAnswerFallback(
   const intent = graphQuestionIntent(question);
   const dependencyScope = dependencyScopeForQuestion(question, matched[0]);
   const relevantEdges = relevantEdgesForIntent(intent, dependencyScope, directEdges, incoming, outgoing).slice(0, 8);
+  const connectionPath =
+    matched.length > 1 && ["flow", "dependency", "general"].includes(intent)
+      ? shortestConnectionPath(graph, matched[0].id, matched[1].id)
+      : [];
   const includeFallbackCitations = intent === "general";
 
   if (intent === "orientation") {
@@ -47,6 +52,14 @@ export function graphAnswerFallback(
 
   if (intent === "general") {
     lines.push("", ...graphBriefLines(graph, matched[0], incoming, outgoing, directEdges));
+  }
+
+  if (connectionPath.length) {
+    lines.push("", `Connection path from ${matched[0].name} to ${matched[1].name}:`);
+    for (const edge of connectionPath) {
+      const site = edge.site ? ` at ${edge.site.file}:${edge.site.line}` : "";
+      lines.push(`- ${edgeLabel(edge, graph)}${site}`);
+    }
   }
 
   if (relevantEdges.length) {
@@ -117,7 +130,7 @@ export function graphAnswerFallback(
 
   return {
     text: lines.join("\n"),
-    citations: graphAnswerCitations(graph, matched, relevantEdges, includeFallbackCitations ? context.citations : []),
+    citations: graphAnswerCitations(graph, matched, [...connectionPath, ...relevantEdges], includeFallbackCitations ? context.citations : []),
   };
 }
 
@@ -126,7 +139,7 @@ export function isGraphQuestion(question: string) {
   if (isSelectedSymbolOverviewQuestion(question)) return true;
   if (isExplicitGraphExplanationQuestion(question)) return true;
   if (isInterpretiveModelQuestion(question)) return false;
-  return /\b(overview|depend\w*|impact\w*|where|happen\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
+  return /\b(overview|depend\w*|impact\w*|where|happen\w*|feed\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
     question,
   );
 }
@@ -141,7 +154,7 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
   if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
   if (/\bread\w*\b/i.test(question)) return "read";
   if (/\b(writ\w*|updat\w*)\b/i.test(question)) return "write";
-  if (/\b(flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
+  if (/\b(feed\w*|flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
   if (/\b(where|happen\w*)\b/i.test(question)) return "where";
   return "general";
 }
@@ -350,6 +363,37 @@ function dedupeEdges(edges: GraphEdge[]) {
     seen.add(key);
     return true;
   });
+}
+
+function shortestConnectionPath(graph: GraphDocument, startId: string, endId: string) {
+  if (startId === endId) return [];
+  const adjacency = new Map<string, Array<{ nodeId: string; edge: GraphEdge }>>();
+  for (const edge of graph.edges) {
+    const fromEdges = adjacency.get(edge.from) ?? [];
+    fromEdges.push({ nodeId: edge.to, edge });
+    adjacency.set(edge.from, fromEdges);
+
+    const toEdges = adjacency.get(edge.to) ?? [];
+    toEdges.push({ nodeId: edge.from, edge });
+    adjacency.set(edge.to, toEdges);
+  }
+
+  const queue: Array<{ nodeId: string; path: GraphEdge[] }> = [{ nodeId: startId, path: [] }];
+  const seen = new Set([startId]);
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const current = queue[index];
+    if (current.path.length >= MAX_CONNECTION_PATH_EDGES) continue;
+    for (const next of adjacency.get(current.nodeId) ?? []) {
+      if (seen.has(next.nodeId)) continue;
+      const nextPath = [...current.path, next.edge];
+      if (next.nodeId === endId) return dedupeEdges(nextPath);
+      seen.add(next.nodeId);
+      queue.push({ nodeId: next.nodeId, path: nextPath });
+    }
+  }
+
+  return [];
 }
 
 function graphAnswerCitations(

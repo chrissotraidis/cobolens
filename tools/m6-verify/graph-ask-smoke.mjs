@@ -130,6 +130,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const customerMasterAnswer = graphAnswerFallback(graph, customerMasterQuestion, customerMasterContext);
+  const customerMasterFeedQuestion = "How does BANK.CUSTOMER.MASTER feed into LINEAGE?";
+  const customerMasterFeedContext = await retrieveQuestionContext({
+    graph,
+    question: customerMasterFeedQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const customerMasterFeedAnswer = graphAnswerFallback(graph, customerMasterFeedQuestion, customerMasterFeedContext);
   const dailyReportQuestion = "What uses the daily report dataset?";
   const dailyReportContext = await retrieveQuestionContext({
     graph,
@@ -234,6 +241,13 @@ try {
     ["explain answer cites matched source", explainAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["natural customer master phrase matches physical dataset", customerMasterContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER"],
     ["customer master answer cites JCL DD mapping", customerMasterAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
+    ["feed-into dataset question classified as graph-only", isGraphQuestion(customerMasterFeedQuestion)],
+    ["feed-into question matches dataset then program", customerMasterFeedContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER" && customerMasterFeedContext.focusNodes[1]?.name === "LINEAGE"],
+    ["feed-into answer shows connection path", customerMasterFeedAnswer.text.includes("Connection path from BANK.CUSTOMER.MASTER to LINEAGE:")],
+    ["feed-into path includes JCL DD mapping", customerMasterFeedAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
+    ["feed-into path includes COBOL file assignment", customerMasterFeedAnswer.text.includes("CUSTOMER-FILE assigned-to CUSTIN at src/LINEAGE.cbl:6")],
+    ["feed-into path includes program read", customerMasterFeedAnswer.text.includes("LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21")],
+    ["feed-into answer cites the read edge", customerMasterFeedAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 21)],
     ["natural daily report phrase matches physical dataset", dailyReportContext.focusNodes[0]?.name === "BANK.REPORT.DAILY"],
     ["daily report answer cites report DD mapping", dailyReportAnswer.text.includes("RPTFILE uses-dd BANK.REPORT.DAILY at jcl/DAILYLN.jcl:4")],
     ["natural report file phrase matches logical COBOL file", logicalReportContext.focusNodes[0]?.name === "REPORT-FILE"],

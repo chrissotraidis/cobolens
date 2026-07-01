@@ -52,6 +52,7 @@ type ChatAnswer = {
   citations: Citation[];
   source: "graph" | "model";
   guarded?: boolean;
+  fallbackReason?: string;
 };
 type InspectorTab = "ask" | "summary" | "impact" | "relationship";
 type ModelReadiness = {
@@ -807,8 +808,9 @@ function App() {
       }
     } catch (err) {
       if (context) {
-        const fallback = graphAnswerFallback(graph, question, context, friendlyModelError(err, modelSettings));
-        const fallbackAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph" };
+        const fallbackReason = friendlyModelError(err, modelSettings);
+        const fallback = graphAnswerFallback(graph, question, context, fallbackReason);
+        const fallbackAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph", fallbackReason };
         setChatAnswer(fallbackAnswer);
         rememberChatAnswer(fallbackAnswer);
         setChatStatus("ready");
@@ -1832,6 +1834,7 @@ function ChatAnswerPanel({
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
+  const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
   const answerSubtitle =
     status === "running"
       ? workingWithModel
@@ -1839,10 +1842,14 @@ function ChatAnswerPanel({
         : "Answering from graph context"
       : answer?.guarded
         ? `${PROVIDER_LABELS[settings.provider]} missed citation rules; showing graph-grounded fallback`
-        : answer?.source === "graph" && workingWithModel
-          ? "Graph-grounded fallback; model answer unavailable"
+        : answer?.fallbackReason
+          ? `Graph-grounded fallback after ${PROVIDER_LABELS[settings.provider]} was unavailable`
         : answer?.source === "model"
         ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
+        : answer?.source === "graph"
+          ? answerWasModelQuestion
+            ? "Graph-grounded answer"
+            : "Graph answer, no model required"
         : workingWithModel
           ? `${PROVIDER_LABELS[settings.provider]} will answer with cited graph context`
           : "Graph shortcuts answer without a model";
@@ -1884,8 +1891,14 @@ function ChatAnswerPanel({
           <p className="error-text">{error}</p>
         ) : answer ? (
           <>
-            <div className="answer-question">{answer.question}</div>
-            <MessageText text={answer.text} />
+            <div className="answer-turn">
+              <span>Question</span>
+              <strong>{answer.question}</strong>
+            </div>
+            <div className="answer-turn">
+              <span>Answer</span>
+              <MessageText text={answer.text} />
+            </div>
             <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
@@ -1958,7 +1971,7 @@ function ChatAnswerPanel({
               >
                 <span>{item.question}</span>
                 <small>
-                  {item.guarded ? "Guarded fallback" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
+                  {item.guarded || item.fallbackReason ? "Guarded fallback" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
                   {item.citations.length === 1 ? "" : "s"}
                 </small>
               </button>

@@ -66,7 +66,7 @@ type ChatAnswer = {
   guarded?: boolean;
   fallbackReason?: string;
 };
-type InspectorTab = "ask" | "summary" | "impact" | "relationship";
+type InspectorTab = "ask" | "summary" | "impact" | "source";
 type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
   message: string;
@@ -151,6 +151,7 @@ function App() {
   const [hasProviderKey, setHasProviderKey] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [modelReadiness, setModelReadiness] = useState<ModelReadiness>({ status: "idle", message: "" });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, SummaryState>>({});
   const [bulkSummaryStatus, setBulkSummaryStatus] = useState("");
   const [sourceFocus, setSourceFocus] = useState<SourceFocus | null>(null);
@@ -184,6 +185,7 @@ function App() {
     [focusNodeId, history, nodeById],
   );
   const selectedSummaryState = selectedNode ? summaries[selectedNode.id] : undefined;
+  const aiConfigured = isCloudProvider(modelSettings.provider) ? hasProviderKey : modelReadiness.status === "ready";
   const summaryNodes = useMemo(
     () => graph?.nodes.filter((node) => isSummaryUnit(node) && !node.external && node.file) ?? [],
     [graph],
@@ -403,7 +405,7 @@ function App() {
         preserveInspectorForEdgeRef.current = false;
         return;
       }
-      setInspectorTab("relationship");
+      setInspectorTab("impact");
     }
   }, [selectedEdge]);
 
@@ -1040,6 +1042,11 @@ function App() {
     activeSummaryAbortRef.current?.abort();
   }
 
+  function showSourcePanel() {
+    setInspectorTab("source");
+    window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
+  }
+
   function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false) {
     const citedEdge = graph?.edges.find(
       (edge) =>
@@ -1065,7 +1072,7 @@ function App() {
     if (citedEdge) {
       if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true;
       setSelectedEdge(citedEdge);
-      if (!preserveInspectorTab) setInspectorTab("relationship");
+      if (!preserveInspectorTab) setInspectorTab("impact");
     } else if (!keepEdge) {
       setSelectedEdge(null);
     }
@@ -1134,11 +1141,11 @@ function App() {
         </div>
 
         <label className="global-search">
-          <span>Search</span>
+          <span>Search codebase</span>
           <input
             type="search"
-            aria-label="Search symbols"
-            placeholder="Search symbols"
+            aria-label="Search codebase"
+            placeholder="Search programs, copybooks, jobs..."
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
             onKeyDown={handleSearchKeyDown}
@@ -1156,8 +1163,8 @@ function App() {
             </button>
           ))}
           {focusedNode ? (
-            <span className="current-crumb" aria-current="page" title={focusedNode.name}>
-              {focusedNode.name}
+            <span className="current-crumb" aria-current="page" title={`${focusedNode.name} - ${nodeTypeLabel(focusedNode.type)}`}>
+              {focusedNode.name} - {nodeTypeLabel(focusedNode.type)}
             </span>
           ) : null}
         </nav>
@@ -1169,7 +1176,40 @@ function App() {
         >
           {modelSettings.privacyMode === "local" ? "Local: no code leaves" : `Cloud: ${PROVIDER_LABELS[modelSettings.provider]}`}
         </div>
+
+        <div className="topbar-actions" aria-label="Workspace actions">
+          <button type="button" onClick={exportDocs} disabled={!graph} title={exportStatus || "Export Markdown, Mermaid, and PNG docs"}>
+            Export
+          </button>
+          <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
+            Settings
+          </button>
+        </div>
       </header>
+
+      {settingsOpen ? (
+        <SettingsDialog
+          desktopAvailable={desktopAvailable}
+          scanSettings={scanSettings}
+          scanDisabled={status === "running"}
+          onScanSettingsChange={setScanSettings}
+          modelSettings={modelSettings}
+          keyDraft={keyDraft}
+          hasProviderKey={hasProviderKey}
+          settingsMessage={settingsMessage}
+          onProviderChange={chooseProvider}
+          onModelSettingsChange={setModelSettings}
+          onKeyDraftChange={setKeyDraft}
+          onSaveKey={saveKey}
+          onClearKey={clearKey}
+          onCheckModel={checkModelReadiness}
+          onRefreshModels={refreshInstalledModels}
+          modelReadiness={modelReadiness}
+          modelCallCount={modelCallCount}
+          bulkTokenEstimate={bulkTokenEstimate}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
 
       <section className={`shell${inspectorTab === "ask" ? " is-ask-focused" : ""}`}>
         <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
@@ -1203,23 +1243,16 @@ function App() {
                 <ol>
                   <li>{desktopAvailable ? "Open the sample or choose a COBOL folder." : "Open the sample graph in this browser preview."}</li>
                   <li>Explore the map and cited source without AI.</li>
-                  <li>Add Ollama or a cloud key when you want Summary and Ask.</li>
+                  <li>Add Ollama or a cloud key only when you want AI summaries or AI Ask.</li>
                 </ol>
               </div>
             ) : null}
             {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
-            {desktopAvailable ? (
-              <ScanSettingsPanel
-                settings={scanSettings}
-                disabled={status === "running"}
-                onSettingsChange={setScanSettings}
-              />
-            ) : null}
           </section>
 
           <section className="pane-block">
-            <h2>Symbols</h2>
+            <h2>Search Results</h2>
             <div className="search-results">
               {searchResults.length ? (
                 searchResults.map((node) => (
@@ -1236,7 +1269,7 @@ function App() {
                 ))
               ) : (
                 <div className="empty-copy">
-                  {graph ? (query.trim() ? "No matching symbols." : "Type to search symbols.") : "Open a folder to index symbols."}
+                  {graph ? (query.trim() ? "No matching codebase items." : "Type to search programs, copybooks, jobs, and fields.") : "Open a folder to index the codebase."}
                 </div>
               )}
             </div>
@@ -1289,30 +1322,7 @@ function App() {
             onFocusNode={focusOnNode}
           />
 
-          <ModelSettingsPanel
-            settings={modelSettings}
-            keyDraft={keyDraft}
-            hasProviderKey={hasProviderKey}
-            message={settingsMessage}
-            onProviderChange={chooseProvider}
-            onSettingsChange={setModelSettings}
-            onKeyDraftChange={setKeyDraft}
-            onSaveKey={saveKey}
-            onClearKey={clearKey}
-            onCheckModel={checkModelReadiness}
-            onRefreshModels={refreshInstalledModels}
-            modelReadiness={modelReadiness}
-            modelCallCount={modelCallCount}
-            bulkTokenEstimate={bulkTokenEstimate}
-          />
-
-          <section className="pane-block">
-            <h2>Export</h2>
-            <button type="button" onClick={exportDocs} disabled={!graph}>
-              Export Docs
-            </button>
-            <div className="settings-footnote">{exportStatus || "Markdown, Mermaid, PNG"}</div>
-          </section>
+          {exportStatus ? <div className="settings-footnote export-status">{exportStatus}</div> : null}
         </aside>
 
         <section
@@ -1325,7 +1335,7 @@ function App() {
             <div className="graph-toolbar">
               <div>
                 <span>Dependency Map</span>
-                <small>{focusedNode.name}</small>
+                <small>{focusedNode.name} - {nodeTypeLabel(focusedNode.type)}</small>
               </div>
               <div className="graph-toolbar-actions">
                 <button
@@ -1368,9 +1378,9 @@ function App() {
           </div>
         </section>
 
-        <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Code and summaries">
+        <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Source and inspector">
           <section id="code-panel" className="code-panel" aria-label="Source code" tabIndex={-1}>
-            <div className="panel-title">Code</div>
+            <div className="panel-title">Source</div>
             {selectedNode ? (
               <CodeSnippet
                 node={selectedNode}
@@ -1392,8 +1402,8 @@ function App() {
 
           <section id="inspector-panel" className="chat-panel" aria-label="Inspector" tabIndex={-1}>
             <div className="panel-title panel-title-row">
-              <span>Inspector</span>
-              <small>{selectedNode ? `- ${selectedNode.type}` : "- No selection"}</small>
+              <span>Work with this code</span>
+              <small>{selectedNode ? nodeTypeLabel(selectedNode.type) : "No selection"}</small>
             </div>
             <InspectorTabs
               activeTab={inspectorTab}
@@ -1414,7 +1424,9 @@ function App() {
                   modelReadiness={modelReadiness}
                   question={chatQuestion}
                   focusLinkCount={selectedNode ? dependencyCounts(selectedNode, graph).total : 0}
+                  aiConfigured={aiConfigured}
                   canAsk={Boolean(graph)}
+                  onOpenSettings={() => setSettingsOpen(true)}
                   onQuestionChange={setChatQuestion}
                   onAsk={() => askQuestion()}
                   onCancel={cancelAsk}
@@ -1432,47 +1444,61 @@ function App() {
                   settings={modelSettings}
                   summaryUnitCount={summaryNodes.length}
                   bulkStatus={bulkSummaryStatus}
+                  aiConfigured={aiConfigured}
                   onGenerateSelected={generateSelectedSummary}
                   onGenerateAll={generateAllSummaries}
                   onCancelSummary={cancelSummary}
                   onExplainNode={explainSelectedNode}
                   onAskFollowUp={askAboutSelectedNode}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  onViewSource={showSourcePanel}
                   onOpenCitation={jumpToCitation}
                 />
               ) : null}
               {inspectorTab === "impact" ? (
-                <LineageImpactPanel
-                  node={selectedNode}
-                  graph={graph}
-                  onFocusNode={focusOnNode}
-                  onOpenEdge={(edge) => {
-                    if (!edge.site || !graph) return;
-                    setSelectedEdge(edge);
-                    jumpToCitation({
-                      file: edge.site.file,
-                      line: edge.site.line,
-                      label: edgeLabel(edge, graph),
-                      nodeId: edge.from,
-                    }, true);
-                  }}
-                />
+                <>
+                  {selectedEdge ? (
+                    <RelationshipDetails
+                      selectedEdge={selectedEdge}
+                      node={selectedNode}
+                      graph={graph}
+                      onFocusNode={focusOnNode}
+                      onOpenEdge={(edge) => {
+                        if (!edge.site || !graph) return;
+                        setSelectedEdge(edge);
+                        jumpToCitation({
+                          file: edge.site.file,
+                          line: edge.site.line,
+                          label: edgeLabel(edge, graph),
+                          nodeId: edge.from,
+                        }, true);
+                      }}
+                    />
+                  ) : null}
+                  <LineageImpactPanel
+                    node={selectedNode}
+                    graph={graph}
+                    onFocusNode={focusOnNode}
+                    onOpenEdge={(edge) => {
+                      if (!edge.site || !graph) return;
+                      setSelectedEdge(edge);
+                      jumpToCitation({
+                        file: edge.site.file,
+                        line: edge.site.line,
+                        label: edgeLabel(edge, graph),
+                        nodeId: edge.from,
+                      }, true);
+                    }}
+                  />
+                </>
               ) : null}
-              {inspectorTab === "relationship" ? (
-                <RelationshipDetails
-                  selectedEdge={selectedEdge}
+              {inspectorTab === "source" ? (
+                <SourceInspectorPanel
                   node={selectedNode}
-                  graph={graph}
-                  onFocusNode={focusOnNode}
-                  onOpenEdge={(edge) => {
-                    if (!edge.site || !graph) return;
-                    setSelectedEdge(edge);
-                    jumpToCitation({
-                      file: edge.site.file,
-                      line: edge.site.line,
-                      label: edgeLabel(edge, graph),
-                      nodeId: edge.from,
-                    }, true);
-                  }}
+                  snippet={snippet}
+                  loading={snippetLoading}
+                  sourceFocus={sourceFocus}
+                  onViewSource={showSourcePanel}
                 />
               ) : null}
             </div>
@@ -1526,6 +1552,97 @@ function ScanSettingsPanel({
           <option value="cp037">CP037 / EBCDIC US</option>
         </select>
       </label>
+    </div>
+  );
+}
+
+function SettingsDialog({
+  desktopAvailable,
+  scanSettings,
+  scanDisabled,
+  modelSettings,
+  keyDraft,
+  hasProviderKey,
+  settingsMessage,
+  modelReadiness,
+  modelCallCount,
+  bulkTokenEstimate,
+  onScanSettingsChange,
+  onProviderChange,
+  onModelSettingsChange,
+  onKeyDraftChange,
+  onSaveKey,
+  onClearKey,
+  onCheckModel,
+  onRefreshModels,
+  onClose,
+}: {
+  desktopAvailable: boolean;
+  scanSettings: ScanSettings;
+  scanDisabled: boolean;
+  modelSettings: ModelSettings;
+  keyDraft: string;
+  hasProviderKey: boolean;
+  settingsMessage: string;
+  modelReadiness: ModelReadiness;
+  modelCallCount: number;
+  bulkTokenEstimate: number;
+  onScanSettingsChange: (settings: ScanSettings) => void;
+  onProviderChange: (provider: ModelProvider) => void;
+  onModelSettingsChange: (settings: ModelSettings) => void;
+  onKeyDraftChange: (value: string) => void;
+  onSaveKey: () => void;
+  onClearKey: () => void;
+  onCheckModel: () => void;
+  onRefreshModels: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="settings-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onClose();
+        }}
+      >
+        <div className="settings-dialog-header">
+          <div>
+            <h2 id="settings-title">Settings</h2>
+            <p>Graph answers work without AI. Configure AI only for generated summaries and broader Ask answers.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close settings">
+            Close
+          </button>
+        </div>
+        <ModelSettingsPanel
+          settings={modelSettings}
+          keyDraft={keyDraft}
+          hasProviderKey={hasProviderKey}
+          message={settingsMessage}
+          onProviderChange={onProviderChange}
+          onSettingsChange={onModelSettingsChange}
+          onKeyDraftChange={onKeyDraftChange}
+          onSaveKey={onSaveKey}
+          onClearKey={onClearKey}
+          onCheckModel={onCheckModel}
+          onRefreshModels={onRefreshModels}
+          modelReadiness={modelReadiness}
+          modelCallCount={modelCallCount}
+          bulkTokenEstimate={bulkTokenEstimate}
+        />
+        <section className="settings-section">
+          <h2>Scanning</h2>
+          {desktopAvailable ? (
+            <ScanSettingsPanel settings={scanSettings} disabled={scanDisabled} onSettingsChange={onScanSettingsChange} />
+          ) : (
+            <div className="desktop-preview-note">Scan settings apply when Cobolens is running as the desktop app.</div>
+          )}
+        </section>
+      </section>
     </div>
   );
 }
@@ -1883,10 +2000,10 @@ function InspectorTabs({
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "summary", label: "Summary", badge: summaryStatus === "running" ? "..." : undefined },
+    { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "ask", label: "Ask" },
-    { id: "impact", label: "Impact", badge: dependencyCount ? String(dependencyCount) : undefined },
-    { id: "relationship", label: "Links", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
+    { id: "impact", label: "Dependencies", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
+    { id: "source", label: "Source" },
   ];
 
   return (
@@ -1916,11 +2033,14 @@ function SummaryDock({
   settings,
   summaryUnitCount,
   bulkStatus,
+  aiConfigured,
   onGenerateSelected,
   onGenerateAll,
   onCancelSummary,
   onExplainNode,
   onAskFollowUp,
+  onOpenSettings,
+  onViewSource,
   onOpenCitation,
 }: {
   node: GraphNode | null;
@@ -1929,17 +2049,21 @@ function SummaryDock({
   settings: ModelSettings;
   summaryUnitCount: number;
   bulkStatus: string;
+  aiConfigured: boolean;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
   onCancelSummary: () => void;
   onExplainNode: () => void;
   onAskFollowUp: () => void;
+  onOpenSettings: () => void;
+  onViewSource: () => void;
   onOpenCitation: (citation: Citation) => void;
 }) {
   const elapsedSeconds = useElapsedSeconds(state?.status === "running");
   const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
   const generating = state?.status === "running";
   const hasStoredSummary = state?.status === "ready" && Boolean(state.summary);
+  const aiSummaryLabel = !aiConfigured ? "Set up AI first" : generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary";
 
   return (
     <section className="summary-card">
@@ -1947,7 +2071,7 @@ function SummaryDock({
         <div>
           <strong>Overview</strong>
           <span>
-            {node ? `${node.name} - graph facts, source evidence, and follow-up questions` : "No symbol selected"}
+            {node ? `${node.name} - graph facts, source evidence, and optional AI` : "No codebase item selected"}
           </span>
         </div>
         <div className="summary-action-buttons">
@@ -1963,6 +2087,14 @@ function SummaryDock({
           ) : null}
           <button
             type="button"
+            onClick={onViewSource}
+            disabled={!node?.file}
+            title={node?.file ? "Open the source tab and focus the source viewer" : "Select an item with source to view code"}
+          >
+            View source
+          </button>
+          <button
+            type="button"
             onClick={onAskFollowUp}
             disabled={!node}
             title={node ? "Open Ask with a plain-English follow-up for this symbol" : "Select a symbol to ask about it"}
@@ -1972,19 +2104,24 @@ function SummaryDock({
           <button
             className="summary-wide-action"
             type="button"
-            onClick={generating ? onCancelSummary : onGenerateSelected}
+            onClick={generating ? onCancelSummary : aiConfigured ? onGenerateSelected : onOpenSettings}
             disabled={!generating && !node?.file}
             title={
               generating
                 ? "Stop the running summary request"
                 : !node?.file
                   ? "Select a symbol with source to summarize"
-                  : "Generate an AI summary for this symbol"
+                  : aiConfigured
+                    ? "Generate an AI summary for this item"
+                    : "Set up Ollama or a cloud key before using AI summaries"
             }
           >
-            {generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary"}
+            {aiSummaryLabel}
           </button>
         </div>
+      </div>
+      <div className="summary-guard-note" role="status">
+        Graph answers work without AI. AI runs only when you choose an AI action.
       </div>
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
@@ -2012,12 +2149,12 @@ function SummaryDock({
             <EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />
           </>
         ) : (
-          <p>Select a graph node to inspect its source, relationships, and graph overview.</p>
+          <p>Select a codebase item to inspect its source, dependencies, and graph overview.</p>
         )}
       </div>
       <div className="summary-meta">
-        <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
-          Summarize all with AI
+        <button type="button" onClick={aiConfigured ? onGenerateAll : onOpenSettings} disabled={!summaryUnitCount || generating}>
+          {aiConfigured ? "Summarize all with AI" : "Set up AI for summaries"}
         </button>
         <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
       </div>
@@ -2079,7 +2216,9 @@ function ChatAnswerPanel({
   modelReadiness,
   question,
   focusLinkCount,
+  aiConfigured,
   canAsk,
+  onOpenSettings,
   onQuestionChange,
   onAsk,
   onCancel,
@@ -2097,7 +2236,9 @@ function ChatAnswerPanel({
   modelReadiness: ModelReadiness;
   question: string;
   focusLinkCount: number;
+  aiConfigured: boolean;
   canAsk: boolean;
+  onOpenSettings: () => void;
   onQuestionChange: (question: string) => void;
   onAsk: () => void;
   onCancel: () => void;
@@ -2114,7 +2255,9 @@ function ChatAnswerPanel({
   const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
   const activeRouteLabel = workingWithModel ? "AI answer" : "Graph answer";
   const activeRouteDetail = workingWithModel
-    ? `${PROVIDER_LABELS[settings.provider]} gets only the retrieved, cited source context.`
+    ? aiConfigured
+      ? `${PROVIDER_LABELS[settings.provider]} gets only the retrieved, cited source context.`
+      : "Set up AI first. Graph answers work without AI."
     : "Instant, cited answer from the dependency graph.";
   const answerSubtitle =
     status === "running"
@@ -2132,19 +2275,34 @@ function ChatAnswerPanel({
             ? "Cited graph fallback"
             : "Answered from the graph"
         : workingWithModel
-          ? `Ready for a cited ${PROVIDER_LABELS[settings.provider]} answer`
+          ? aiConfigured
+            ? `Ready for a cited ${PROVIDER_LABELS[settings.provider]} answer`
+            : "Set up AI for broader explanations; graph questions still work now"
           : "Ask a graph question or type a broader explanation";
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
-  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
+  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? (aiConfigured ? "Ask AI" : "Set up AI") : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
   const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question);
   const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question";
   const showReadiness = workingWithModel && modelReadiness.status !== "idle" && modelReadiness.message;
   const emptyResponseText = questionText
     ? workingWithModel
-      ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
+      ? aiConfigured
+        ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
+        : "Set up AI first for broader explanations. Graph answers work without AI."
       : "Ready to answer instantly from the dependency graph."
-    : "Ask about data flow, dependencies, files, or behavior. Graph questions answer instantly; broader explanations use the selected AI provider.";
+    : "Ask about data flow, dependencies, files, or behavior. Graph questions answer instantly; broader explanations use AI only after setup.";
+  const submitAsk = () => {
+    if (status === "running") {
+      onCancel();
+      return;
+    }
+    if (workingWithModel && !aiConfigured) {
+      onOpenSettings();
+      return;
+    }
+    onAsk();
+  };
 
   return (
     <section className="answer-card">
@@ -2169,13 +2327,13 @@ function ChatAnswerPanel({
           value={question}
           onChange={(event) => onQuestionChange(event.currentTarget.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") onAsk();
+            if (event.key === "Enter") submitAsk();
           }}
           disabled={!canAsk || status === "running"}
         />
         <button
           type="button"
-          onClick={status === "running" ? onCancel : onAsk}
+          onClick={submitAsk}
           disabled={!canAsk || (status !== "running" && !question.trim())}
         >
           {askButtonLabel}
@@ -2513,19 +2671,19 @@ function LineageImpactPanel({
   if (!node || !graph || !relationships) {
     return (
       <section className="lineage-card">
-        <div className="relationship-title">Impact</div>
-        <p>Select a graph node to inspect dependencies and lineage.</p>
+        <div className="relationship-title">Depends on / Used by</div>
+        <p>Select a codebase item to inspect dependencies and recorded data flow.</p>
       </section>
     );
   }
 
   return (
     <section className="lineage-card">
-      <div className="relationship-title">Impact</div>
+      <div className="relationship-title">Depends on / Used by</div>
       <div className="lineage-focus">
         <span className="swatch" style={{ background: nodeColor(node.type) }} />
         <strong>{node.name}</strong>
-        <small>{node.type}</small>
+        <small>{nodeTypeLabel(node.type)}</small>
       </div>
       <RelationshipList
         title={node.type === "data-item" ? "Flows To" : "Depends On"}
@@ -2548,8 +2706,8 @@ function LineageImpactPanel({
         onOpenEdge={onOpenEdge}
       />
       <RelationshipList
-        title="Lineage"
-        empty="No semantic lineage edges for this node."
+        title="Data flow / runtime links"
+        empty="No parsed data-flow or runtime links for this item."
         edges={relationships.lineage}
         graph={graph}
         selectedNodeId={node.id}
@@ -2643,7 +2801,7 @@ function RelationshipDetails({
 
   return (
     <section className="relationship-card">
-      <div className="relationship-title">{selectedEdge ? "Relationship" : "Links"}</div>
+      <div className="relationship-title">{selectedEdge ? "Relationship" : "Relationships"}</div>
       {selectedEdge && graph ? (
         <EdgeExplanation edge={selectedEdge} graph={graph} onFocusNode={onFocusNode} />
       ) : relationships && node && graph ? (
@@ -2674,6 +2832,50 @@ function RelationshipDetails({
         <ParseErrorSummary graph={graph} />
       ) : (
         <p>{graph ? "Select a relationship to see its cited source line." : "Open a folder to inspect relationships."}</p>
+      )}
+    </section>
+  );
+}
+
+function SourceInspectorPanel({
+  node,
+  snippet,
+  loading,
+  sourceFocus,
+  onViewSource,
+}: {
+  node: GraphNode | null;
+  snippet: SourceSnippet | null;
+  loading: boolean;
+  sourceFocus: SourceFocus | null;
+  onViewSource: () => void;
+}) {
+  const line = snippet?.highlightLine ?? node?.lines?.[0];
+  return (
+    <section className="source-inspector-card">
+      <div className="relationship-title">Source</div>
+      {node?.file ? (
+        <>
+          <div className="source-inspector-meta">
+            <span>File</span>
+            <strong>{snippet?.file ?? node.file}</strong>
+            <span>Focus</span>
+            <strong>{line ? `line ${line}` : "Source line unavailable"}</strong>
+          </div>
+          <p>
+            The source viewer is the panel above. Citations from Overview, Ask, and Dependencies keep this viewer highlighted.
+          </p>
+          {sourceFocus ? (
+            <div className="source-focus-note" role="status">
+              Focused citation: {sourceFocus.file}:{sourceFocus.line}
+            </div>
+          ) : null}
+          <button type="button" onClick={onViewSource} disabled={loading}>
+            {loading ? "Loading source" : "Focus source viewer"}
+          </button>
+        </>
+      ) : (
+        <p>{node ? "This selected item has no local source file." : "Select a codebase item to view source."}</p>
       )}
     </section>
   );
@@ -3249,6 +3451,14 @@ function nodeLocationLabel(node: GraphNode) {
   const start = node.lines?.[0] ?? 1;
   const end = node.lines?.[1];
   return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
+}
+
+function nodeTypeLabel(type: string) {
+  return type
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function compactNodeNames(names: string[]) {

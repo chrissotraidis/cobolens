@@ -156,8 +156,8 @@ select:focus {
 
 .topbar {
   display: grid;
-  grid-template-columns: 180px minmax(240px, 1fr) auto auto;
-  gap: 16px;
+  grid-template-columns: 150px minmax(240px, 1fr) minmax(160px, auto) auto auto;
+  gap: 12px;
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid #20262e;
@@ -192,6 +192,7 @@ select:focus {
   gap: 10px;
   align-items: center;
   color: #9aa6b2;
+  white-space: nowrap;
 }
 
 .global-search input {
@@ -217,7 +218,7 @@ select:focus {
 .current-crumb {
   display: inline-flex;
   align-items: center;
-  max-width: 150px;
+  max-width: 190px;
   height: 30px;
   padding: 0 10px;
   overflow: hidden;
@@ -238,12 +239,80 @@ select:focus {
   background: rgba(90, 167, 161, 0.12);
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .mode-indicator.cloud {
   color: #f5d6a2;
   border-color: rgba(229, 199, 95, 0.48);
   background: rgba(229, 199, 95, 0.12);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.topbar-actions button {
+  height: 30px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  justify-items: end;
+  background: rgba(5, 8, 12, 0.58);
+}
+
+.settings-dialog {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  width: min(430px, calc(100vw - 28px));
+  height: 100vh;
+  padding: 18px;
+  overflow: auto;
+  border-left: 1px solid #2a323d;
+  background: #11151a;
+  box-shadow: -18px 0 42px rgba(0, 0, 0, 0.32);
+}
+
+.settings-dialog-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.settings-dialog-header > div {
+  display: grid;
+  gap: 5px;
+}
+
+.settings-dialog-header h2 {
+  font-size: 14px;
+}
+
+.settings-dialog-header p {
+  margin: 0;
+  color: #9aa6b2;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.settings-dialog-header button {
+  height: 30px;
+  padding: 0 10px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 10px;
 }
 
 .shell {
@@ -718,6 +787,10 @@ h2,
 
 .settings-footnote.checking {
   color: #e8d796;
+}
+
+.export-status {
+  padding-top: 2px;
 }
 
 .ai-usage {
@@ -1344,7 +1417,8 @@ pre {
 .summary-card,
 .answer-card,
 .relationship-card,
-.lineage-card {
+.lineage-card,
+.source-inspector-card {
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -1409,13 +1483,58 @@ pre {
 
 .summary-output p,
 .answer-card p,
-.relationship-card p {
+.relationship-card p,
+.source-inspector-card p {
   margin: 0;
 }
 
 .summary-output p,
-.answer-card p {
+.answer-card p,
+.source-inspector-card p {
   white-space: pre-line;
+}
+
+.source-inspector-card {
+  padding: 12px;
+  border: 1px solid #20262e;
+  border-radius: 8px;
+  color: #b7c2cd;
+  background: #101419;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.source-inspector-meta {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 6px 10px;
+  padding: 9px;
+  border: 1px solid rgba(125, 137, 150, 0.18);
+  border-radius: 7px;
+  background: rgba(125, 137, 150, 0.06);
+}
+
+.source-inspector-meta span {
+  color: #7d8996;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.source-inspector-meta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #e7ebef;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-inspector-card button {
+  justify-self: start;
+  height: 30px;
+  padding: 0 10px;
 }
 
 .summary-guard-note {
@@ -1969,7 +2088,7 @@ pre {
 
 @media (max-width: 1280px) and (min-width: 901px) {
   .topbar {
-    grid-template-columns: 164px minmax(220px, 1fr) auto auto;
+    grid-template-columns: 140px minmax(210px, 1fr) minmax(130px, auto) auto auto;
     gap: 12px;
   }
 
@@ -2005,6 +2124,7 @@ pre {
     gap: 10px;
   }
 
+  .breadcrumbs,
   .mode-indicator {
     display: none;
   }
@@ -2065,10 +2185,10 @@ pre {
   }
 
   .topbar {
-    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-columns: 104px minmax(0, 1fr) auto;
   }
 
-  .breadcrumbs {
+  .topbar-actions button:first-child {
     display: none;
   }
 

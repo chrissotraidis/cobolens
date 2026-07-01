@@ -267,16 +267,17 @@ const checks = [
       ]),
   ],
   [
-    "Inspector opens on Summary and keeps Ask as the conversational follow-up",
+    "Inspector opens on Overview and keeps Ask as the conversational follow-up",
     includesAll(appSource, [
       'useState<InspectorTab>("summary")',
       'setInspectorTab("summary")',
-      'label: "Summary"',
+      'label: "Overview"',
       'label: "Ask"',
-      'label: "Links"',
+      'label: "Dependencies"',
+      'label: "Source"',
       "aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}",
     ]) &&
-      appearsInOrder(appSource, ['{ id: "summary", label: "Summary"', '{ id: "ask", label: "Ask" }']) &&
+      appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Ask" }']) &&
       includesAll(appCss, [".inspector-tabs", "minmax(92px, 1fr)", "minmax(74px, 0.8fr)"]),
   ],
   [
@@ -289,17 +290,17 @@ const checks = [
       "aria-label={`${title}: show ${edgeLabel(edge, graph)}",
       "Depends On",
       "Used By",
-      'title="Lineage"',
+      'title="Data flow / runtime links"',
     ]),
   ],
   [
-    "Relationship citations open the relationship detail",
+    "Relationship citations open the dependencies detail",
     includesAll(appSource, [
       "const citedEdge = graph?.edges.find",
       "edgeLabel(edge, graph) === citation.label",
       "setSelectedEdge(citedEdge)",
       "preserveInspectorTab",
-      'setInspectorTab("relationship")',
+      'setInspectorTab("impact")',
     ]),
   ],
   [
@@ -311,7 +312,7 @@ const checks = [
       "preserveInspectorForEdgeRef.current = false",
       "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
       "if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true",
-      'if (!preserveInspectorTab) setInspectorTab("relationship")',
+      'if (!preserveInspectorTab) setInspectorTab("impact")',
       "focusedCitation={Boolean(",
       'className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}',
       'className="source-focus-note"',
@@ -358,7 +359,7 @@ const checks = [
       'className="desktop-preview-note"',
       'className="first-run-guide"',
       "Explore the map and cited source without AI.",
-      "Add Ollama or a cloud key when you want Summary and Ask.",
+      "Add Ollama or a cloud key only when you want AI summaries or AI Ask.",
       "{desktopAvailable ? (",
       "<ScanSettingsPanel",
     ]) && includesAll(appCss, [".desktop-preview-note", "background: rgba(125, 137, 150, 0.07)", ".first-run-guide"]),
@@ -429,18 +430,18 @@ const checks = [
       "onKeyDown={handleSearchKeyDown}",
       "matchesFuzzy(name, needle)",
       "return null",
-      "No matching symbols.",
+      "No matching codebase items.",
     ]) &&
       !appSource.includes('matchesFuzzy(`${node.name} ${node.id} ${node.type}`, query)'),
   ],
   [
     "Left navigator keeps graph filters before secondary status panels",
     appearsInOrder(appSource, [
-      "<h2>Symbols</h2>",
+      "<h2>Search Results</h2>",
       "<h2>Legend & Filters</h2>",
       "<SourceTree",
       "<h2>Inventory</h2>",
-      "<ModelSettingsPanel",
+      "<ParseHealth",
     ]) && includesAll(appSource, ['className="filter-grid"']) && includesAll(appCss, [".filter-grid", "repeat(2, minmax(0, 1fr))"]),
   ],
   [

@@ -25,6 +25,8 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
   correctly but incorrectly moved graph focus from `LINEAGE` to `CUSTOMER`.
 - `14-ask-route-badges.png`: Ask suggestions after adding explicit route badges.
 - `15-overview-keeps-focus.png`: codebase overview answer after the focus fix.
+- `16-ask-expanded-layout.png`: Ask selected after the right-pane split gives
+  the conversation more vertical room while keeping source visible.
 
 ## Findings And Fixes
 
@@ -58,6 +60,11 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
 8. The Ask suggestion row did not make its routing visible enough. Fixed by
    changing the group label to `Suggested questions` and adding compact `Graph`
    or provider badges on each suggestion.
+
+9. The right pane left long Ask answers cramped in a short lower dock. Fixed by
+   making the right-pane split contextual: Ask mode keeps a compact source
+   preview but gives the conversation more vertical space; Overview and other
+   inspector tabs keep the balanced code/inspector split.
 
 ## Verification
 

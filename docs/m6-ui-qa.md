@@ -165,6 +165,9 @@ Graph-backed Ask check:
 - The Ask panel renders the latest answer in a dedicated response block above
   the composer, so the submitted question and graph answer are visible without
   scrolling past the suggested-question buttons.
+- When `Ask` is selected, the right pane gives the conversation more vertical
+  room while keeping the code panel visible above it, so longer cited answers
+  are not trapped in a short lower dock.
 - The Ask panel keeps a bounded `Recent answers` trail for the current graph.
   Previous questions can be restored with their cited answer and citation chips,
   which makes the surface behave more like a lightweight code conversation.

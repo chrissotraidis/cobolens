@@ -1164,7 +1164,7 @@ function App() {
           </div>
         </section>
 
-        <aside className="right-pane" aria-label="Code and summaries">
+        <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Code and summaries">
           <section className="code-panel">
             <div className="panel-title">Code</div>
             {selectedNode ? (

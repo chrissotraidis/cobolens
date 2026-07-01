@@ -112,7 +112,15 @@ const checks = [
   ],
   [
     "Ask composer remains available while reading answers",
-    includesAll(appCss, [".chat-composer", "position: sticky", "top: -6px", "grid-template-columns: minmax(0, 1fr) 86px"]),
+    includesAll(appSource, ['inspectorTab === "ask" ? " is-ask-focused"']) &&
+      includesAll(appCss, [
+        ".right-pane.is-ask-focused",
+        "minmax(132px, 0.46fr) minmax(430px, 1.54fr)",
+        ".chat-composer",
+        "position: sticky",
+        "top: -6px",
+        "grid-template-columns: minmax(0, 1fr) 86px",
+      ]),
   ],
   [
     "Inspector opens on Overview and keeps Ask as the conversational follow-up",

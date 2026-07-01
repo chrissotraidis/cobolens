@@ -705,6 +705,10 @@ h2,
   overflow: hidden;
 }
 
+.right-pane.is-ask-focused {
+  grid-template-rows: minmax(132px, 0.46fr) minmax(430px, 1.54fr);
+}
+
 .code-panel,
 .chat-panel {
   display: grid;
@@ -1601,6 +1605,10 @@ pre {
   .chat-panel {
     min-width: 0;
   }
+
+  .right-pane.is-ask-focused {
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
@@ -1632,6 +1640,10 @@ pre {
   .right-pane {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 128px minmax(0, 1fr);
+  }
+
+  .right-pane.is-ask-focused {
+    grid-template-rows: 96px minmax(0, 1fr);
   }
 
   .code-panel {

@@ -907,8 +907,13 @@ function App() {
         focusOnNode(answerContext.focusNodes[0].id, { preserveChat: true });
       }
     } catch (err) {
+      const fallbackReason = friendlyModelError(err, modelSettings);
+      if (isStoppedModelCall(fallbackReason)) {
+        setChatError(fallbackReason);
+        setChatStatus("error");
+        return;
+      }
       if (context) {
-        const fallbackReason = friendlyModelError(err, modelSettings);
         const fallback = graphAnswerFallback(graph, question, context, fallbackReason);
         const fallbackAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph", fallbackReason };
         setChatAnswer(fallbackAnswer);
@@ -919,7 +924,7 @@ function App() {
         }
         return;
       }
-      setChatError(friendlyModelError(err, modelSettings));
+      setChatError(fallbackReason);
       setChatStatus("error");
     }
   }
@@ -2034,6 +2039,8 @@ function ChatAnswerPanel({
   const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? "Ask AI" : questionText ? "Ask Graph" : "Ask";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
+  const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question);
+  const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question";
   const showReadiness = workingWithModel && modelReadiness.status !== "idle" && modelReadiness.message;
   const emptyResponseText = questionText
     ? workingWithModel
@@ -2104,11 +2111,11 @@ function ChatAnswerPanel({
           <p>{emptyResponseText}</p>
         )}
       </div>
-      {starterQuestions.length ? (
+      {visibleStarterQuestions.length ? (
         <div className="question-shortcuts">
-          <span>Try a cited question</span>
+          <span>{starterQuestionsLabel}</span>
           <div className="question-chips" aria-label="Suggested questions">
-            {starterQuestions.map((question) => (
+            {visibleStarterQuestions.map((question) => (
               <button
                 key={question}
                 type="button"

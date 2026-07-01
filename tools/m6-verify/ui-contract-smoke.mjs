@@ -51,7 +51,7 @@ const checks = [
       "shouldSyncAskFocus(question)",
       "codebase\\s+overview",
     ]) &&
-      includesAll(appSource, ["{starterQuestions.map((question) => (", "PROVIDER_LABELS[settings.provider]"]) &&
+      includesAll(appSource, ["{visibleStarterQuestions.map((question) => (", "PROVIDER_LABELS[settings.provider]"]) &&
       !appSource.includes("const explainQuestion =") &&
       includesAll(appCss, [".question-chips button small", "text-transform: uppercase"]),
   ],
@@ -159,7 +159,17 @@ const checks = [
       "Ready to ask",
       "Ready to answer instantly from the dependency graph.",
       "Use a graph shortcut for instant cited answers",
+      "const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question)",
+      'const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question"',
+      "{visibleStarterQuestions.map((question) => (",
+      "if (isStoppedModelCall(fallbackReason))",
+      'setChatError(fallbackReason)',
+      'setChatStatus("error")',
       "EvidenceList citations={answer.citations.slice(0, 8)}",
+    ]) && appearsInOrder(appSource, [
+      "const fallbackReason = friendlyModelError(err, modelSettings);",
+      "if (isStoppedModelCall(fallbackReason))",
+      "if (context)",
     ]) && includesAll(appCss, [".answer-modes", ".answer-modes span.is-active", ".ask-readiness.error"]),
   ],
   [

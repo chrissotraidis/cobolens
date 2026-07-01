@@ -284,9 +284,12 @@ Model-backed Ask check:
   call counter, cites `src/LINEAGE.cbl:1` plus relationship lines with exact
   inline citation text, and does not explain `LINEAGE` as a generic compiler
   concept.
+- After a cited Ask answer, the shortcut area switches to `Ask another cited
+  question` and removes the exact question that was just answered, so the panel
+  reads like a follow-up surface rather than a static menu.
 - While a model-backed Ask is running, the submit button changes to `Stop`.
-  Stopping the request returns a graph-cited fallback with a model note instead
-  of leaving the panel in a permanent loading state.
+  Stopping the request leaves a clear `Ask was stopped.` error state and does
+  not replace the canceled answer with a remembered graph fallback.
 
 Model-backed Summary check:
 

@@ -166,6 +166,17 @@ Smoke-test the desktop shell against an already-running Vite server:
 npm run desktop:smoke
 ```
 
+Smoke-test a built Linux AppImage in a visible Linux desktop or WSLg session:
+
+```sh
+npm run desktop:packaged-smoke
+```
+
+This launches the newest AppImage under
+`src-tauri/target/release/bundle/appimage/` and verifies that the packaged GUI
+process stays alive. It is intentionally separate from `npm run m6:verify`
+because it needs desktop WebKit/GStreamer runtime support.
+
 `npm run m6:verify` also runs Tauri command-level tests that exercise the
 desktop analysis path against the bundled sample, source snippet reads, and
 path traversal rejection. These tests also cover graph-cache reuse and cache

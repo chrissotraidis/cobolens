@@ -13,6 +13,7 @@
     "ollama:summary-smoke": "node tools/local-model/ollama-summary-smoke.mjs",
     "ollama:ask-smoke": "node tools/local-model/ollama-ask-smoke.mjs",
     "desktop:smoke": "node tools/desktop/tauri-attached-smoke.mjs",
+    "desktop:packaged-smoke": "node tools/desktop/packaged-gui-smoke.mjs",
     "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",
     "m6:mapa-probe": "node tools/parser-upgrade/mapa-probe.mjs",

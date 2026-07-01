@@ -40,8 +40,10 @@ Reasons:
 2. Validate Windows/Tauri packaging only if Windows installers become a target.
 
 3. Complete a visible packaged-app GUI smoke on a Linux desktop/WSLg host with
-   the WebKit/GStreamer runtime pieces available. The current headless AppImage
-   launch reached the desktop portal stack but stopped on missing `appsink`.
+   the WebKit/GStreamer runtime pieces available. Use
+   `npm run desktop:packaged-smoke`; the current AppImage process stays alive
+   for the smoke window, but the gate remains incomplete because the environment
+   reports `GStreamer element appsink not found`.
 
 4. If a JVM analyzer is still desired after those gates, decide between:
 

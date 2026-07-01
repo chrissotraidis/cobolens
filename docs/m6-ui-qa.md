@@ -148,6 +148,9 @@ Relationship-click check:
 - Clicking a relationship citation from an Ask answer selects the cited graph
   edge and highlights the cited source line while keeping the Ask answer
   visible. Relationship details are still one click away in `Links`.
+- Citation jumps add a focused-citation note above the code snippet and label
+  the highlighted source row for assistive technology, so the cited evidence is
+  explicit beyond the visual gutter marker.
 - The relationship-tab auto-open is suppressed for Ask evidence jumps, so a
   cited relationship can update the graph/code focus without pulling the user
   out of the conversational answer.

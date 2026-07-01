@@ -1287,7 +1287,17 @@ function App() {
           <section className="code-panel">
             <div className="panel-title">Code</div>
             {selectedNode ? (
-              <CodeSnippet node={selectedNode} snippet={snippet} loading={snippetLoading} />
+              <CodeSnippet
+                node={selectedNode}
+                snippet={snippet}
+                loading={snippetLoading}
+                focusedCitation={Boolean(
+                  sourceFocus &&
+                    snippet &&
+                    sourceFocus.file === snippet.file &&
+                    sourceFocus.line === snippet.highlightLine,
+                )}
+              />
             ) : (
               <pre>
                 <code>No source selected.</code>
@@ -2538,7 +2548,17 @@ function RelationshipDetails({
   );
 }
 
-function CodeSnippet({ node, snippet, loading }: { node: GraphNode; snippet: SourceSnippet | null; loading: boolean }) {
+function CodeSnippet({
+  node,
+  snippet,
+  loading,
+  focusedCitation,
+}: {
+  node: GraphNode;
+  snippet: SourceSnippet | null;
+  loading: boolean;
+  focusedCitation: boolean;
+}) {
   if (!node.file) {
     return (
       <pre>
@@ -2548,11 +2568,16 @@ function CodeSnippet({ node, snippet, loading }: { node: GraphNode; snippet: Sou
   }
 
   return (
-    <div className="source-view">
+    <div className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}>
       <div className="source-header">
         <span>{snippet?.file ?? node.file}</span>
         <strong>line {snippet?.highlightLine ?? node.lines?.[0] ?? 1}</strong>
       </div>
+      {snippet && focusedCitation ? (
+        <div className="source-focus-note" role="status">
+          Focused citation: {snippet.file}:{snippet.highlightLine}
+        </div>
+      ) : null}
       <pre>
         <code className={snippet ? "source-lines" : undefined}>
           {snippet ? (
@@ -2560,9 +2585,11 @@ function CodeSnippet({ node, snippet, loading }: { node: GraphNode; snippet: Sou
               <span
                 key={line.number}
                 className={line.number === snippet.highlightLine ? "source-line is-highlighted" : "source-line"}
+                aria-label={`Line ${line.number}${focusedCitation && line.number === snippet.highlightLine ? ", focused citation" : ""}: ${line.text || "blank"}`}
               >
                 <span className="source-line-marker">{line.number === snippet.highlightLine ? ">" : " "}</span>
                 <span className="source-line-number">{padLine(line.number)}</span>
+                {focusedCitation && line.number === snippet.highlightLine ? <span className="sr-only">Focused citation line</span> : null}
                 <span className="source-line-text">{line.text || " "}</span>
               </span>
             ))

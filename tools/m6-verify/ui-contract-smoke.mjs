@@ -269,7 +269,12 @@ const checks = [
       "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
       "if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true",
       'if (!preserveInspectorTab) setInspectorTab("relationship")',
-    ]),
+      "focusedCitation={Boolean(",
+      'className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}',
+      'className="source-focus-note"',
+      "Focused citation: {snippet.file}:{snippet.highlightLine}",
+      "Focused citation line",
+    ]) && includesAll(appCss, [".source-view.has-focused-citation", ".source-focus-note", ".sr-only"]),
   ],
   [
     "Selected relationship detail explains endpoints and can refocus either node",

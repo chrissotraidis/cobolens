@@ -179,6 +179,16 @@ const checks = [
     ]) && includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
   ],
   [
+    "Left navigator keeps graph filters before secondary status panels",
+    appearsInOrder(appSource, [
+      "<h2>Symbols</h2>",
+      "<h2>Legend & Filters</h2>",
+      "<SourceTree",
+      "<h2>Inventory</h2>",
+      "<ModelSettingsPanel",
+    ]) && includesAll(appSource, ['className="filter-grid"']) && includesAll(appCss, [".filter-grid", "repeat(2, minmax(0, 1fr))"]),
+  ],
+  [
     "Inventory distinguishes source-backed codebase units from external graph references",
     includesAll(appSource, [
       'if (node.external || !node.file) return acc;',

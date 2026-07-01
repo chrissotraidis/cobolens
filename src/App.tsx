@@ -1035,6 +1035,32 @@ function App() {
             </div>
           </section>
 
+          <section className="pane-block">
+            <div className="pane-heading-row">
+              <h2>Legend & Filters</h2>
+              <button type="button" onClick={resetNodeTypeFilters} disabled={!hiddenNodeTypes.size}>
+                Reset
+              </button>
+            </div>
+            <div className="settings-footnote">
+              {hiddenNodeTypes.size
+                ? `${hiddenNodeTypes.size} type${hiddenNodeTypes.size === 1 ? "" : "s"} hidden`
+                : "All types visible"}
+            </div>
+            <div className="filter-grid">
+              {LEGEND_NODE_TYPES.map(([type, label]) => (
+                <LegendItem
+                  key={type}
+                  type={type}
+                  label={label}
+                  checked={!hiddenNodeTypes.has(type)}
+                  disabled={!graph}
+                  onToggle={() => toggleNodeTypeFilter(type)}
+                />
+              ))}
+            </div>
+          </section>
+
           <SourceTree groups={codebaseGroups} selectedNodeId={focusNodeId} onSelectNode={focusOnNode} />
 
           <section className="pane-block">
@@ -1078,30 +1104,6 @@ function App() {
               Export Docs
             </button>
             <div className="settings-footnote">{exportStatus || "Markdown, Mermaid, PNG"}</div>
-          </section>
-
-          <section className="pane-block">
-            <div className="pane-heading-row">
-              <h2>Legend & Filters</h2>
-              <button type="button" onClick={resetNodeTypeFilters} disabled={!hiddenNodeTypes.size}>
-                Reset
-              </button>
-            </div>
-            <div className="settings-footnote">
-              {hiddenNodeTypes.size
-                ? `${hiddenNodeTypes.size} type${hiddenNodeTypes.size === 1 ? "" : "s"} hidden`
-                : "All types visible"}
-            </div>
-            {LEGEND_NODE_TYPES.map(([type, label]) => (
-              <LegendItem
-                key={type}
-                type={type}
-                label={label}
-                checked={!hiddenNodeTypes.has(type)}
-                disabled={!graph}
-                onToggle={() => toggleNodeTypeFilter(type)}
-              />
-            ))}
           </section>
         </aside>
 

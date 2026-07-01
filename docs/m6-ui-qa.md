@@ -77,6 +77,10 @@ Parse-health checks:
 Legend/filter checks:
 
 - The left-nav legend renders enabled checkbox filters for graph node types.
+- The graph filters now sit directly under Symbols in a compact two-column grid,
+  before the Codebase browser and secondary status/settings panels, so the
+  color legend and visibility controls are reachable without scrolling to the
+  bottom of the left pane.
 - Turning `Copybooks` off changes the graph orientation from `11 visible`,
   `26 indexed`, `0 hidden` to `9 visible`, `26 indexed`, `2 hidden`; turning it
   back on restores the original counts.

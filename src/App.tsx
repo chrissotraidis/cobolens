@@ -32,7 +32,7 @@ import {
 } from "./model/config";
 import { generateGroundedAnswer } from "./model/chat";
 import { UnitSummary, generateUnitSummary } from "./model/summaries";
-import { assertLocalOllamaUrl, normalizeOllamaBaseUrl } from "./model/privacy";
+import { checkOllamaReadiness } from "./model/readiness";
 import { Citation, retrieveQuestionContext } from "./retrieval/context";
 import type { RetrievedContext } from "./retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "./retrieval/graphAnswer";
@@ -637,6 +637,15 @@ function App() {
 
   async function checkModelReadiness() {
     try {
+      if (!isCloudProvider(modelSettings.provider)) {
+        setModelReadiness({ status: "checking", message: "Checking local generation" });
+        const message = await checkOllamaReadiness(modelSettings, {
+          verifyGeneration: true,
+          generationTimeoutMs: MODEL_CALL_TIMEOUT_MS,
+        });
+        setModelReadiness({ status: "ready", message });
+        return;
+      }
       await prepareModelCall();
     } catch (err) {
       setModelReadiness({ status: "error", message: friendlyModelError(err, modelSettings) });
@@ -2427,44 +2436,6 @@ function isAbortError(err: unknown) {
   if (err instanceof DOMException && err.name === "AbortError") return true;
   if (!(err instanceof Error)) return false;
   return err.name === "AbortError" || /\babort(?:ed)?\b/i.test(err.message);
-}
-
-async function checkOllamaReadiness(settings: ModelSettings) {
-  assertLocalOllamaUrl(settings.baseUrl);
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 2500);
-
-  try {
-    const response = await fetch(`${normalizeOllamaBaseUrl(settings.baseUrl)}/tags`, {
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`Ollama responded with ${response.status}. Check the host and try again.`);
-    }
-
-    const body = (await response.json()) as { models?: Array<{ name?: string }> };
-    const modelNames = body.models?.map((model) => model.name).filter((name): name is string => Boolean(name)) ?? [];
-    if (!modelNames.length) {
-      throw new Error(`Ollama is reachable, but no local models are installed. Run: ollama pull ${settings.model}`);
-    }
-
-    const configuredModel = settings.model.trim();
-    const hasModel = modelNames.some(
-      (name) => name === configuredModel || name === `${configuredModel}:latest` || name.startsWith(`${configuredModel}:`),
-    );
-    if (!hasModel) {
-      throw new Error(`Ollama is reachable, but ${configuredModel} is not installed. Run: ollama pull ${configuredModel}`);
-    }
-
-    return `Ollama is ready on localhost with ${configuredModel}.`;
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error(`Could not reach Ollama at ${settings.baseUrl}. Start Ollama or check the host.`);
-    }
-    throw err;
-  } finally {
-    window.clearTimeout(timeout);
-  }
 }
 
 async function readSourceSnippet(

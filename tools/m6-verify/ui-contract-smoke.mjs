@@ -62,6 +62,15 @@ const checks = [
     ]) && includesAll(appCss, [".ai-usage", ".ai-usage p"]),
   ],
   [
+    "Check AI verifies local generation without slowing every model call preflight",
+    includesAll(appSource, [
+      "Checking local generation",
+      "verifyGeneration: true",
+      "generationTimeoutMs: MODEL_CALL_TIMEOUT_MS",
+      "const message = await checkOllamaReadiness(modelSettings);",
+    ]) && includesAll(appSource, ['from "./model/readiness"']),
+  ],
+  [
     "Inspector opens on Ask and labels graph facts as Overview",
     includesAll(appSource, ['useState<InspectorTab>("ask")', 'label: "Ask"', 'label: "Overview"', 'label: "Links"']) &&
       appearsInOrder(appSource, ['{ id: "ask", label: "Ask" }', '{ id: "summary", label: "Overview"']) &&

@@ -300,6 +300,10 @@ Model-backed Ask check:
 - While a model-backed Ask is running, the submit button changes to `Stop`.
   Stopping the request leaves a clear `Ask was stopped.` error state and does
   not replace the canceled answer with a remembered graph fallback.
+- Long-running local Ollama requests now show staged progress guidance: early
+  privacy reassurance, a CPU-inference patience note after the first few
+  seconds, and near the 45s timeout a concrete recovery path that keeps `Stop`
+  visible and recommends trying `llama3.2:1b` if the model repeatedly stalls.
 
 Model-backed Summary check:
 

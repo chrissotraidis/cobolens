@@ -2349,6 +2349,12 @@ function useElapsedSeconds(active: boolean) {
 
 function aiProgressDetail(settings: ModelSettings, elapsedSeconds: number) {
   if (settings.provider === "ollama") {
+    if (elapsedSeconds >= 35) {
+      return `Still waiting on local Ollama; this request times out at 45s. Stop is available, and if this repeats try ${RECOMMENDED_SMALL_OLLAMA_MODEL}.`;
+    }
+    if (elapsedSeconds >= 20) {
+      return "Still waiting on local Ollama CPU inference. Code stays on this machine, and you can stop the request without losing the graph answer path.";
+    }
     return elapsedSeconds >= 8
       ? "Local Ollama can take a little while on CPU; code stays on this machine."
       : "Using local Ollama; no code leaves this machine.";

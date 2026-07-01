@@ -71,7 +71,8 @@ Reviewed the current in-app browser preview at `http://127.0.0.1:1430/?graph=/m6
 10. Local Ollama can return useful-looking summary prose without exact citations.
     The citation guard already replaced unsafe summaries with cited graph
     fallback text, but the UI did not label that state. Fixed by showing a
-    guarded-summary notice above the fallback.
+    guarded-summary notice above the fallback, and keeping the fallback wording
+    concise instead of framing it as an internal replacement event.
 
 ## Verification
 

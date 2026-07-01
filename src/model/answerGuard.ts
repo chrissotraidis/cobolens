@@ -64,7 +64,7 @@ function groundedCitationFallback(context: CitationGuardContext, reason: string,
   const evidence = context.citations.slice(0, 8).map((citation) => `- ${citation.label} (${formatSite(citation)}).`);
 
   return [
-    `Cobolens replaced the ${artifactLabel} because it had ${reason}.`,
+    `Cited graph fallback (${artifactLabel} had ${reason}).`,
     "",
     "Grounded context available:",
     ...(focus.length ? focus : ["- No source-backed matched symbol was available in the retrieved context."]),

@@ -11,6 +11,7 @@ This runner verifies the completed M6 surface:
 - UI contract smoke for the Ask/Inspector shell,
 - model privacy smoke for local/cloud mode invariants,
 - model answer guard smoke for exact inline citation enforcement,
+- summary guard smoke for exact inline citation enforcement,
 - Rust sidecar `cargo test`,
 - Tauri shell `cargo test`, including command-level coverage for bundled sample
   analysis, source snippets, graph-cache reuse/invalidation, and path traversal

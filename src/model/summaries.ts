@@ -1,5 +1,7 @@
 import { generateText } from "ai";
 import type { GraphDocument, GraphNode, SourceExcerpt } from "../lib/graph";
+import type { Citation } from "../retrieval/context";
+import { enforceGroundedAnswerCitations, type GuardedAnswerText } from "./answerGuard";
 import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
 
@@ -8,6 +10,8 @@ export type UnitSummary = {
   text: string;
   provider: string;
   model: string;
+  guarded?: boolean;
+  guardReason?: string;
 };
 
 export async function generateUnitSummary({
@@ -34,12 +38,42 @@ export async function generateUnitSummary({
     abortSignal,
   });
 
+  const guarded = guardUnitSummaryText({
+    graph,
+    node,
+    excerpt,
+    text: result.text,
+  });
+
   return {
     nodeId: node.id,
-    text: result.text.trim(),
+    text: guarded.text,
     provider: settings.provider,
     model: settings.model,
+    guarded: guarded.guarded,
+    guardReason: guarded.reason,
   };
+}
+
+export function guardUnitSummaryText({
+  graph,
+  node,
+  excerpt,
+  text,
+}: {
+  graph: GraphDocument;
+  node: GraphNode;
+  excerpt: SourceExcerpt;
+  text: string;
+}): GuardedAnswerText {
+  return enforceGroundedAnswerCitations(
+    text,
+    {
+      focusNodes: [node],
+      citations: summaryGuardCitations(graph, node, excerpt),
+    },
+    { artifactLabel: "model summary" },
+  );
 }
 
 function summarySystemPrompt(rosettaLanguage: string) {
@@ -87,4 +121,43 @@ function graphFacts(graph: GraphDocument, node: GraphNode) {
     });
 
   return related.length ? related.join("\n") : "- No direct graph relationships recorded.";
+}
+
+function summaryGuardCitations(graph: GraphDocument, node: GraphNode, excerpt: SourceExcerpt): Citation[] {
+  return dedupeCitations([
+    ...(node.file
+      ? [{
+          file: node.file,
+          line: node.lines?.[0] ?? excerpt.startLine,
+          endLine: node.lines?.[1] ?? excerpt.endLine,
+          label: `${node.name} source`,
+          nodeId: node.id,
+        }]
+      : []),
+    ...graph.edges
+      .filter((edge) => (edge.from === node.id || edge.to === node.id) && edge.site)
+      .slice(0, 8)
+      .map((edge) => ({
+        file: edge.site?.file ?? "",
+        line: edge.site?.line ?? 1,
+        label: graphEdgeLabel(graph, edge),
+        nodeId: edge.from,
+      })),
+  ]).filter((citation) => citation.file);
+}
+
+function graphEdgeLabel(graph: GraphDocument, edge: { from: string; to: string; type: string }) {
+  const from = graph.nodes.find((candidate) => candidate.id === edge.from)?.name ?? edge.from;
+  const to = graph.nodes.find((candidate) => candidate.id === edge.to)?.name ?? edge.to;
+  return `${from} ${edge.type} ${to}`;
+}
+
+function dedupeCitations(citations: Citation[]) {
+  const seen = new Set<string>();
+  return citations.filter((citation) => {
+    const key = `${citation.file}:${citation.line}:${citation.endLine ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

@@ -1,18 +1,24 @@
 import type { Citation, RetrievedContext } from "../retrieval/context";
 
+export type CitationGuardContext = Pick<RetrievedContext, "focusNodes" | "citations">;
+
 export type GuardedAnswerText = {
   text: string;
   guarded: boolean;
   reason?: string;
 };
 
-export function enforceGroundedAnswerCitations(text: string, context: RetrievedContext): GuardedAnswerText {
+export function enforceGroundedAnswerCitations(
+  text: string,
+  context: CitationGuardContext,
+  options: { artifactLabel?: string } = {},
+): GuardedAnswerText {
   const trimmed = text.trim();
   const reason = citationGuardReason(trimmed);
   if (!reason) return { text: trimmed, guarded: false };
 
   return {
-    text: groundedCitationFallback(context, reason),
+    text: groundedCitationFallback(context, reason, options.artifactLabel ?? "model answer"),
     guarded: true,
     reason,
   };
@@ -46,7 +52,7 @@ function isSubstantiveClaimBlock(block: string) {
   return /[a-z]/i.test(normalized);
 }
 
-function groundedCitationFallback(context: RetrievedContext, reason: string) {
+function groundedCitationFallback(context: CitationGuardContext, reason: string, artifactLabel: string) {
   const focus = context.focusNodes
     .filter((node) => node.file)
     .slice(0, 3)
@@ -58,7 +64,7 @@ function groundedCitationFallback(context: RetrievedContext, reason: string) {
   const evidence = context.citations.slice(0, 8).map((citation) => `- ${citation.label} (${formatSite(citation)}).`);
 
   return [
-    `Cobolens replaced the model answer because it had ${reason}.`,
+    `Cobolens replaced the ${artifactLabel} because it had ${reason}.`,
     "",
     "Grounded context available:",
     ...(focus.length ? focus : ["- No source-backed matched symbol was available in the retrieved context."]),

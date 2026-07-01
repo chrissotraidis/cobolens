@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-ollama-summary-"));
+const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-summary-guard-"));
 
 try {
   await writeFile(resolve(tempRoot, "package.json"), JSON.stringify({ type: "module" }));
@@ -17,12 +17,13 @@ try {
   const compile = spawnSync(
     resolve(repoRoot, tsc),
     [
-      "src/model/config.ts",
+      "src/model/summaries.ts",
       "src/model/answerGuard.ts",
+      "src/model/config.ts",
       "src/model/privacy.ts",
       "src/model/providers.ts",
-      "src/model/summaries.ts",
       "src/lib/graph.ts",
+      "src/retrieval/context.ts",
       "--target",
       "ES2022",
       "--module",
@@ -43,63 +44,57 @@ try {
     process.stderr.write(compile.stderr);
     process.exit(compile.status ?? 1);
   }
-  await patchCompiledImports("model/providers.js");
   await patchCompiledImports("model/summaries.js");
+  await patchCompiledImports("model/providers.js");
+  await patchCompiledImports("retrieval/context.js");
 
-  const { DEFAULT_MODEL_SETTINGS } = await import(compiledModuleUrl("config.js"));
-  const { generateUnitSummary } = await import(compiledModuleUrl("summaries.js"));
+  const { guardUnitSummaryText } = await import(compiledModuleUrl("model", "summaries.js"));
   const graph = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-graph.json"), "utf8"));
   const sourceBundle = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-source.json"), "utf8"));
   const node = graph.nodes.find((candidate) => candidate.type === "program" && candidate.name === "LINEAGE");
   if (!node) throw new Error("M6 fixture is missing the LINEAGE program node.");
+  const excerpt = sourceExcerpt(sourceBundle, node);
 
-  const summary = await generateUnitSummary({
+  const cited = guardUnitSummaryText({
     graph,
     node,
-    excerpt: sourceExcerpt(sourceBundle, node),
-    settings: {
-      ...DEFAULT_MODEL_SETTINGS,
-      model: process.argv[2] ?? DEFAULT_MODEL_SETTINGS.model,
-      baseUrl: process.env.OLLAMA_BASE_URL ? `${process.env.OLLAMA_BASE_URL.replace(/\/+$/, "")}/api` : DEFAULT_MODEL_SETTINGS.baseUrl,
-    },
+    excerpt,
+    text: "LINEAGE is a program that reads CUSTOMER-FILE (src/LINEAGE.cbl:21).",
+  });
+  const uncited = guardUnitSummaryText({
+    graph,
+    node,
+    excerpt,
+    text: "LINEAGE reads customer records and prepares a report.",
+  });
+  const footnote = guardUnitSummaryText({
+    graph,
+    node,
+    excerpt,
+    text: "LINEAGE reads customer records [1].",
   });
 
   const checks = {
-    "summary returned text": summary.text.length > 0,
-    "summary used Ollama provider": summary.provider === "ollama",
-    "summary used requested model": summary.model === (process.argv[2] ?? DEFAULT_MODEL_SETTINGS.model),
-    "summary cites matched source line": /src\/LINEAGE\.cbl:1/i.test(summary.text),
-    "summary cites relationship line": /src\/LINEAGE\.cbl:(11|13|21|26|37|40)/i.test(summary.text),
-    "summary avoids generic preamble": !/^here is\b/i.test(summary.text.trim()),
-    "summary avoids generic compiler hallucination": !/\b(compiler optimization|recompil\w*)\b/i.test(summary.text),
+    "accepts cited summary": cited.guarded === false,
+    "guards uncited summary": uncited.guarded === true && uncited.text.includes("model summary"),
+    "guards footnote summary": footnote.guarded === true && footnote.text.includes("footnote-style citations"),
+    "summary fallback cites source range": /\(src\/LINEAGE\.cbl:1-47\)/.test(uncited.text),
+    "summary fallback cites relationship": /\(src\/LINEAGE\.cbl:(11|13|21|26|37|40)\)/.test(uncited.text),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {
-    console.error(`Ollama app summary smoke failed: ${failed.join(", ")}`);
-    console.error(summary.text);
+    console.error(`Summary guard smoke failed: ${failed.join(", ")}`);
+    console.error({ cited, uncited, footnote });
     process.exit(1);
   }
 
-  console.log(
-    JSON.stringify(
-      {
-        provider: summary.provider,
-        model: summary.model,
-        summaryBytes: Buffer.byteLength(summary.text),
-        preview: summary.text.slice(0, 240),
-        checks,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify({ checks }, null, 2));
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }
 
-function compiledModuleUrl(filename) {
-  const nested = resolve(tempRoot, "model", filename);
-  return pathToFileURL(existsSync(nested) ? nested : resolve(tempRoot, filename)).href;
+function compiledModuleUrl(folder, filename) {
+  return pathToFileURL(resolve(tempRoot, folder, filename)).href;
 }
 
 function sourceExcerpt(sourceBundle, node) {
@@ -132,10 +127,11 @@ async function patchCompiledImports(path) {
   if (!existsSync(target)) return;
   const current = await readFile(target, "utf8");
   const patched = current
-    .replaceAll('from "./providers"', 'from "./providers.js"')
     .replaceAll('from "./answerGuard"', 'from "./answerGuard.js"')
+    .replaceAll('from "./providers"', 'from "./providers.js"')
     .replaceAll('from "./privacy"', 'from "./privacy.js"')
     .replaceAll('from "./config"', 'from "./config.js"')
-    .replaceAll('from "../lib/graph"', 'from "../lib/graph.js"');
+    .replaceAll('from "../lib/graph"', 'from "../lib/graph.js"')
+    .replaceAll('from "../retrieval/context"', 'from "../retrieval/context.js"');
   if (patched !== current) await writeFile(target, patched);
 }

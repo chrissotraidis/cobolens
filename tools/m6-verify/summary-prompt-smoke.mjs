@@ -12,6 +12,8 @@ const checks = {
   "summary prompt starts with proven graph facts": summariesSource.includes("Start with what the graph proves about this unit"),
   "summary prompt requires cited relationships": summariesSource.includes("mention at least one relationship with its exact file:line citation"),
   "summary prompt forbids invented purpose": summariesSource.includes("Do not invent dependencies, business purpose, or business rules."),
+  "summary output is citation guarded": summariesSource.includes("guardUnitSummaryText") &&
+    summariesSource.includes("artifactLabel: \"model summary\""),
 };
 
 const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);

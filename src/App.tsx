@@ -1837,6 +1837,25 @@ function ChatAnswerPanel({
           {modelReadiness.message}
         </div>
       ) : null}
+      <div className="answer-response" aria-live="polite">
+        {status === "running" ? (
+          <ProgressNote
+            label={progressLabel}
+            detail={aiProgressDetail(settings, elapsedSeconds)}
+            elapsedSeconds={elapsedSeconds}
+          />
+        ) : status === "error" ? (
+          <p className="error-text">{error}</p>
+        ) : answer ? (
+          <>
+            <div className="answer-question">{answer.question}</div>
+            <MessageText text={answer.text} />
+            <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
+          </>
+        ) : (
+          <p>Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.</p>
+        )}
+      </div>
       <div className="chat-composer" aria-label="Ask a question">
         <input
           type="text"
@@ -1881,25 +1900,6 @@ function ChatAnswerPanel({
           ) : null}
         </div>
       ) : null}
-      <div className="answer-response" aria-live="polite">
-        {status === "running" ? (
-          <ProgressNote
-            label={progressLabel}
-            detail={aiProgressDetail(settings, elapsedSeconds)}
-            elapsedSeconds={elapsedSeconds}
-          />
-        ) : status === "error" ? (
-          <p className="error-text">{error}</p>
-        ) : answer ? (
-          <>
-            <div className="answer-question">{answer.question}</div>
-            <MessageText text={answer.text} />
-            <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
-          </>
-        ) : (
-          <p>Use a graph shortcut for instant cited answers. Type a broader question to use the selected AI provider with the retrieved code slice.</p>
-        )}
-      </div>
       {previousAnswers.length ? (
         <details className="answer-history" aria-label="Recent Ask answers">
           <summary>

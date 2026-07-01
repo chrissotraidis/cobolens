@@ -174,6 +174,9 @@ Graph-backed Ask check:
   names: `customer master file` matches `BANK.CUSTOMER.MASTER`, `daily report
   dataset` matches `BANK.REPORT.DAILY`, and `report file` matches the logical
   COBOL file node `REPORT-FILE`.
+- Selected-symbol overview questions such as
+  `What does this program do in plain English?` use the selected graph node as
+  the only focus and answer instantly from the graph.
 - Typing a broader explanation question changes the submit button from `Ask` to
   `Ask AI`, while typed graph-only questions use `Ask Graph` and suggested graph
   shortcuts still run instantly without a model.

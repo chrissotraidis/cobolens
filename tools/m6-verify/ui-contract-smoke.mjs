@@ -10,8 +10,8 @@ const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphV
 
 const checks = [
   [
-    "Ask composer stays before suggestions and answers",
-    appearsInOrder(appSource, ['className="answer-header"', 'className="chat-composer"', 'className="question-chips"', 'className="answer-response"']),
+    "Ask response appears before composer and suggestions",
+    appearsInOrder(appSource, ['className="answer-header"', 'className="answer-response"', 'className="chat-composer"', 'className="question-chips"']),
   ],
   [
     "Ask response contains progress, error, answer, and empty states",

@@ -195,9 +195,11 @@ function App() {
   const searchResults = useMemo(() => {
     if (!graph || !query.trim()) return [];
     return graph.nodes
-      .filter((node) => matchesFuzzy(`${node.name} ${node.id} ${node.type}`, query))
-      .sort((left, right) => searchScore(left, query) - searchScore(right, query))
-      .slice(0, 12);
+      .map((node) => ({ node, score: searchResultScore(node, query) }))
+      .filter((result): result is { node: GraphNode; score: number } => result.score !== null)
+      .sort((left, right) => left.score - right.score)
+      .slice(0, 12)
+      .map((result) => result.node);
   }, [graph, query]);
   const codebaseGroups = useMemo(() => sourceTreeGroups(graph), [graph]);
   const unreferencedSourceUnits = useMemo(
@@ -1042,7 +1044,9 @@ function App() {
                   </button>
                 ))
               ) : (
-                <div className="empty-copy">{graph ? "Type to search symbols." : "Open a folder to index symbols."}</div>
+                <div className="empty-copy">
+                  {graph ? (query.trim() ? "No matching symbols." : "Type to search symbols.") : "Open a folder to index symbols."}
+                </div>
               )}
             </div>
           </section>
@@ -2880,16 +2884,35 @@ function firstFocusableNode(graph: GraphDocument) {
   );
 }
 
-function searchScore(node: GraphNode, query: string) {
+function searchResultScore(node: GraphNode, query: string) {
   const needle = query.trim().toLocaleLowerCase();
   const name = node.name.toLocaleLowerCase();
   const id = node.id.toLocaleLowerCase();
+  const type = node.type.toLocaleLowerCase();
   const priority = typePriority(node.type) / 100;
+  if (!needle) return null;
   if (name === needle) return priority;
   if (id.endsWith(`:${needle}`) || id.endsWith(`/${needle}`)) return 1 + priority;
   if (name.startsWith(needle)) return 2 + priority;
   if (name.includes(needle)) return 3 + priority;
-  return 5 + priority + name.length / 1000;
+  if (type === needle || type.includes(needle)) return 4 + priority;
+  if (matchesFuzzy(name, needle)) return 5 + priority + fuzzyGapScore(name, needle);
+  return null;
+}
+
+function fuzzyGapScore(text: string, needle: string) {
+  let cursor = 0;
+  let first = -1;
+  let last = -1;
+  for (const char of needle) {
+    const next = text.indexOf(char, cursor);
+    if (next === -1) return Number.MAX_SAFE_INTEGER;
+    if (first === -1) first = next;
+    last = next;
+    cursor = next + 1;
+  }
+  const span = last - first + 1;
+  return (span - needle.length) / 10 + text.length / 1000;
 }
 
 function typePriority(type: string) {

@@ -202,6 +202,16 @@ const checks = [
     ]) && includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
   ],
   [
+    "Symbol search keeps fuzzy matching focused on symbol names",
+    includesAll(appSource, [
+      "function searchResultScore(node: GraphNode, query: string)",
+      "matchesFuzzy(name, needle)",
+      "return null",
+      "No matching symbols.",
+    ]) &&
+      !appSource.includes('matchesFuzzy(`${node.name} ${node.id} ${node.type}`, query)'),
+  ],
+  [
     "Left navigator keeps graph filters before secondary status panels",
     appearsInOrder(appSource, [
       "<h2>Symbols</h2>",

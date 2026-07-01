@@ -58,6 +58,10 @@ Search-driven checks:
 - The left navigator includes a `Codebase` browser grouped by programs,
   copybooks, and JCL source units, so users can click through the project even
   before they know a symbol name to search for.
+- Symbol search now keeps loose fuzzy matching scoped to symbol names, while
+  exact/prefix/type matches still work. Searching `report` stays focused on the
+  report copybook/data/dataset family instead of surfacing distant runtime
+  program names, and unmatched queries show `No matching symbols.`.
 
 Parse-health checks:
 

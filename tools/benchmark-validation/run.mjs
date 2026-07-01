@@ -47,8 +47,12 @@ try {
     await mkdir(dirname(options.report), { recursive: true });
     await writeFile(options.report, `${JSON.stringify(report, null, 2)}\n`);
   }
+  if (options.graph) {
+    await mkdir(dirname(options.graph), { recursive: true });
+    await writeFile(options.graph, `${JSON.stringify(graph, null, 2)}\n`);
+  }
 
-  console.log(JSON.stringify(options.report ? { ...report, report: options.report } : report, null, 2));
+  console.log(JSON.stringify({ ...report, report: options.report, graph: options.graph }, null, 2));
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }
@@ -57,7 +61,7 @@ function parseArgs(args) {
   const parsed = {};
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg !== "--root" && arg !== "--report") throw new Error(`unknown argument: ${arg}`);
+    if (!["--root", "--report", "--graph"].includes(arg)) throw new Error(`unknown argument: ${arg}`);
     const value = args[index + 1];
     if (!value) throw new Error(`${arg} requires a path`);
     parsed[arg.slice(2)] = resolve(value);
@@ -139,6 +143,13 @@ function validateGraph(graph, report) {
     }
   }
 
+  if (report.parseCoverage < 1) {
+    failures.push(`benchmark lightweight scan coverage must be 100%, got ${report.parseCoverage}`);
+  }
+  if (report.citedEdgeCoverage < 1) {
+    failures.push(`benchmark cited edge coverage must be 100%, got ${report.citedEdgeCoverage}`);
+  }
+
   const requiredSignals = [
     "programs",
     "copybooks",
@@ -170,6 +181,10 @@ function validateGraph(graph, report) {
 function summarizeGraph(graph, root) {
   const nodeTypes = countBy(graph.nodes, (node) => node.type);
   const edgeTypes = countBy(graph.edges, (edge) => edge.type);
+  const sourceBackedNodes = graph.nodes.filter((node) => node.file && !node.external).length;
+  const externalNodes = graph.nodes.filter((node) => node.external);
+  const syntaxWarnings = graph.meta.parseErrors.filter(isRecoverableSyntaxWarning).length;
+  const fatalParseFailures = Math.max(0, graph.meta.fileCount - graph.meta.parsedFileCount);
   const parseErrorsByReason = countBy(graph.meta.parseErrors, (parseError) => parseError.reason);
   const citedEdges = graph.edges.filter((edge) => edge.site?.file && Number.isInteger(edge.site?.line)).length;
   const semanticSignals = {
@@ -199,18 +214,28 @@ function summarizeGraph(graph, root) {
     files: graph.meta.fileCount,
     parsed: graph.meta.parsedFileCount,
     parseErrors: graph.meta.parseErrors.length,
+    syntaxWarnings,
+    fatalParseFailures,
     parseCoverage: roundRatio(graph.meta.parsedFileCount, graph.meta.fileCount),
+    cleanParseCoverage: roundRatio(graph.meta.parsedFileCount - syntaxWarnings, graph.meta.fileCount),
     nodes: graph.nodes.length,
+    sourceBackedNodes,
+    sourceBackedNodeCoverage: roundRatio(sourceBackedNodes, graph.nodes.length),
     edges: graph.edges.length,
     nodeTypes,
     edgeTypes,
     citedEdges,
     citedEdgeCoverage: roundRatio(citedEdges, graph.edges.length),
-    externalNodes: graph.nodes.filter((node) => node.external).length,
+    externalNodes: externalNodes.length,
+    externalNodesByType: countBy(externalNodes, (node) => node.type),
     parseErrorsByReason,
     parseErrorSamples: graph.meta.parseErrors.slice(0, 20),
     semanticSignals,
   };
+}
+
+function isRecoverableSyntaxWarning(parseError) {
+  return /lightweight scan completed/i.test(parseError.reason ?? "");
 }
 
 function countBy(items, keyFor) {

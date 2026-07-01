@@ -213,7 +213,7 @@ Run benchmark validation once a benchmark checkout exists locally:
 
 ```sh
 npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite
-npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite --report .cache/benchmark-reports/legacy-benchmark-report.json
+npm run validate:benchmark -- --root /path/to/COBOL-Legacy-Benchmark-Suite --report .cache/benchmark-reports/legacy-benchmark-report.json --graph .cache/benchmark-reports/current-graph.json
 npm run m6:compare-candidates -- --root /path/to/COBOL-Legacy-Benchmark-Suite --timeout-ms 70000
 ```
 
@@ -224,10 +224,12 @@ run the shortcut:
 npm run validate:benchmark:local
 ```
 
-The benchmark report records lightweight scan coverage, listed syntax warnings
-or parse failures, node/edge type counts, citation coverage, and the semantic
-signals needed for v1 graph understanding. The local benchmark checkout and
-reports live under `.cache/` and are intentionally ignored.
+The benchmark report records lightweight scan coverage, clean parse coverage,
+listed syntax warnings or parse failures, node/edge type counts, citation
+coverage, source-backed node coverage, external-node counts by type, and the
+semantic signals needed for v1 graph understanding. The optional graph snapshot
+captures the exact `GraphDocument` behind the report. The local benchmark
+checkout and reports live under `.cache/` and are intentionally ignored.
 
 ## Parser Notes
 

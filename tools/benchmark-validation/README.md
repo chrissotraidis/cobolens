@@ -13,7 +13,8 @@ Write an auditable report with:
 ```sh
 npm run validate:benchmark -- \
   --root /path/to/COBOL-Legacy-Benchmark-Suite \
-  --report .cache/benchmark-reports/legacy-benchmark-report.json
+  --report .cache/benchmark-reports/legacy-benchmark-report.json \
+  --graph .cache/benchmark-reports/current-graph.json
 ```
 
 If the benchmark is cloned to the default ignored cache location, use:
@@ -36,12 +37,15 @@ The validator checks the pieces that matter for the PRD v1 acceptance criteria:
 - benchmark-scale semantic signals are present for programs, copybooks, data
   items, datasets, JCL jobs/steps/DDs, DB2 tables, CICS commands, call/perform
   control flow, copy usage, JCL wiring, reads, writes, moves, queries, and DD
-  usage.
+  usage;
+- the lightweight scan covers every benchmark source file;
+- every graph edge has a file+line citation site.
 
-The JSON report includes parse coverage, node/edge type counts, citation
-coverage, external-node count, parse-error counts by reason, and parse-error
-samples. This records what the current analyzer understands and where it
-degrades on the primary PRD corpus.
+The JSON report includes parse coverage, clean parse coverage, recoverable
+syntax warning counts, fatal parse failure counts, node/edge type counts,
+citation coverage, source-backed node coverage, external-node counts by type,
+parse-error counts by reason, and parse-error samples. This records what the
+current analyzer understands and where it degrades on the primary PRD corpus.
 
 `parseCoverage` means the analyzer completed its lightweight graph scan for
 that share of files. `parseErrors` can still list files where tree-sitter saw

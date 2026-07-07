@@ -158,11 +158,11 @@ The Source panel remains visible above the inspector where space allows.
 | FR-23 | Make citations clickable. | Implemented |
 | FR-24 | Link Ask, graph, and source. | Implemented enough for v1 |
 | FR-25 | Prevent unsupported model claims. | Implemented by prompts and guards |
-| FR-26 | Support Ollama, Anthropic, OpenAI, OpenRouter. | Implemented |
+| FR-26 | Support Ollama, Anthropic, OpenAI, OpenRouter. | Implemented. Local Ollama uses the chat API and a generation model plus a separate embedding model. |
 | FR-27 | Store cloud keys in OS keychain. | Implemented in desktop shell |
 | FR-28 | Show honest local/cloud mode. | Implemented |
 | FR-29 | Show usage and bulk summary estimates. | Implemented |
-| FR-30 | Keep embeddings privacy-aware. | Implemented for local Ollama; cloud embeddings rejected |
+| FR-30 | Keep embeddings privacy-aware. | Implemented for local Ollama with a dedicated embedding model (default `nomic-embed-text`); cloud embeddings rejected. Semantic-retrieval failure surfaces a visible note instead of degrading silently. |
 | FR-31 | Bundle a sample codebase. | Implemented |
 | FR-32 | Guide first-run without requiring AI. | Implemented |
 
@@ -214,6 +214,12 @@ Cobolens has two answer routes:
 - AI route: retrieved graph/source context is sent only after the user chooses an AI action and configures a provider.
 
 Local Ollama routes must use localhost. Remote Ollama URLs and cloud embeddings are rejected unless an explicit provider path is implemented and surfaced honestly.
+
+Generation and embeddings are separate concerns: the generation model answers,
+a dedicated embedding model (default `nomic-embed-text`) powers optional
+semantic retrieval. Neither silently substitutes for the other. When the
+embedding model is missing, semantic retrieval is off with a visible reason and
+generation still works.
 
 Cloud keys must be stored through the OS keychain, not local app settings.
 

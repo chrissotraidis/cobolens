@@ -8,7 +8,7 @@ const chatSource = await readFile(resolve(repoRoot, "src", "model", "chat.ts"), 
 
 const checks = {
   "local Ask budget is smaller than cloud budget":
-    chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 260") &&
+    chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 512") &&
     chatSource.includes("const CLOUD_ASK_MAX_OUTPUT_TOKENS = 520"),
   "Ask generation uses provider-aware budget": chatSource.includes("maxOutputTokens: askMaxOutputTokens(settings)"),
   "Ollama prompt asks for brief answers": chatSource.includes("Use 1-3 short bullets; keep local Ollama answers brief so they return quickly"),

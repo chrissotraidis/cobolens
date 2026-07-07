@@ -46,7 +46,9 @@ export async function inspectOllamaReadiness(settings: ModelSettings, options: O
   const configuredModel = settings.model.trim();
 
   const response = await fetchWithTimeout(`${baseUrl}/tags`, { method: "GET" }, tagsTimeoutMs, () => {
-    throw new Error(`Could not reach Ollama at ${settings.baseUrl}. Start Ollama or check the host.`);
+    throw new Error(
+      `Could not reach Ollama at ${settings.baseUrl}. If Ollama is installed, start it with: ollama serve. Otherwise install it from ollama.com, then run: ollama pull ${settings.model.trim() || "llama3.2"}.`,
+    );
   });
   if (!response.ok) {
     throw new Error(`Ollama responded with ${response.status}. Check the host and try again.`);
@@ -58,11 +60,18 @@ export async function inspectOllamaReadiness(settings: ModelSettings, options: O
     throw new OllamaReadinessError(`Ollama is reachable, but no local models are installed. Run: ollama pull ${configuredModel}`, configuredModel);
   }
 
-  const hasModel = modelNames.some(
-    (name) => isSameOllamaModel(name, configuredModel) || name.startsWith(`${configuredModel}:`),
-  );
+  // Match only the exact tag (or the :latest a bare name resolves to). A
+  // different tag such as llama3.2:1b does NOT satisfy a configured llama3.2:
+  // Ollama resolves a bare name to :latest and 404s on generate otherwise, so
+  // accepting the variant here would green-light a model that cannot run.
+  const hasModel = modelNames.some((name) => isSameOllamaModel(name, configuredModel));
   if (!hasModel) {
-    throw new OllamaReadinessError(`Ollama is reachable, but ${configuredModel} is not installed. Use an installed model below or run: ollama pull ${configuredModel}.`, configuredModel, modelNames);
+    const variantHint = variantSuggestion(modelNames, configuredModel);
+    throw new OllamaReadinessError(
+      `Ollama is reachable, but ${configuredModel} is not installed.${variantHint} Use an installed model below or run: ollama pull ${configuredModel}.`,
+      configuredModel,
+      modelNames,
+    );
   }
 
   if (!options.verifyGeneration) {
@@ -82,8 +91,13 @@ export async function inspectOllamaReadiness(settings: ModelSettings, options: O
         model: configuredModel,
         prompt: "Reply with one short sentence that says local inference is ready.",
         stream: false,
+        // Disable reasoning for the probe: a thinking model left to "think"
+        // spends the whole num_predict budget on hidden chain-of-thought and
+        // returns empty answer text, failing an otherwise-working model.
+        // think:false is a no-op on non-reasoning models.
+        think: false,
         options: {
-          num_predict: 24,
+          num_predict: 160,
           temperature: 0,
         },
       }),
@@ -133,6 +147,20 @@ export function isSameOllamaModel(left: string, right: string) {
 
 function normalizeModelName(model: string) {
   return model.trim().replace(/:latest$/, "");
+}
+
+// When a differently-tagged variant of the configured base is installed
+// (config llama3.2, installed llama3.2:1b), name the exact installed tag so the
+// user can pick it instead of guessing why a "reachable" model 404s.
+function variantSuggestion(installedModels: string[], configuredModel: string) {
+  const base = configuredModel.trim().split(":")[0].toLocaleLowerCase();
+  if (!base) return "";
+  const variants = installedModels.filter((name) => {
+    const [candidateBase] = name.split(":");
+    return candidateBase.toLocaleLowerCase() === base && !isSameOllamaModel(name, configuredModel);
+  });
+  if (!variants.length) return "";
+  return ` You have ${variants.join(", ")} installed with a different tag.`;
 }
 
 async function fetchWithTimeout(

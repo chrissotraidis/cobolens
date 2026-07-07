@@ -21,8 +21,10 @@ try {
   process.exit(1);
 }
 
-await rm(resourceDir, { recursive: true, force: true });
+// Keep the directory itself: it is a tracked Tauri bundle resource path
+// (src-tauri/binaries/.gitkeep) that must exist even before a release build.
 await mkdir(resourceDir, { recursive: true });
+await rm(target, { force: true });
 await copyFile(source, target);
 if (process.platform !== "win32") {
   await chmod(target, 0o755);

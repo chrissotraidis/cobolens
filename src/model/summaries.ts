@@ -5,7 +5,9 @@ import { enforceGroundedAnswerCitations, type GuardedAnswerText } from "./answer
 import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
 
-const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 260;
+// Local stays below cloud to keep CPU summaries quick, but needs headroom for
+// thinking-capable local models whose reasoning counts against the budget.
+const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 384;
 const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420;
 
 export type UnitSummary = {

@@ -16,6 +16,10 @@ export type RetrievedContext = {
   citations: Citation[];
   prompt: string;
   semanticMatches?: SemanticMatch[];
+  // Set when semantic retrieval was attempted but failed (for example the
+  // embedding model is not installed). Retrieval still succeeds without it,
+  // but the failure must stay visible instead of silently degrading.
+  semanticError?: string;
 };
 
 export async function retrieveQuestionContext({
@@ -32,7 +36,13 @@ export async function retrieveQuestionContext({
   semanticSearch?: (question: string) => Promise<SemanticMatch[]>;
 }): Promise<RetrievedContext> {
   const rankedNodes = rankNodes(graph, question);
-  const semanticMatches = semanticSearch ? await semanticSearch(question).catch(() => []) : [];
+  let semanticError = "";
+  const semanticMatches = semanticSearch
+    ? await semanticSearch(question).catch((err) => {
+        semanticError = err instanceof Error ? err.message : String(err);
+        return [];
+      })
+    : [];
   const focusNodes = applyPreferredNode(
     uniqueNodes([...rankedNodes, ...semanticMatches.map((match) => match.node)]),
     preferredNode,
@@ -101,12 +111,15 @@ export async function retrieveQuestionContext({
       "Semantic vector matches:",
       semanticMatches.length
         ? semanticMatches.map((match) => `- ${match.node.name} (${match.node.type}) score ${match.score.toFixed(3)}: ${match.text}`).join("\n")
-        : "- None",
+        : semanticError
+          ? `- Unavailable (${semanticError})`
+          : "- None",
       "",
       "Source excerpts (line-numbered):",
       sourceExcerpts.join("\n\n") || "No source excerpt available.",
     ].join("\n"),
     semanticMatches,
+    semanticError: semanticError || undefined,
   };
 }
 

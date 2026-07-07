@@ -5,7 +5,9 @@ import type { ModelSettings } from "./config";
 import { createLanguageModel } from "./providers";
 import { groundedAnswerSystemPrompt } from "./prompts";
 
-const LOCAL_ASK_MAX_OUTPUT_TOKENS = 260;
+// Local stays below cloud to keep CPU answers quick, but needs headroom for
+// thinking-capable local models whose reasoning counts against the budget.
+const LOCAL_ASK_MAX_OUTPUT_TOKENS = 512;
 const CLOUD_ASK_MAX_OUTPUT_TOKENS = 520;
 
 export type GroundedAnswer = {

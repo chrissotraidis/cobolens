@@ -60,12 +60,40 @@ try {
   );
   const accepted = enforceGroundedAnswerCitations(cited, context);
 
+  // Small local models cite in prose ("at src/LINEAGE.cbl:21") rather than in
+  // parentheses; that must be accepted, and a single uncited framing line must
+  // not discard an otherwise-grounded answer.
+  const proseCitation = "LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21.";
+  const proseAccepted = enforceGroundedAnswerCitations(proseCitation, context);
+  const framingPlusCited = enforceGroundedAnswerCitations(
+    [
+      "LINEAGE is a batch COBOL program that builds a daily report.",
+      "It reads CUSTOMER-FILE at src/LINEAGE.cbl:21.",
+      "It writes REPORT-RECORD at src/LINEAGE.cbl:26.",
+    ].join("\n"),
+    context,
+  );
+  const mostlyUncited = enforceGroundedAnswerCitations(
+    [
+      "LINEAGE processes customer data end to end.",
+      "It performs a series of business calculations.",
+      "It produces several downstream outputs.",
+      "One relationship is at src/LINEAGE.cbl:21.",
+    ].join("\n"),
+    context,
+  );
+
   const checks = {
     "recognizes exact inline citation": hasExactInlineSourceCitation(cited),
+    "recognizes non-parenthesized prose citation": hasExactInlineSourceCitation(proseCitation),
+    "does not treat a bare ratio as a citation": !hasExactInlineSourceCitation("The ratio was 1.18:1 overall."),
     "accepts fully cited answer": accepted.text === cited && accepted.guarded === false,
+    "accepts prose-cited answer": proseAccepted.guarded === false && proseAccepted.text === proseCitation,
+    "accepts one framing line with a cited majority": framingPlusCited.guarded === false,
     "rejects footnote citations": footnote.guarded === true && footnote.text.includes("footnote-style citations"),
     "rejects uncited model text": uncited.guarded === true && uncited.text.includes("no exact source citations"),
     "rejects partially cited answer blocks": partial.guarded === true && partial.text.includes("uncited explanation lines"),
+    "rejects mostly-uncited answer": mostlyUncited.guarded === true && mostlyUncited.text.includes("uncited explanation lines"),
     "fallback includes exact source citation": /\(src\/LINEAGE\.cbl:21\)/.test(uncited.text),
     "fallback strips bracketed footnotes": !/\[\d+\]/.test(footnote.text),
   };

@@ -111,15 +111,23 @@ export function GraphView({
       enableEdgeEvents: true,
       hideEdgesOnMove: true,
       labelColor: { color: "#dbe3ea" },
-      labelDensity: 0.08,
+      // Collision-culled labels: show as many node names as fit without
+      // overlapping, and adapt automatically to the pane size (more on a wide
+      // desktop pane, fewer on a narrow phone) instead of forcing every label.
+      // Lower density + larger cells => fewer, non-overlapping labels.
+      labelDensity: 0.5,
       labelGridCellSize: 96,
-      labelRenderedSizeThreshold: 7,
-      labelSize: 11,
+      labelRenderedSizeThreshold: 6,
+      labelSize: 12.5,
+      labelWeight: "600",
       renderEdgeLabels: false,
       renderLabels: true,
-      stagePadding: 68,
+      // Padding leaves room for outer-ring node labels (long dataset and CICS
+      // names) without clipping, while the tighter camera ratio below zooms the
+      // focus slice in so it fills the pane instead of floating as a speck.
+      stagePadding: 70,
     });
-    renderer.getCamera().setState({ ratio: 1.18 });
+    renderer.getCamera().setState({ ratio: 0.86 });
 
     renderer.on("clickNode", ({ node }) => {
       if (slice.syntheticNodeIds.has(node)) {
@@ -158,12 +166,12 @@ export function GraphView({
     return (
       <div className="graph-empty">
         <div className="graph-empty-card">
-          <strong>First run</strong>
-          <span>Start with the bundled sample or open a COBOL folder. AI is optional; the map and cited source work first.</span>
-          <ol className="graph-empty-steps" aria-label="First-run steps">
-            <li>Load a sample or folder.</li>
-            <li>Inspect the dependency map.</li>
-            <li>Add AI later for generated summaries and broader Ask.</li>
+          <strong>Get started</strong>
+          <span>Explore the bundled sample, or open your own COBOL folder. AI is optional — the map and cited source work without it.</span>
+          <ol className="graph-empty-steps" aria-label="Getting-started steps">
+            <li>Open the sample{canOpenFolder ? " or a COBOL folder" : ""}.</li>
+            <li>Explore the dependency map and read cited source.</li>
+            <li>Add local AI later for summaries and open-ended chat.</li>
           </ol>
           <div className="graph-empty-actions">
             <button type="button" className="primary-action" onClick={onOpenSample}>
@@ -173,10 +181,11 @@ export function GraphView({
               <button type="button" onClick={onOpenFolder}>
                 Open Folder
               </button>
-            ) : (
-              <span>Open Folder runs in the desktop app.</span>
-            )}
+            ) : null}
           </div>
+          {!canOpenFolder ? (
+            <p className="graph-empty-note">Opening your own COBOL folder needs the desktop app.</p>
+          ) : null}
         </div>
       </div>
     );
@@ -273,7 +282,7 @@ function buildFocusSlice(
     graph.addNode(node.id, {
       x,
       y,
-      size: node.id === focusNode.id ? 16 : 9,
+      size: node.id === focusNode.id ? 22 : 13,
       label: nodeLabel(node),
       color: nodeColor(node.type),
       forceLabel: node.id === focusNode.id,

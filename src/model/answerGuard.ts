@@ -25,23 +25,41 @@ export function enforceGroundedAnswerCitations(
 }
 
 export function hasExactInlineSourceCitation(text: string) {
-  return /\([^()\n\r]+:\d+(?:-\d+)?\)/.test(text);
+  // Accept a source citation as a path with a letter-led file extension and a
+  // line (or range), whether or not it is wrapped in parentheses. Small local
+  // models reliably cite as "at src/LINEAGE.cbl:21" rather than
+  // "(src/LINEAGE.cbl:21)"; both point at the same auditable line, and the
+  // clickable evidence chips come from the retrieved context, not from parsing
+  // this text. Requiring a letter-led extension avoids matching bare ratios or
+  // times such as "1.18:1".
+  return /[\w./-]*\.[A-Za-z][A-Za-z0-9]*:\d+(?:-\d+)?/.test(text);
 }
 
 function citationGuardReason(text: string) {
   if (!text) return "empty model response";
   if (/\[\d+\]/.test(text)) return "footnote-style citations";
   if (!hasExactInlineSourceCitation(text)) return "no exact source citations";
-  if (!allSubstantiveBlocksHaveCitations(text)) return "uncited explanation lines";
+  if (!citedClaimsOutnumberUncited(text)) return "uncited explanation lines";
   return "";
 }
 
-function allSubstantiveBlocksHaveCitations(text: string) {
-  return text
+// Require the grounded claims to outnumber uncited ones rather than demanding a
+// citation on every line. This tolerates a single framing or summary sentence
+// (which small models reliably add) while still rejecting mostly-uncited prose.
+function citedClaimsOutnumberUncited(text: string) {
+  const claimBlocks = text
     .split(/\n+/)
     .map((block) => block.trim())
     .filter(Boolean)
-    .every((block) => !isSubstantiveClaimBlock(block) || hasExactInlineSourceCitation(block));
+    .filter(isSubstantiveClaimBlock);
+  if (!claimBlocks.length) return true;
+  let cited = 0;
+  let uncited = 0;
+  for (const block of claimBlocks) {
+    if (hasExactInlineSourceCitation(block)) cited += 1;
+    else uncited += 1;
+  }
+  return cited > uncited;
 }
 
 function isSubstantiveClaimBlock(block: string) {

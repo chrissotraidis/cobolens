@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 
 const model = process.argv[2] ?? "llama3.2";
+const embeddingModel = process.argv[3] ?? process.env.OLLAMA_EMBEDDING_MODEL ?? "nomic-embed-text";
 const defaultModel = "llama3.2";
 const recommendedSmallModel = "llama3.2:1b";
 const baseUrl = (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434").replace(/\/+$/, "");
@@ -9,7 +10,11 @@ const report = {
   ready: false,
   baseUrl,
   model,
+  embeddingModel,
   checks: {},
+  // Embeddings power optional semantic retrieval; they are reported
+  // separately so "generation ready, embeddings missing" stays visible.
+  embeddings: { ready: false, checks: {} },
   hints: [],
 };
 
@@ -41,8 +46,11 @@ try {
 const models = tags.models?.map((entry) => entry.name).filter(Boolean) ?? [];
 report.models = models;
 report.checks["at least one local model is installed"] = models.length > 0;
+// Match the exact tag (or the :latest a bare name resolves to). A different
+// tag such as llama3.2:1b does not satisfy a configured llama3.2 — Ollama
+// resolves the bare name to :latest and 404s on generate otherwise.
 report.checks[`configured model ${model} is installed`] = models.some(
-  (name) => name === model || name === `${model}:latest` || name.startsWith(`${model}:`),
+  (name) => name === model || name === `${model}:latest` || (model.endsWith(":latest") && name === model.replace(/:latest$/, "")),
 );
 
 if (!report.checks["at least one local model is installed"]) {
@@ -64,8 +72,11 @@ if (report.checks[`configured model ${model} is installed`]) {
         model,
         prompt: "Reply with one short sentence that says local inference is ready.",
         stream: false,
+        // Disable reasoning so a thinking model does not spend the whole
+        // num_predict budget on hidden chain-of-thought and return empty text.
+        think: false,
         options: {
-          num_predict: 24,
+          num_predict: 160,
           temperature: 0,
         },
       }),
@@ -85,6 +96,41 @@ if (report.checks[`configured model ${model} is installed`]) {
     report.hints.push(`Ollama is reachable, but local generation failed. For a smaller local test model, run: ollama pull ${recommendedSmallModel}`);
     report.generationError = error instanceof Error ? error.message : String(error);
   }
+}
+
+report.embeddings.checks[`embedding model ${embeddingModel} is installed`] = models.some(
+  (name) => name === embeddingModel || name === `${embeddingModel}:latest` || name.startsWith(`${embeddingModel}:`),
+);
+if (!report.embeddings.checks[`embedding model ${embeddingModel} is installed`]) {
+  report.hints.push(
+    `Semantic Ask retrieval needs a local embedding model; install it with: ollama pull ${embeddingModel}`,
+  );
+} else {
+  try {
+    const response = await fetch(`${baseUrl}/api/embed`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: embeddingModel, input: ["cobolens embedding smoke"] }),
+      signal: AbortSignal.timeout(30000),
+    });
+    report.embeddings.checks["local embedding request completes"] = response.ok;
+    if (response.ok) {
+      const body = await response.json();
+      const vector = Array.isArray(body.embeddings) ? body.embeddings[0] : undefined;
+      report.embeddings.checks["local embedding returned a vector"] =
+        Array.isArray(vector) && vector.length > 0 && vector.every((item) => Number.isFinite(item));
+    } else {
+      report.hints.push(`Ollama embeddings responded with ${response.status}; check the embedding model and server logs.`);
+    }
+  } catch (error) {
+    report.embeddings.checks["local embedding request completes"] = false;
+    report.hints.push(`Local embeddings failed; check Ollama logs or reinstall with: ollama pull ${embeddingModel}`);
+    report.embeddingError = error instanceof Error ? error.message : String(error);
+  }
+}
+report.embeddings.ready = Object.values(report.embeddings.checks).every(Boolean);
+if (!report.embeddings.ready) {
+  report.hints.push("Generation can be ready while embeddings are not; graph answers and AI Ask still work without semantic retrieval.");
 }
 
 report.ready = Object.values(report.checks).every(Boolean);

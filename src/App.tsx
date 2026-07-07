@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentationExport,
   documentationExportPrefix,
@@ -24,6 +24,7 @@ import {
 import {
   DEFAULT_MODELS,
   DEFAULT_MODEL_SETTINGS,
+  DEFAULT_OLLAMA_EMBEDDING_MODEL,
   ModelProvider,
   ModelSettings,
   PROVIDER_LABELS,
@@ -65,8 +66,10 @@ type ChatAnswer = {
   source: "graph" | "model";
   guarded?: boolean;
   fallbackReason?: string;
+  semanticNote?: string;
 };
-type InspectorTab = "ask" | "summary" | "impact" | "source";
+type InspectorTab = "ask" | "summary" | "impact";
+type CenterView = "map" | "source";
 type ModelReadiness = {
   status: "idle" | "checking" | "ready" | "error";
   message: string;
@@ -98,8 +101,15 @@ type AnalysisProgress = {
 
 const APP_SETTINGS_STORAGE_KEY = "cobolens.settings.v1";
 const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
-const MODEL_CALL_TIMEOUT_MS = 45_000;
-const MODEL_READINESS_TIMEOUT_MS = 12_000;
+// Buffered (non-streaming) call ceiling. Capable local models (e.g. a 12B on
+// CPU/MLX) routinely need well over 45s for a full grounded answer; a short
+// ceiling made them fall back to the graph mid-answer. Until Ask streams, keep
+// this generous so slow-but-good local models actually finish.
+const MODEL_CALL_TIMEOUT_MS = 90_000;
+// Large local models (e.g. a 12B) can take well over 12s to cold-start their
+// first generation. Keep the readiness probe close to the Ask timeout so a
+// capable local model that answers fine in Ask does not fail "Check AI".
+const MODEL_READINESS_TIMEOUT_MS = 40_000;
 const SEMANTIC_SEARCH_TIMEOUT_MS = 8_000;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
@@ -163,6 +173,10 @@ function App() {
   const [modelCallCount, setModelCallCount] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
+  const [centerView, setCenterView] = useState<CenterView>("map");
+  const [railCollapsed, setRailCollapsed] = useState(() => readLayoutFlag("cobolens.railCollapsed", false));
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(() => readLayoutFlag("cobolens.inspectorCollapsed", false));
+  const [rightWidth, setRightWidth] = useState(() => readLayoutNumber("cobolens.rightWidth", 460, 320, 860));
   const [showGraphNodeList, setShowGraphNodeList] = useState(false);
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
@@ -229,6 +243,22 @@ function App() {
       .map((result) => result.node);
   }, [graph, query]);
   const codebaseGroups = useMemo(() => sourceTreeGroups(graph), [graph]);
+  // Distinct source files with a representative symbol each, for the Source
+  // view's file switcher ("where are the other files?").
+  const sourceFiles = useMemo(() => {
+    if (!graph) return [] as Array<{ file: string; node: GraphNode }>;
+    const byFile = new Map<string, GraphNode>();
+    for (const node of graph.nodes) {
+      if (!node.file || node.external) continue;
+      const existing = byFile.get(node.file);
+      if (!existing || sourceFilePriority(node) < sourceFilePriority(existing)) {
+        byFile.set(node.file, node);
+      }
+    }
+    return [...byFile.entries()]
+      .map(([file, node]) => ({ file, node }))
+      .sort((left, right) => left.file.localeCompare(right.file));
+  }, [graph]);
   const unreferencedSourceUnits = useMemo(
     () => (graph ? potentiallyUnreferencedSourceUnits(graph).slice(0, 8) : []),
     [graph],
@@ -238,13 +268,9 @@ function App() {
     [focusNodeId, graph, hiddenNodeTypes],
   );
   const focusExpanded = Boolean(focusNodeId && expandedNodeIds.has(focusNodeId));
-  const expandDisabled = !focusNodeId || (!focusExpanded && !focusExpansion.hiddenByLimit);
-  const expandButtonLabel = focusExpanded ? "Collapse" : focusExpansion.hiddenByLimit ? "Expand" : "Focus complete";
   const expandButtonTitle = focusExpanded
-    ? "Collapse expanded neighbors for this focus"
-    : focusExpansion.hiddenByLimit
-      ? `Show ${focusExpansion.hiddenByLimit} hidden direct neighbors for this focus`
-      : "No hidden direct neighbors for this focus; use search or the Codebase browser to jump elsewhere.";
+    ? "Collapse the expanded neighbors"
+    : `Show ${focusExpansion.hiddenByLimit} more direct neighbor${focusExpansion.hiddenByLimit === 1 ? "" : "s"} of this symbol`;
 
   useEffect(() => {
     let cancelled = false;
@@ -389,8 +415,36 @@ function App() {
   }, [modelSettings.provider, modelSettings.model, modelSettings.baseUrl, hasProviderKey]);
 
   useEffect(() => {
+    if (!exportStatus || exportStatus === "Exporting") return;
+    const timeout = window.setTimeout(() => setExportStatus(""), 8000);
+    return () => window.clearTimeout(timeout);
+  }, [exportStatus]);
+
+  // Persist layout preferences (panel collapse + inspector width) across reloads.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("cobolens.railCollapsed", JSON.stringify(railCollapsed));
+      window.localStorage.setItem("cobolens.inspectorCollapsed", JSON.stringify(inspectorCollapsed));
+      window.localStorage.setItem("cobolens.rightWidth", String(Math.round(rightWidth)));
+    } catch {
+      // Layout prefs are best-effort; never block the app.
+    }
+  }, [railCollapsed, inspectorCollapsed, rightWidth]);
+
+  useEffect(() => {
     inspectorBodyRef.current?.scrollTo({ top: 0 });
   }, [selectedNodeId]);
+
+  // Populate the model picklist from locally-installed models as soon as
+  // Settings opens, so the user chooses from a list instead of typing a name.
+  useEffect(() => {
+    if (!settingsOpen || isCloudProvider(modelSettings.provider)) return;
+    if (modelReadiness.installedModels?.length) return;
+    refreshInstalledModels().catch(() => {
+      // Listing models is a convenience; failure leaves the text field usable.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsOpen, modelSettings.provider]);
 
   useEffect(() => {
     if (chatStatus === "ready" || chatStatus === "error") {
@@ -448,7 +502,11 @@ function App() {
 
       try {
         const response = await fetch("/m6-bakeoff-graph.json");
-        if (!response.ok) throw new Error(`Could not load browser demo graph (${response.status}).`);
+        if (!response.ok) {
+          throw new Error(
+            `Could not load browser demo graph (${response.status}). Regenerate it with: npm run m6:fixture-graph`,
+          );
+        }
         const result = (await response.json()) as GraphDocument;
         acceptGraph(result, "Demo graph: M6 fixture", "/m6-bakeoff-source.json");
       } catch (err) {
@@ -553,17 +611,43 @@ function App() {
     setSourceFocus(null);
     setExpandedNodeIds(new Set());
     setHistory((current) => [...current.filter((id) => id !== nodeId), nodeId].slice(-8));
+    // The conversation persists across selections (the chat log and answers stay
+    // put, and the inspector tab is left where the user had it). Only the
+    // in-progress draft is cleared. `preserveChat` additionally keeps the draft.
     if (!options.preserveChat) {
       setChatQuestion("");
-      setChatAnswer(null);
-      setChatStatus("idle");
       setChatError("");
-      setInspectorTab("summary");
+      if (chatStatus !== "running") setChatStatus("idle");
     }
   }
 
   function selectNode(nodeId: string) {
     focusOnNode(nodeId);
+  }
+
+  function startInspectorResize(event: ReactPointerEvent) {
+    event.preventDefault();
+    if (inspectorCollapsed) setInspectorCollapsed(false);
+    const startX = event.clientX;
+    const startWidth = rightWidth;
+    const onMove = (moveEvent: PointerEvent) => {
+      // Clamp so the center workspace keeps a usable minimum (its toolbar +
+      // graph need room) — the inspector can never cover the map.
+      const railWidth = railCollapsed ? 8 : 260;
+      const maxWidth = Math.max(360, window.innerWidth - railWidth - 520);
+      const next = Math.min(maxWidth, Math.max(320, startWidth + (startX - moveEvent.clientX)));
+      setRightWidth(next);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   }
 
   function selectEdge(edge: GraphEdge | null) {
@@ -937,6 +1021,9 @@ function App() {
         citations: displayedAnswer.citations,
         source: answer.guarded ? "graph" : "model",
         guarded: answer.guarded,
+        semanticNote: answerContext.semanticError
+          ? `Semantic search was unavailable (${answerContext.semanticError}) so this answer used graph and keyword retrieval only.`
+          : undefined,
       };
       setChatAnswer(modelAnswer);
       rememberChatAnswer(modelAnswer);
@@ -1043,7 +1130,7 @@ function App() {
   }
 
   function showSourcePanel() {
-    setInspectorTab("source");
+    setCenterView("source");
     window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
   }
 
@@ -1077,6 +1164,9 @@ function App() {
       setSelectedEdge(null);
     }
     setSourceFocus({ file: citation.file, line: citation.line, nodeId: citedNode?.id });
+    // Evidence -> code is the core trust interaction: bring Source forward in the
+    // center workspace so the cited line is visible immediately.
+    setCenterView("source");
   }
 
   async function exportDocs() {
@@ -1130,14 +1220,26 @@ function App() {
     <main className="workspace" aria-label="Cobolens workspace">
       <nav className="skip-links" aria-label="Skip links">
         <a href="#navigator-panel">Skip to navigator</a>
-        <a href="#dependency-graph">Skip to dependency graph</a>
-        <a href="#code-panel">Skip to source code</a>
+        <a href="#dependency-graph">Skip to workspace</a>
         <a href="#inspector-panel">Skip to inspector</a>
       </nav>
       <header className="topbar">
         <div className="brand">
+          <button
+            type="button"
+            className="rail-toggle"
+            onClick={() => setRailCollapsed((collapsed) => !collapsed)}
+            aria-pressed={railCollapsed}
+            aria-label={railCollapsed ? "Show navigator panel" : "Hide navigator panel"}
+            title={railCollapsed ? "Show navigator" : "Hide navigator"}
+          >
+            <svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true">
+              <rect x="2.5" y="3.5" width="13" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <rect x="3.7" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
+            </svg>
+          </button>
           <span className="brand-mark" aria-hidden="true" />
-          <span>Cobolens</span>
+          <span className="brand-name">Cobolens</span>
         </div>
 
         <label className="global-search">
@@ -1178,7 +1280,32 @@ function App() {
         </div>
 
         <div className="topbar-actions" aria-label="Workspace actions">
-          <button type="button" onClick={exportDocs} disabled={!graph} title={exportStatus || "Export Markdown, Mermaid, and PNG docs"}>
+          <button
+            type="button"
+            className="topbar-open"
+            onClick={desktopAvailable ? chooseFolder : openSample}
+            title={
+              desktopAvailable
+                ? "Open a local COBOL codebase folder"
+                : "Open the bundled sample — opening your own folder needs the desktop app"
+            }
+          >
+            {desktopAvailable ? "Open Folder" : "Open Sample"}
+          </button>
+          <button
+            type="button"
+            className="rail-toggle"
+            onClick={() => setInspectorCollapsed((collapsed) => !collapsed)}
+            aria-pressed={!inspectorCollapsed}
+            aria-label={inspectorCollapsed ? "Show inspector panel" : "Hide inspector panel"}
+            title={inspectorCollapsed ? "Show inspector" : "Hide inspector"}
+          >
+            <svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true">
+              <rect x="2.5" y="3.5" width="13" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <rect x="11.3" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+          <button type="button" onClick={exportDocs} disabled={!graph} title="Export Markdown, Mermaid, and PNG docs">
             Export
           </button>
           <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
@@ -1186,6 +1313,15 @@ function App() {
           </button>
         </div>
       </header>
+
+      {exportStatus ? (
+        <div className="export-toast" role="status" aria-live="polite">
+          <span>{exportStatus}</span>
+          <button type="button" onClick={() => setExportStatus("")} aria-label="Dismiss export status">
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {settingsOpen ? (
         <SettingsDialog
@@ -1211,7 +1347,10 @@ function App() {
         />
       ) : null}
 
-      <section className={`shell${inspectorTab === "ask" ? " is-ask-focused" : ""}`}>
+      <section
+        className={`shell${inspectorTab === "ask" ? " is-ask-focused" : ""}${railCollapsed ? " rail-collapsed" : ""}${inspectorCollapsed ? " inspector-collapsed" : ""}`}
+        style={{ ["--right-w" as string]: `${Math.round(clampRightWidth(rightWidth, railCollapsed))}px` }}
+      >
         <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
           <section className="pane-block">
             <h2>Ingest</h2>
@@ -1269,7 +1408,13 @@ function App() {
                 ))
               ) : (
                 <div className="empty-copy">
-                  {graph ? (query.trim() ? "No matching codebase items." : "Type to search programs, copybooks, jobs, and fields.") : "Open a folder to index the codebase."}
+                  {graph
+                    ? query.trim()
+                      ? "No matching codebase items."
+                      : "Type to search programs, copybooks, jobs, and fields."
+                    : desktopAvailable
+                      ? "Open a folder to index the codebase."
+                      : "Open the sample to index the codebase."}
                 </div>
               )}
             </div>
@@ -1305,6 +1450,7 @@ function App() {
 
           <section className="pane-block">
             <h2>Inventory</h2>
+            <div className="settings-footnote">What this scan found (read-only counts).</div>
             <Metric label="Files" value={graph?.meta.fileCount ?? 0} />
             <Metric label="Parsed" value={graph?.meta.parsedFileCount ?? 0} />
             <Metric label="Source programs" value={counts.programs} />
@@ -1322,89 +1468,180 @@ function App() {
             onFocusNode={focusOnNode}
           />
 
-          {exportStatus ? <div className="settings-footnote export-status">{exportStatus}</div> : null}
         </aside>
 
         <section
           id="dependency-graph"
-          className={`graph-pane${focusedNode ? "" : " is-empty"}`}
-          aria-label="Dependency graph"
+          className={`center-pane center-${centerView}${centerView === "map" && !focusedNode ? " is-empty" : ""}`}
+          aria-label="Workspace"
           tabIndex={-1}
         >
-          {focusedNode ? (
-            <div className="graph-toolbar">
-              <div>
-                <span>Dependency Map</span>
-                <small>{focusedNode.name} - {nodeTypeLabel(focusedNode.type)}</small>
-              </div>
+          <div className="center-toolbar">
+            <div className="view-toggle" role="tablist" aria-label="Workspace view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={centerView === "map"}
+                className={centerView === "map" ? "is-active" : undefined}
+                onClick={() => setCenterView("map")}
+                title="Dependency map: how symbols connect"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+                  <circle cx="8" cy="4" r="2" fill="currentColor" />
+                  <circle cx="3.5" cy="12" r="2" fill="currentColor" />
+                  <circle cx="12.5" cy="12" r="2" fill="currentColor" />
+                  <path d="M8 6 L4 10 M8 6 L12 10" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                </svg>
+                Map
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={centerView === "source"}
+                className={centerView === "source" ? "is-active" : undefined}
+                onClick={() => setCenterView("source")}
+                disabled={!selectedNode?.file}
+                title={selectedNode?.file ? `Read ${selectedNode.file}` : "Select a symbol with source to read its code"}
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+                  <path d="M6 4 L2.5 8 L6 12 M10 4 L13.5 8 L10 12" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Source
+              </button>
+            </div>
+            <div className="center-toolbar-meta">
+              {centerView === "map" ? (
+                focusedNode ? <small>{focusedNode.name} · {nodeTypeLabel(focusedNode.type)}</small> : null
+              ) : selectedNode?.file ? (
+                <>
+                  <span className="swatch" style={{ background: nodeColor(selectedNode.type) }} aria-hidden="true" />
+                  <strong className="source-meta-symbol">{selectedNode.name}</strong>
+                  <label className="source-file-picker" title="Switch to another file in this codebase">
+                    <span className="sr-only">Open a different file</span>
+                    <select
+                      value={selectedNode.file}
+                      onChange={(event) => {
+                        const target = sourceFiles.find((entry) => entry.file === event.currentTarget.value);
+                        if (target) focusOnNode(target.node.id, { preserveChat: true });
+                      }}
+                    >
+                      {sourceFiles.map((entry) => (
+                        <option key={entry.file} value={entry.file}>
+                          {entry.file}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <small>line {snippet?.highlightLine ?? selectedNode.lines?.[0] ?? 1}</small>
+                </>
+              ) : (
+                <span className="source-meta-file">No source selected</span>
+              )}
+            </div>
+            {centerView === "map" && focusedNode ? (
               <div className="graph-toolbar-actions">
-                <button
-                  type="button"
-                  onClick={toggleExpandFocus}
-                  disabled={expandDisabled}
-                  title={expandButtonTitle}
-                  aria-label={expandButtonTitle}
-                >
-                  {expandButtonLabel}
-                </button>
+                {focusExpanded || focusExpansion.hiddenByLimit ? (
+                  <button
+                    type="button"
+                    onClick={toggleExpandFocus}
+                    title={expandButtonTitle}
+                    aria-label={expandButtonTitle}
+                  >
+                    {focusExpanded ? "Collapse" : `Expand +${focusExpansion.hiddenByLimit}`}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="toggle-button"
                   onClick={() => setShowGraphNodeList((visible) => !visible)}
                   aria-pressed={showGraphNodeList}
-                  aria-label={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
-                  title={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}
+                  aria-label={showGraphNodeList ? "Hide the list of visible nodes" : "List the nodes visible on the map"}
+                  title={showGraphNodeList ? "Hide node list" : "List visible nodes"}
                 >
-                  {showGraphNodeList ? "Hide nodes" : "Show nodes"}
+                  {showGraphNodeList ? "Hide list" : "Nodes"}
                 </button>
               </div>
+            ) : null}
+          </div>
+          <div className="center-body">
+            <div className="graph-canvas" hidden={centerView !== "map"}>
+              <GraphView
+                graph={graph}
+                focusNodeId={focusNodeId}
+                expandedNodeIds={expandedNodeIds}
+                hiddenNodeTypes={hiddenNodeTypes}
+                selectedEdge={selectedEdge}
+                onSelectNode={selectNode}
+                onSelectEdge={selectEdge}
+                onExpandNode={expandNode}
+                canOpenFolder={desktopAvailable}
+                onOpenFolder={chooseFolder}
+                onOpenSample={openSample}
+                showNodeList={showGraphNodeList}
+              />
             </div>
-          ) : null}
-          <div className="graph-canvas">
-            <GraphView
-              graph={graph}
-              focusNodeId={focusNodeId}
-              expandedNodeIds={expandedNodeIds}
-              hiddenNodeTypes={hiddenNodeTypes}
-              selectedEdge={selectedEdge}
-              onSelectNode={selectNode}
-              onSelectEdge={selectEdge}
-              onExpandNode={expandNode}
-              canOpenFolder={desktopAvailable}
-              onOpenFolder={chooseFolder}
-              onOpenSample={openSample}
-              showNodeList={showGraphNodeList}
-            />
+            {centerView === "source" ? (
+              <section id="code-panel" className="code-panel center-source-view" aria-label="Source code" tabIndex={-1}>
+                {selectedNode?.file ? (
+                  <CodeSnippet
+                    node={selectedNode}
+                    snippet={snippet}
+                    loading={snippetLoading}
+                    focusedCitation={Boolean(
+                      sourceFocus &&
+                        snippet &&
+                        sourceFocus.file === snippet.file &&
+                        sourceFocus.line === snippet.highlightLine,
+                    )}
+                  />
+                ) : (
+                  <div className="source-empty">
+                    <p>No source selected. Pick a symbol from the map, the codebase tree, or search — then its code shows here.</p>
+                    <button type="button" onClick={() => setCenterView("map")}>Back to map</button>
+                  </div>
+                )}
+              </section>
+            ) : null}
           </div>
         </section>
 
-        <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Source and inspector">
-          <section id="code-panel" className="code-panel" aria-label="Source code" tabIndex={-1}>
-            <div className="panel-title">Source</div>
-            {selectedNode ? (
-              <CodeSnippet
-                node={selectedNode}
-                snippet={snippet}
-                loading={snippetLoading}
-                focusedCitation={Boolean(
-                  sourceFocus &&
-                    snippet &&
-                    sourceFocus.file === snippet.file &&
-                    sourceFocus.line === snippet.highlightLine,
-                )}
-              />
-            ) : (
-              <pre>
-                <code>No source selected.</code>
-              </pre>
-            )}
-          </section>
-
+        <aside className={`right-pane${inspectorTab === "ask" ? " is-ask-focused" : ""}`} aria-label="Inspector and chat">
+          <div
+            className="pane-divider"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize inspector panel"
+            title="Drag to resize"
+            onPointerDown={startInspectorResize}
+            onDoubleClick={() => setRightWidth(460)}
+          />
           <section id="inspector-panel" className="chat-panel" aria-label="Inspector" tabIndex={-1}>
-            <div className="panel-title panel-title-row">
-              <span>Work with this code</span>
-              <small>{selectedNode ? nodeTypeLabel(selectedNode.type) : "No selection"}</small>
+            <div className="panel-title panel-title-row inspector-title">
+              {selectedNode ? (
+                <>
+                  <span className="inspector-title-name">
+                    <span className="swatch" style={{ background: nodeColor(selectedNode.type) }} aria-hidden="true" />
+                    {selectedNode.name}
+                  </span>
+                  <small>{nodeTypeLabel(selectedNode.type)}</small>
+                </>
+              ) : (
+                <>
+                  <span>Inspector</span>
+                  <small>No selection</small>
+                </>
+              )}
             </div>
+            {!graph ? (
+              <div className="inspector-empty">
+                <p>
+                  {desktopAvailable
+                    ? "Open the bundled sample or a COBOL folder to inspect symbols, dependencies, and cited source here."
+                    : "Open the bundled sample to inspect symbols, dependencies, and cited source here."}
+                </p>
+              </div>
+            ) : (
+            <>
             <InspectorTabs
               activeTab={inspectorTab}
               summaryStatus={selectedSummaryState?.status}
@@ -1492,16 +1729,9 @@ function App() {
                   />
                 </>
               ) : null}
-              {inspectorTab === "source" ? (
-                <SourceInspectorPanel
-                  node={selectedNode}
-                  snippet={snippet}
-                  loading={snippetLoading}
-                  sourceFocus={sourceFocus}
-                  onViewSource={showSourcePanel}
-                />
-              ) : null}
             </div>
+            </>
+            )}
           </section>
         </aside>
       </section>
@@ -1764,7 +1994,10 @@ function SourceTree({
 }) {
   return (
     <section className="pane-block source-tree" aria-label="Codebase browser">
-      <h2>Codebase</h2>
+      <div className="pane-heading-row">
+        <h2>Codebase</h2>
+      </div>
+      <div className="settings-footnote">Click a program, copybook, or job to focus it on the map and read its code.</div>
       {groups.length ? (
         groups.map((group) => (
           <div className="source-tree-group" key={group.title}>
@@ -1779,9 +2012,11 @@ function SourceTree({
                   type="button"
                   className={node.id === selectedNodeId ? "is-active" : undefined}
                   onClick={() => onSelectNode(node.id)}
+                  title={`Focus ${node.name} (${nodeTypeLabel(node.type)})${node.file ? ` — ${node.file}` : ""}`}
+                  aria-label={`Focus ${node.name}, ${nodeTypeLabel(node.type)}`}
                 >
                   <span className="swatch" style={{ background: nodeColor(node.type) }} />
-                  <span title={node.name}>{node.name}</span>
+                  <span>{node.name}</span>
                   <small>{node.file ?? "external"}</small>
                 </button>
               ))}
@@ -1789,7 +2024,7 @@ function SourceTree({
           </div>
         ))
       ) : (
-        <div className="empty-copy">Open a folder or sample to browse source units.</div>
+        <div className="empty-copy">Open a folder or sample to browse programs, copybooks, and JCL.</div>
       )}
     </section>
   );
@@ -1850,8 +2085,9 @@ function ModelSettingsPanel({
 }) {
   const cloud = isCloudProvider(settings.provider);
   const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
-  const visibleInstalledModels = prioritizedOllamaModels(installedModels, settings.model).slice(0, 6);
-  const hiddenInstalledModelCount = Math.max(0, installedModels.length - visibleInstalledModels.length);
+  const modelInList = installedModels.some((model) => isSameOllamaModel(model, settings.model));
+  const loadingModels = !cloud && modelReadiness.status === "checking";
+  const [customMode, setCustomMode] = useState(false);
   const suggestedModel = !cloud && modelReadiness.status === "error" ? modelReadiness.suggestedModel : "";
   const showSuggestedModel =
     Boolean(suggestedModel) && !installedModels.some((model) => suggestedModel && isSameOllamaModel(model, suggestedModel));
@@ -1872,36 +2108,76 @@ function ModelSettingsPanel({
           ))}
         </select>
       </label>
-      <label className="form-row">
-        <span>Model</span>
-        <input
-          value={settings.model}
-          onChange={(event) => onSettingsChange({ ...settings, model: event.currentTarget.value })}
-        />
-      </label>
-      {visibleInstalledModels.length ? (
-        <div className="model-chips" aria-label="Installed Ollama models">
-          {visibleInstalledModels.map((model) => {
-            const isCurrent = isSameOllamaModel(model, settings.model);
-            const isRecommendedSmall = isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL);
-            const badge = isCurrent ? "Current" : isRecommendedSmall ? "Fast local" : "";
-            return (
-              <button
-                key={model}
-                type="button"
-                onClick={() => onSettingsChange({ ...settings, model })}
-                disabled={modelReadiness.status === "checking" || isCurrent}
-                aria-label={`${isCurrent ? "Current model" : "Use model"} ${model}${isRecommendedSmall ? ", recommended small local model" : ""}`}
-                title={`${isCurrent ? "Current model" : "Use model"}: ${model}${isRecommendedSmall ? " (recommended small local model)" : ""}`}
-              >
-                <span className="model-chip-name">{model}</span>
-                {badge ? <small>{badge}</small> : null}
-              </button>
-            );
-          })}
-          {hiddenInstalledModelCount ? <span>+{hiddenInstalledModelCount} more</span> : null}
+      {cloud ? (
+        <label className="form-row">
+          <span>Model</span>
+          <input
+            value={settings.model}
+            spellCheck={false}
+            onChange={(event) => onSettingsChange({ ...settings, model: event.currentTarget.value })}
+          />
+        </label>
+      ) : (
+        <div className="model-picker">
+          <label className="form-row">
+            <span>Model</span>
+            <select
+              value={modelInList && !customMode ? settings.model : "__custom__"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                if (value === "__custom__") {
+                  setCustomMode(true);
+                  return;
+                }
+                setCustomMode(false);
+                onSettingsChange({ ...settings, model: value });
+              }}
+            >
+              {installedModels.length ? (
+                installedModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                    {isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL) ? "  (fast)" : ""}
+                  </option>
+                ))
+              ) : (
+                <option value={settings.model || "__custom__"} disabled>
+                  {loadingModels ? "Loading installed models…" : "No models found — start Ollama, then Refresh"}
+                </option>
+              )}
+              <option value="__custom__">Custom name…</option>
+            </select>
+          </label>
+          {customMode || !modelInList ? (
+            <label className="form-row">
+              <span>Name</span>
+              <input
+                value={settings.model}
+                spellCheck={false}
+                placeholder="e.g. gemma4:12b-mlx"
+                onChange={(event) => onSettingsChange({ ...settings, model: event.currentTarget.value })}
+              />
+            </label>
+          ) : null}
+          <div className="model-picker-meta">
+            <span>
+              {loadingModels
+                ? "Reading models installed on this machine…"
+                : installedModels.length
+                  ? `${installedModels.length} model${installedModels.length === 1 ? "" : "s"} installed locally`
+                  : "No models listed. Start Ollama (ollama serve), then Refresh."}
+            </span>
+            <button
+              type="button"
+              className="link-action"
+              onClick={onRefreshModels}
+              disabled={loadingModels}
+            >
+              {loadingModels ? "Refreshing…" : "Refresh list"}
+            </button>
+          </div>
         </div>
-      ) : null}
+      )}
       {showSuggestedModel ? (
         <div className="model-install-hint" role="status">
           <span>For a smaller local test model, run:</span>
@@ -1909,13 +2185,28 @@ function ModelSettingsPanel({
         </div>
       ) : null}
       {settings.provider === "ollama" ? (
-        <label className="form-row">
-          <span>Host</span>
-          <input
-            value={settings.baseUrl}
-            onChange={(event) => onSettingsChange({ ...settings, baseUrl: event.currentTarget.value })}
-          />
-        </label>
+        <>
+          <label className="form-row">
+            <span>Embedding model</span>
+            <input
+              value={settings.embeddingModel}
+              spellCheck={false}
+              placeholder={DEFAULT_OLLAMA_EMBEDDING_MODEL}
+              onChange={(event) => onSettingsChange({ ...settings, embeddingModel: event.currentTarget.value })}
+            />
+          </label>
+          <div className="settings-footnote">
+            Semantic Ask retrieval embeds locally with this model. Install it with:{" "}
+            <code>ollama pull {settings.embeddingModel.trim() || DEFAULT_OLLAMA_EMBEDDING_MODEL}</code>
+          </div>
+          <label className="form-row">
+            <span>Host</span>
+            <input
+              value={settings.baseUrl}
+              onChange={(event) => onSettingsChange({ ...settings, baseUrl: event.currentTarget.value })}
+            />
+          </label>
+        </>
       ) : (
         <label className="form-row">
           <span>API key</span>
@@ -2001,9 +2292,8 @@ function InspectorTabs({
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
     { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
-    { id: "ask", label: "Ask" },
+    { id: "ask", label: "Chat" },
     { id: "impact", label: "Dependencies", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
-    { id: "source", label: "Source" },
   ];
 
   return (
@@ -2063,7 +2353,7 @@ function SummaryDock({
   const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
   const generating = state?.status === "running";
   const hasStoredSummary = state?.status === "ready" && Boolean(state.summary);
-  const aiSummaryLabel = !aiConfigured ? "Set up AI first" : generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary";
+  const aiSummaryLabel = generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary";
 
   return (
     <section className="summary-card">
@@ -2101,25 +2391,30 @@ function SummaryDock({
           >
             Ask follow-up
           </button>
-          <button
-            className="summary-wide-action"
-            type="button"
-            onClick={generating ? onCancelSummary : aiConfigured ? onGenerateSelected : onOpenSettings}
-            disabled={!generating && !node?.file}
-            title={
-              generating
-                ? "Stop the running summary request"
-                : !node?.file
-                  ? "Select a symbol with source to summarize"
-                  : aiConfigured
-                    ? "Generate an AI summary for this item"
-                    : "Set up Ollama or a cloud key before using AI summaries"
-            }
-          >
-            {aiSummaryLabel}
-          </button>
+          {aiConfigured || generating ? (
+            <button
+              className="summary-wide-action"
+              type="button"
+              onClick={generating ? onCancelSummary : onGenerateSelected}
+              disabled={!generating && !node?.file}
+              title={
+                generating
+                  ? "Stop the running summary request"
+                  : !node?.file
+                    ? "Select a symbol with source to summarize"
+                    : "Generate an AI summary for this item"
+              }
+            >
+              {aiSummaryLabel}
+            </button>
+          ) : null}
         </div>
       </div>
+      {!aiConfigured && !generating ? (
+        <button type="button" className="link-action" onClick={onOpenSettings}>
+          Optional: set up local Ollama or a cloud key for AI summaries
+        </button>
+      ) : null}
       <div className="summary-guard-note" role="status">
         Graph answers work without AI. AI runs only when you choose an AI action.
       </div>
@@ -2153,9 +2448,11 @@ function SummaryDock({
         )}
       </div>
       <div className="summary-meta">
-        <button type="button" onClick={aiConfigured ? onGenerateAll : onOpenSettings} disabled={!summaryUnitCount || generating}>
-          {aiConfigured ? "Summarize all with AI" : "Set up AI for summaries"}
-        </button>
+        {aiConfigured ? (
+          <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
+            Summarize all with AI
+          </button>
+        ) : null}
         <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
       </div>
     </section>
@@ -2253,45 +2550,65 @@ function ChatAnswerPanel({
   const questionText = question.trim();
   const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
   const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
-  const activeRouteLabel = workingWithModel ? "AI answer" : "Graph answer";
+  const activeRouteLabel = workingWithModel ? "AI mode" : "Graph mode";
   const activeRouteDetail = workingWithModel
     ? aiConfigured
-      ? `${PROVIDER_LABELS[settings.provider]} gets only the retrieved, cited source context.`
-      : "Set up AI first. Graph answers work without AI."
-    : "Instant, cited answer from the dependency graph.";
+      ? `Uses ${PROVIDER_LABELS[settings.provider]} on only the retrieved, cited code slice.`
+      : "Needs local AI. Structural questions still answer without it."
+    : "Instant, cited answer from the dependency graph — no AI needed.";
   const answerSubtitle =
     status === "running"
       ? workingWithModel
-        ? `${PROVIDER_LABELS[settings.provider]} is answering with cited graph context`
-        : "Answering instantly from graph context"
+        ? `${PROVIDER_LABELS[settings.provider]} is reading your code…`
+        : "Reading the dependency graph…"
       : answer?.guarded
-        ? `Showing a cited graph answer because ${PROVIDER_LABELS[settings.provider]} missed citation rules`
+        ? `Answered from the graph — ${PROVIDER_LABELS[settings.provider]}'s reply wasn't citation-clean`
         : answer?.fallbackReason
-          ? `Showing a cited graph answer: ${answer.fallbackReason}`
+          ? "Answered from the graph"
         : answer?.source === "model"
-        ? `${PROVIDER_LABELS[settings.provider]} answer with cited graph context`
+        ? `Answered by ${PROVIDER_LABELS[settings.provider]}, grounded in your code`
         : answer?.source === "graph"
           ? answerWasModelQuestion
-            ? "Cited graph fallback"
-            : "Answered from the graph"
+            ? "Answered from the graph"
+            : "Answered from the dependency graph"
         : workingWithModel
           ? aiConfigured
-            ? `Ready for a cited ${PROVIDER_LABELS[settings.provider]} answer`
-            : "Set up AI for broader explanations; graph questions still work now"
-          : "Ask a graph question or type a broader explanation";
-  const progressLabel = workingWithModel ? `Using ${PROVIDER_LABELS[settings.provider]}` : "Answering from graph context";
-  const askButtonLabel = status === "running" ? "Stop" : workingWithModel ? (aiConfigured ? "Ask AI" : "Set up AI") : questionText ? "Ask Graph" : "Ask";
+            ? `Ready — ${PROVIDER_LABELS[settings.provider]} will answer from your code`
+            : "Set up local AI for open-ended questions; structural questions work now"
+          : "Grounded, cited answers about your codebase";
+  const progressLabel = workingWithModel ? `${PROVIDER_LABELS[settings.provider]} is thinking` : "Reading the graph";
+  const askButtonLabel = status === "running" ? "Stop" : workingWithModel && !aiConfigured ? "Set up AI" : "Send";
   const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
   const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question);
-  const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question";
-  const showReadiness = workingWithModel && modelReadiness.status !== "idle" && modelReadiness.message;
+  const starterQuestionsLabel = answer ? "Ask another question" : "Try asking";
+  const providerLabel = PROVIDER_LABELS[settings.provider];
+  const aiStatusText =
+    modelReadiness.status === "ready"
+      ? "Live"
+      : modelReadiness.status === "checking"
+        ? "Checking…"
+        : modelReadiness.status === "error"
+          ? "Offline"
+          : aiConfigured
+            ? "Ready"
+            : "Set up AI";
+  const aiStatusTooltip =
+    modelReadiness.status === "ready"
+      ? modelReadiness.message || `${providerLabel} is live`
+      : modelReadiness.status === "checking"
+        ? `Checking ${providerLabel}…`
+        : modelReadiness.status === "error"
+          ? modelReadiness.message || `${providerLabel} is not reachable`
+          : aiConfigured
+            ? `${providerLabel} is configured — run Check AI in Settings to verify`
+            : "Set up local AI in Settings to chat with open-ended questions";
   const emptyResponseText = questionText
     ? workingWithModel
       ? aiConfigured
-        ? `Ready to ask ${PROVIDER_LABELS[settings.provider]} with cited graph and source context.`
-        : "Set up AI first for broader explanations. Graph answers work without AI."
-      : "Ready to answer instantly from the dependency graph."
-    : "Ask about data flow, dependencies, files, or behavior. Graph questions answer instantly; broader explanations use AI only after setup.";
+        ? `Press Send — ${PROVIDER_LABELS[settings.provider]} will answer from the retrieved, cited code.`
+        : "Set up local AI for open-ended questions. Structural questions work without it."
+      : "Press Send for an instant, cited answer from the dependency graph."
+    : "Ask anything about this codebase — data flow, dependencies, files, or behavior. Every answer is grounded in your code and cited.";
   const submitAsk = () => {
     if (status === "running") {
       onCancel();
@@ -2308,11 +2625,11 @@ function ChatAnswerPanel({
     <section className="answer-card">
       <div className="answer-header">
         <div>
-          <strong>Ask</strong>
+          <strong>Chat</strong>
           <span>{answerSubtitle}</span>
         </div>
       </div>
-      <div className="ask-focus-strip" aria-label="Current Ask focus">
+      <div className="ask-focus-strip" aria-label="Current chat focus">
         <span>Talking about</span>
         <strong>{node?.name ?? "Codebase"}</strong>
         <small>{node ? `${node.type} - ${focusLinkCount} graph link${focusLinkCount === 1 ? "" : "s"}` : "All indexed symbols"}</small>
@@ -2339,16 +2656,26 @@ function ChatAnswerPanel({
           {askButtonLabel}
         </button>
       </div>
-      <div className={`answer-route ${workingWithModel ? "model" : "graph"}`} aria-label="Ask routing" aria-live="polite">
-        <strong>{activeRouteLabel}:</strong>
-        {" "}
-        <span>{activeRouteDetail}</span>
+      <div className="chat-status-row" aria-live="polite">
+        <span
+          className={`chat-mode-chip ${workingWithModel ? "model" : "graph"}`}
+          title={activeRouteDetail}
+          aria-label={`${activeRouteLabel}. ${activeRouteDetail}`}
+        >
+          {activeRouteLabel}
+        </span>
+        {workingWithModel ? (
+          <span
+            className={`ai-status ${modelReadiness.status}`}
+            title={aiStatusTooltip}
+            aria-label={aiStatusTooltip}
+            role={modelReadiness.status === "error" ? "alert" : "status"}
+          >
+            <i className="ai-status-dot" aria-hidden="true" />
+            {aiStatusText}
+          </span>
+        ) : null}
       </div>
-      {showReadiness ? (
-        <div className={`ask-readiness ${modelReadiness.status}`} role={modelReadiness.status === "error" ? "alert" : "status"}>
-          {modelReadiness.message}
-        </div>
-      ) : null}
       <div className="answer-response" aria-live="polite">
         {status === "running" ? (
           <ProgressNote
@@ -2368,6 +2695,11 @@ function ChatAnswerPanel({
               <span>Answer</span>
               <MessageText text={answer.text} />
             </div>
+            {answer.semanticNote ? (
+              <div className="answer-semantic-note" role="status">
+                {answer.semanticNote}
+              </div>
+            ) : null}
             <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
           </>
         ) : (
@@ -2448,7 +2780,10 @@ function EvidenceList({
 
   return (
     <div className="evidence-block">
-      <span>Evidence</span>
+      <span className="evidence-heading">
+        Evidence
+        <small>click to open in Source</small>
+      </span>
       <CitationList citations={citations} onOpenCitation={onOpenCitation} />
     </div>
   );
@@ -2492,7 +2827,14 @@ function textBlocks(text: string): MessageTextBlock[] {
     listItems = [];
   };
 
-  for (const rawLine of text.split(/\r?\n/)) {
+  // Models return bullets with several markers (-, *, •), sometimes several on
+  // one line ("* A. * B."). Normalize them all to newline-prefixed "- " so the
+  // answer renders as a real list instead of a run-on paragraph.
+  const normalized = text
+    .replace(/([)\].:;!?])\s+[*•]\s+/g, "$1\n- ")
+    .replace(/^\s*[*•]\s+/gm, "- ");
+
+  for (const rawLine of normalized.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) {
       flushParagraph();
@@ -2592,8 +2934,8 @@ function useElapsedSeconds(active: boolean) {
 
 function aiProgressDetail(settings: ModelSettings, elapsedSeconds: number) {
   if (settings.provider === "ollama") {
-    if (elapsedSeconds >= 35) {
-      return `Still waiting on local Ollama; this request times out at 45s. Stop is available, and if this repeats try ${RECOMMENDED_SMALL_OLLAMA_MODEL}.`;
+    if (elapsedSeconds >= 70) {
+      return `Still waiting on local Ollama; this request times out at 90s. Stop is available, and if this repeats try ${RECOMMENDED_SMALL_OLLAMA_MODEL} or a smaller model.`;
     }
     if (elapsedSeconds >= 20) {
       return "Still waiting on local Ollama CPU inference. Code stays on this machine, and you can stop the request without losing the graph answer path.";
@@ -2679,15 +3021,18 @@ function LineageImpactPanel({
 
   return (
     <section className="lineage-card">
-      <div className="relationship-title">Depends on / Used by</div>
+      <div className="relationship-title">Dependencies</div>
       <div className="lineage-focus">
         <span className="swatch" style={{ background: nodeColor(node.type) }} />
         <strong>{node.name}</strong>
         <small>{nodeTypeLabel(node.type)}</small>
       </div>
+      <p className="relationship-help">
+        How {node.name} connects. Click a symbol to focus it on the map; click a <code>file:line</code> to open the code.
+      </p>
       <RelationshipList
-        title={node.type === "data-item" ? "Flows To" : "Depends On"}
-        empty="No outgoing dependencies."
+        title={node.type === "data-item" ? "Flows to" : "Uses / calls / reads"}
+        empty="Nothing outgoing recorded."
         edges={relationships.dependencies}
         graph={graph}
         selectedNodeId={node.id}
@@ -2696,8 +3041,8 @@ function LineageImpactPanel({
         onOpenEdge={onOpenEdge}
       />
       <RelationshipList
-        title={node.type === "data-item" ? "Defined / Used By" : "Used By"}
-        empty="No incoming dependents."
+        title={node.type === "data-item" ? "Defined / used by" : "Used by"}
+        empty="Nothing points back at this yet."
         edges={relationships.dependents}
         graph={graph}
         selectedNodeId={node.id}
@@ -2706,7 +3051,7 @@ function LineageImpactPanel({
         onOpenEdge={onOpenEdge}
       />
       <RelationshipList
-        title="Data flow / runtime links"
+        title="Data flow & runtime links"
         empty="No parsed data-flow or runtime links for this item."
         edges={relationships.lineage}
         graph={graph}
@@ -2832,50 +3177,6 @@ function RelationshipDetails({
         <ParseErrorSummary graph={graph} />
       ) : (
         <p>{graph ? "Select a relationship to see its cited source line." : "Open a folder to inspect relationships."}</p>
-      )}
-    </section>
-  );
-}
-
-function SourceInspectorPanel({
-  node,
-  snippet,
-  loading,
-  sourceFocus,
-  onViewSource,
-}: {
-  node: GraphNode | null;
-  snippet: SourceSnippet | null;
-  loading: boolean;
-  sourceFocus: SourceFocus | null;
-  onViewSource: () => void;
-}) {
-  const line = snippet?.highlightLine ?? node?.lines?.[0];
-  return (
-    <section className="source-inspector-card">
-      <div className="relationship-title">Source</div>
-      {node?.file ? (
-        <>
-          <div className="source-inspector-meta">
-            <span>File</span>
-            <strong>{snippet?.file ?? node.file}</strong>
-            <span>Focus</span>
-            <strong>{line ? `line ${line}` : "Source line unavailable"}</strong>
-          </div>
-          <p>
-            The source viewer is the panel above. Citations from Overview, Ask, and Dependencies keep this viewer highlighted.
-          </p>
-          {sourceFocus ? (
-            <div className="source-focus-note" role="status">
-              Focused citation: {sourceFocus.file}:{sourceFocus.line}
-            </div>
-          ) : null}
-          <button type="button" onClick={onViewSource} disabled={loading}>
-            {loading ? "Loading source" : "Focus source viewer"}
-          </button>
-        </>
-      ) : (
-        <p>{node ? "This selected item has no local source file." : "Select a codebase item to view source."}</p>
       )}
     </section>
   );
@@ -3074,10 +3375,16 @@ function normalizeModelSettings(value: unknown): ModelSettings {
   return {
     provider,
     model: typeof raw.model === "string" && raw.model.trim() ? raw.model : DEFAULT_MODELS[provider],
+    embeddingModel:
+      provider === "ollama"
+        ? typeof raw.embeddingModel === "string" && raw.embeddingModel.trim()
+          ? raw.embeddingModel
+          : DEFAULT_MODEL_SETTINGS.embeddingModel
+        : "",
     baseUrl:
       provider === "ollama"
         ? typeof raw.baseUrl === "string" && raw.baseUrl.trim()
-          ? raw.baseUrl
+          ? displayOllamaBaseUrl(raw.baseUrl)
           : DEFAULT_MODEL_SETTINGS.baseUrl
         : "",
     privacyMode: isCloudProvider(provider) ? "cloud" : "local",
@@ -3086,6 +3393,12 @@ function normalizeModelSettings(value: unknown): ModelSettings {
         ? raw.rosettaLanguage
         : DEFAULT_MODEL_SETTINGS.rosettaLanguage,
   };
+}
+
+// Settings display and tooling use the bare Ollama origin; the "/api" path is
+// an internal detail appended by normalizeOllamaBaseUrl at request time.
+function displayOllamaBaseUrl(baseUrl: string) {
+  return baseUrl.trim().replace(/\/+$/, "").replace(/\/api$/, "") || DEFAULT_MODEL_SETTINGS.baseUrl;
 }
 
 function normalizeSavedScanSettings(value: unknown): ScanSettings {
@@ -3183,8 +3496,10 @@ async function readSourceSnippet(
 
   const text = await fetchSourceText(sourceBase, file);
   const lines = text.split(/\r?\n/);
-  const startLine = Math.max(1, line - 6);
-  const endLine = Math.min(lines.length, line + 8);
+  // Generous window so the center Source view reads like a file (scrollable),
+  // not a keyhole, while keeping the cited line near the top.
+  const startLine = Math.max(1, line - 12);
+  const endLine = Math.min(lines.length, line + 60);
   return {
     file,
     startLine,
@@ -3277,7 +3592,7 @@ function fetchSourceBundle(sourceBase: string) {
 function friendlyModelError(err: unknown, settings: ModelSettings) {
   const message = err instanceof Error ? err.message : String(err);
   if (message === "Failed to fetch" && settings.provider === "ollama") {
-    return `Could not reach Ollama at ${settings.baseUrl}. Start Ollama, check the host, or switch providers.`;
+    return `Could not reach Ollama at ${settings.baseUrl}. If Ollama is installed, start it with: ollama serve. Otherwise check the host or switch providers.`;
   }
   if (message === "Failed to fetch") {
     return `Could not reach ${PROVIDER_LABELS[settings.provider]}. Check the provider settings and try again.`;
@@ -3294,17 +3609,43 @@ function bulkSummaryProgressLabel(done: number, total: number, fallbackCount: nu
   return fallbackCount ? `${progress} (${fallbackCount} graph fallback${fallbackCount === 1 ? "" : "s"})` : progress;
 }
 
-function prioritizedOllamaModels(models: string[], currentModel: string) {
-  const priority = (model: string) => {
-    if (isSameOllamaModel(model, currentModel)) return 0;
-    if (isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL)) return 1;
-    return 2;
-  };
-  return [...models].sort((left, right) => priority(left) - priority(right));
+function readLayoutFlag(key: string, fallback: boolean) {
+  try {
+    const value = window.localStorage.getItem(key);
+    return value == null ? fallback : value === "true";
+  } catch {
+    return fallback;
+  }
+}
+
+function readLayoutNumber(key: string, fallback: number, min: number, max: number) {
+  try {
+    const value = Number(window.localStorage.getItem(key));
+    return Number.isFinite(value) && value >= min && value <= max ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Keep the inspector width within bounds that leave the center workspace usable,
+// so a persisted or dragged width can never cover the map.
+function clampRightWidth(width: number, railCollapsed: boolean) {
+  if (typeof window === "undefined") return width;
+  const railWidth = railCollapsed ? 8 : 260;
+  const maxWidth = Math.max(360, window.innerWidth - railWidth - 520);
+  return Math.min(maxWidth, Math.max(320, width));
+}
+
+function sourceFilePriority(node: GraphNode) {
+  if (node.type === "program") return 0;
+  if (node.type === "copybook") return 1;
+  if (node.type === "jcl-job") return 2;
+  if (node.type === "jcl-step") return 3;
+  return 4;
 }
 
 function semanticEmbeddingModelKey(settings: ModelSettings) {
-  return `${settings.provider}|${settings.baseUrl}|${settings.model}`;
+  return `${settings.provider}|${settings.baseUrl}|${settings.embeddingModel || settings.model}`;
 }
 
 function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): Pick<ChatAnswer, "text" | "citations"> {
@@ -3567,10 +3908,10 @@ function selectedNodeOverviewQuestion(node: GraphNode) {
 }
 
 function statusLabel(status: Status) {
-  if (status === "running") return "Indexing";
-  if (status === "ready") return "Graph ready";
+  if (status === "running") return "Scanning…";
+  if (status === "ready") return "Ready";
   if (status === "error") return "Needs attention";
-  return "Idle";
+  return "No codebase loaded";
 }
 
 function scanProgressLabel(progress: AnalysisProgress | null) {

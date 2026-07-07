@@ -1,5 +1,33 @@
 # V1 Readiness Audit
 
+Date: 2026-07-06 (updated). Original audit: 2026-07-01.
+
+## 2026-07-06 update: fresh-clone integrity
+
+A build-guide review pass fixed two clean-clone blockers and one Tauri test bug:
+
+- `src-tauri/binaries/` is now a tracked resource path (via `.gitkeep`), so
+  `npm run tauri dev`, `cargo test`, and `npm run m6:verify` no longer fail with
+  `resource path 'binaries' doesn't exist` on a fresh checkout.
+- `public/m6-bakeoff-graph.json` is committed as a demo asset, so the browser
+  `Open Sample` action works without first running `npm run m6:fixture-graph`.
+- The `write_export_files` Tauri test now compares canonicalized paths (macOS
+  `/var` -> `/private/var`), so `cargo test` passes on macOS as well as Linux.
+
+`npm run m6:verify` now completes end-to-end from a clean clone (23 checks
+PASS). Evidence claims below that cite `m6:verify` are therefore reproducible
+from a fresh checkout, which was not true in the original audit.
+
+Local AI wiring was also hardened: a dedicated embedding model (default
+`nomic-embed-text`) is now separate from the generation model; local Ollama uses
+the chat API (so thinking-capable models' reasoning stays out of cited answers);
+readiness/`ollama:check` probe generation and embeddings separately; and
+semantic-retrieval failure surfaces a visible note instead of degrading
+silently. See [tech-debt.md](tech-debt.md) for the remaining local-AI work
+(streaming, a guided readiness stepper).
+
+## Original audit
+
 Date: 2026-07-01
 
 ## Scope
@@ -73,7 +101,7 @@ Not claimed yet:
 | FR-27 keychain secrets | Tauri tests reject secret-like app settings; cloud keys are read through OS keychain commands. | Evidenced |
 | FR-28 privacy indicator/local mode | Top-bar mode indicator, local Ollama URL guard, and model privacy smoke cover local/cloud mode invariants. | Evidenced |
 | FR-29 token/cost estimate | Settings shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
-| FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. Model-routed Ask persists graph-derived semantic chunk vectors in local browser storage and reuses them on later searches. | Evidenced |
+| FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. A dedicated embedding model (default `nomic-embed-text`) is used, never the generation model as a silent fallback. Model-routed Ask persists graph-derived semantic chunk vectors in local browser storage and reuses them on later searches; when embeddings are unavailable, Ask shows a visible "semantic search unavailable" note. | Evidenced |
 | FR-31 bundled sample | `mini-bank` sample is bundled and validated in sample smoke and packaged smoke. | Evidenced |
 | FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Overview/Ask after the map is loaded. | Evidenced/Should |
 
@@ -86,3 +114,10 @@ Not claimed yet:
 - The production analyzer remains the lightweight Rust sidecar. ProLeap and
   mapa are validated candidates, but not production dependencies.
 - Signed Windows release packaging remains unvalidated in this checkout.
+- The "UI contract" and "accessibility" smokes are static source/CSS assertions,
+  not driven-browser tests: they check that specific markup and style rules
+  exist, not that the running app behaves. Treat rows evidenced only by those
+  smokes as contract-level, not runtime-level, coverage. A driven-browser smoke
+  for the core loop is tracked in [tech-debt.md](tech-debt.md).
+- The desktop GUI has not been launched on macOS in this checkout; desktop
+  verification is via `cargo test` and packaged-Linux smokes only.

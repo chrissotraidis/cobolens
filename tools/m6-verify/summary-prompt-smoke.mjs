@@ -8,7 +8,7 @@ const summariesSource = await readFile(resolve(repoRoot, "src", "model", "summar
 
 const checks = {
   "local summary budget is smaller than cloud budget":
-    summariesSource.includes("const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 260") &&
+    summariesSource.includes("const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 384") &&
     summariesSource.includes("const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420"),
   "summary generation uses provider-aware budget": summariesSource.includes("maxOutputTokens: summaryMaxOutputTokens(settings)"),
   "Ollama summary prompt asks for brief answers": summariesSource.includes("keep local Ollama summaries brief so they return quickly"),

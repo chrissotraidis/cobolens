@@ -129,7 +129,10 @@ try {
     "semantic context includes matched node": context.focusNodes.some((node) => node.name === "REPORT-RECORD"),
     "semantic prompt includes vector match section": context.prompt.includes("Semantic vector matches:") && context.prompt.includes("REPORT-RECORD is written by LINEAGE"),
     "semantic citations include matched node source": context.citations.some((citation) => citation.file === "copybook/REPORT.cpy" && citation.nodeId === reportRecord.id),
-    "semantic retrieval degrades when embeddings fail": fallbackContext.prompt.includes("Semantic vector matches:\n- None"),
+    "semantic retrieval degrades visibly when embeddings fail":
+      fallbackContext.prompt.includes("Semantic vector matches:\n- Unavailable (embedding model unavailable)") &&
+      fallbackContext.semanticError === "embedding model unavailable" &&
+      fallbackContext.focusNodes.length > 0,
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {

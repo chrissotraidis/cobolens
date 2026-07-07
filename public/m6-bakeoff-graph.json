@@ -1,0 +1,582 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "scannedAt": "unix:1783345792",
+    "dialectGuess": "IBM Enterprise COBOL-like + JCL (EXEC CICS, EXEC SQL, copybooks, fixed-format)",
+    "fileCount": 4,
+    "parsedFileCount": 4,
+    "parseErrors": []
+  },
+  "nodes": [
+    {
+      "id": "cics:LINEAGE/40:RATEAPI",
+      "type": "cics-command",
+      "name": "LINK RATEAPI",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "copy:CUSTOMER",
+      "type": "copybook",
+      "name": "CUSTOMER",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        1,
+        6
+      ]
+    },
+    {
+      "id": "copy:REPORT",
+      "type": "copybook",
+      "name": "REPORT",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        1,
+        6
+      ]
+    },
+    {
+      "id": "data:CUSTOMER-BALANCE",
+      "type": "data-item",
+      "name": "CUSTOMER-BALANCE",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "data:CUSTOMER-ID",
+      "type": "data-item",
+      "name": "CUSTOMER-ID",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "data:CUSTOMER-NAME",
+      "type": "data-item",
+      "name": "CUSTOMER-NAME",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "data:CUSTOMER-RECORD",
+      "type": "data-item",
+      "name": "CUSTOMER-RECORD",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "data:CUSTOMER-STATUS",
+      "type": "data-item",
+      "name": "CUSTOMER-STATUS",
+      "file": "copybook/CUSTOMER.cpy",
+      "lines": [
+        5,
+        5
+      ]
+    },
+    {
+      "id": "data:REPORT-AMOUNT",
+      "type": "data-item",
+      "name": "REPORT-AMOUNT",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "data:REPORT-ID",
+      "type": "data-item",
+      "name": "REPORT-ID",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "data:REPORT-NAME",
+      "type": "data-item",
+      "name": "REPORT-NAME",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "data:REPORT-RATE",
+      "type": "data-item",
+      "name": "REPORT-RATE",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        5,
+        5
+      ]
+    },
+    {
+      "id": "data:REPORT-RECORD",
+      "type": "data-item",
+      "name": "REPORT-RECORD",
+      "file": "copybook/REPORT.cpy",
+      "lines": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "data:SQLCODE",
+      "type": "data-item",
+      "name": "SQLCODE",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        16,
+        16
+      ]
+    },
+    {
+      "id": "data:WS-RATE",
+      "type": "data-item",
+      "name": "WS-RATE",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        15,
+        15
+      ]
+    },
+    {
+      "id": "dataset:BANK.CUSTOMER.MASTER",
+      "type": "dataset",
+      "name": "BANK.CUSTOMER.MASTER",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "dataset:BANK.REPORT.DAILY",
+      "type": "dataset",
+      "name": "BANK.REPORT.DAILY",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "dataset:CUSTOMER-FILE",
+      "type": "dataset",
+      "name": "CUSTOMER-FILE",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        6,
+        6
+      ]
+    },
+    {
+      "id": "dataset:REPORT-FILE",
+      "type": "dataset",
+      "name": "REPORT-FILE",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        7,
+        7
+      ]
+    },
+    {
+      "id": "db2:CUSTOMER_TABLE",
+      "type": "db2-table",
+      "name": "CUSTOMER_TABLE",
+      "external": true
+    },
+    {
+      "id": "dd:CUSTIN",
+      "type": "jcl-dd",
+      "name": "CUSTIN",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "dd:RPTFILE",
+      "type": "jcl-dd",
+      "name": "RPTFILE",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "job:DAILYLN",
+      "type": "jcl-job",
+      "name": "DAILYLN",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        1,
+        1
+      ],
+      "steps": [
+        "step:DAILYLN/STEP010"
+      ]
+    },
+    {
+      "id": "para:LINEAGE/BUILD-REPORT",
+      "type": "paragraph",
+      "name": "BUILD-REPORT",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        25,
+        25
+      ]
+    },
+    {
+      "id": "prog:LINEAGE",
+      "type": "program",
+      "name": "LINEAGE",
+      "file": "src/LINEAGE.cbl",
+      "lines": [
+        1,
+        47
+      ]
+    },
+    {
+      "id": "prog:RATEAPI",
+      "type": "program",
+      "name": "RATEAPI",
+      "external": true
+    },
+    {
+      "id": "prog:RATEAUDIT",
+      "type": "program",
+      "name": "RATEAUDIT",
+      "external": true
+    },
+    {
+      "id": "step:DAILYLN/STEP010",
+      "type": "jcl-step",
+      "name": "STEP010",
+      "file": "jcl/DAILYLN.jcl",
+      "lines": [
+        2,
+        2
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "cics:LINEAGE/40:RATEAPI",
+      "to": "prog:RATEAPI",
+      "type": "links",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 40
+      }
+    },
+    {
+      "from": "copy:CUSTOMER",
+      "to": "data:CUSTOMER-BALANCE",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/CUSTOMER.cpy",
+        "line": 4
+      }
+    },
+    {
+      "from": "copy:CUSTOMER",
+      "to": "data:CUSTOMER-ID",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/CUSTOMER.cpy",
+        "line": 2
+      }
+    },
+    {
+      "from": "copy:CUSTOMER",
+      "to": "data:CUSTOMER-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/CUSTOMER.cpy",
+        "line": 3
+      }
+    },
+    {
+      "from": "copy:CUSTOMER",
+      "to": "data:CUSTOMER-RECORD",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/CUSTOMER.cpy",
+        "line": 1
+      }
+    },
+    {
+      "from": "copy:CUSTOMER",
+      "to": "data:CUSTOMER-STATUS",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/CUSTOMER.cpy",
+        "line": 5
+      }
+    },
+    {
+      "from": "copy:REPORT",
+      "to": "data:REPORT-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/REPORT.cpy",
+        "line": 4
+      }
+    },
+    {
+      "from": "copy:REPORT",
+      "to": "data:REPORT-ID",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/REPORT.cpy",
+        "line": 2
+      }
+    },
+    {
+      "from": "copy:REPORT",
+      "to": "data:REPORT-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/REPORT.cpy",
+        "line": 3
+      }
+    },
+    {
+      "from": "copy:REPORT",
+      "to": "data:REPORT-RATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/REPORT.cpy",
+        "line": 5
+      }
+    },
+    {
+      "from": "copy:REPORT",
+      "to": "data:REPORT-RECORD",
+      "type": "DEFINES",
+      "site": {
+        "file": "copybook/REPORT.cpy",
+        "line": 1
+      }
+    },
+    {
+      "from": "data:CUSTOMER-BALANCE",
+      "to": "data:REPORT-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 33
+      }
+    },
+    {
+      "from": "data:CUSTOMER-ID",
+      "to": "data:REPORT-ID",
+      "type": "moves-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 31
+      }
+    },
+    {
+      "from": "data:CUSTOMER-NAME",
+      "to": "data:REPORT-NAME",
+      "type": "moves-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 32
+      }
+    },
+    {
+      "from": "data:WS-RATE",
+      "to": "data:REPORT-RATE",
+      "type": "moves-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 44
+      }
+    },
+    {
+      "from": "dataset:CUSTOMER-FILE",
+      "to": "dd:CUSTIN",
+      "type": "assigned-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 6
+      }
+    },
+    {
+      "from": "dataset:REPORT-FILE",
+      "to": "dd:RPTFILE",
+      "type": "assigned-to",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 7
+      }
+    },
+    {
+      "from": "dd:CUSTIN",
+      "to": "dataset:BANK.CUSTOMER.MASTER",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 3
+      }
+    },
+    {
+      "from": "dd:RPTFILE",
+      "to": "dataset:BANK.REPORT.DAILY",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 4
+      }
+    },
+    {
+      "from": "job:DAILYLN",
+      "to": "step:DAILYLN/STEP010",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 2
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "cics:LINEAGE/40:RATEAPI",
+      "type": "executes",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 40
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "copy:CUSTOMER",
+      "type": "COPIES",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 11
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "copy:REPORT",
+      "type": "COPIES",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 13
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "data:REPORT-RECORD",
+      "type": "writes",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 26
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "data:SQLCODE",
+      "type": "DEFINES",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 16
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "data:WS-RATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 15
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "dataset:CUSTOMER-FILE",
+      "type": "reads",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 21
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "db2:CUSTOMER_TABLE",
+      "type": "queries",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 37
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "para:LINEAGE/BUILD-REPORT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 25
+      }
+    },
+    {
+      "from": "prog:LINEAGE",
+      "to": "prog:RATEAUDIT",
+      "type": "CALLS",
+      "site": {
+        "file": "src/LINEAGE.cbl",
+        "line": 43
+      }
+    },
+    {
+      "from": "step:DAILYLN/STEP010",
+      "to": "dd:CUSTIN",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 3
+      }
+    },
+    {
+      "from": "step:DAILYLN/STEP010",
+      "to": "dd:RPTFILE",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 4
+      }
+    },
+    {
+      "from": "step:DAILYLN/STEP010",
+      "to": "prog:LINEAGE",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/DAILYLN.jcl",
+        "line": 2
+      }
+    }
+  ]
+}

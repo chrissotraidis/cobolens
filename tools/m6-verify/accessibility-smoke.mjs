@@ -18,16 +18,14 @@ const checks = {
   "skip links target the major work areas": includesAll(appSource, [
     'href="#navigator-panel"',
     'href="#dependency-graph"',
-    'href="#code-panel"',
     'href="#inspector-panel"',
     'id="navigator-panel"',
     'id="dependency-graph"',
-    'id="code-panel"',
     'id="inspector-panel"',
   ]),
   "skip targets are programmatically focusable landmarks": includesAll(appSource, [
     'aria-label="Navigator" tabIndex={-1}',
-    'aria-label="Dependency graph"',
+    'aria-label="Workspace"',
     'aria-label="Source code" tabIndex={-1}',
     'aria-label="Inspector" tabIndex={-1}',
   ]),
@@ -54,7 +52,7 @@ const checks = {
   ]),
   "graph node list can be toggled with button state": includesAll(appSource, [
     'aria-pressed={showGraphNodeList}',
-    'aria-label={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}',
+    'aria-label={showGraphNodeList ? "Hide the list of visible nodes" : "List the nodes visible on the map"}',
     'className="toggle-button"',
   ]),
   "Ask and citation controls remain named": includesAll(appSource, [

@@ -27,8 +27,12 @@ const checks = {
     prepScript.includes('process.platform === "win32" ? "cobolens-analyze.exe" : "cobolens-analyze"') &&
     prepScript.includes('"target", "release", exeName') &&
     prepScript.includes('"src-tauri", "binaries"') &&
-    prepScript.includes("await rm(resourceDir, { recursive: true, force: true })"),
-  "generated resource directory is ignored": gitignore.includes("src-tauri/binaries/"),
+    prepScript.includes("await rm(target, { force: true })"),
+  // The directory itself stays tracked (.gitkeep) so Tauri's resource path
+  // exists on a fresh clone; only the built binaries are ignored.
+  "generated resource binaries are ignored but the directory is tracked":
+    gitignore.includes("src-tauri/binaries/*") &&
+    gitignore.includes("!src-tauri/binaries/.gitkeep"),
   "Tauri runtime resolves packaged binaries by platform":
     tauriLib.includes('Path::new("binaries").join(exe_name)') &&
     tauriLib.includes('"cobolens-analyze.exe"') &&

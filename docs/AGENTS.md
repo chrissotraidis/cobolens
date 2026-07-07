@@ -64,6 +64,11 @@ If docs conflict, prefer this order:
 - AI explains retrieved graph/source context. It must not invent nodes, edges, files, or structure.
 - Citations must point to exact source file/line evidence where possible.
 - Local mode must stay honest: inference and embeddings are restricted to localhost Ollama paths.
+- Generation and embeddings are separate models. The dedicated embedding model
+  (default `nomic-embed-text`) must never be silently replaced by the generation
+  model, and semantic-retrieval failure must surface visibly, not degrade silently.
+- Local Ollama uses the chat API (`ollama(model)`), not the raw completion API,
+  so thinking-capable models' reasoning stays out of the cited answer text.
 - Cloud keys belong in the OS keychain, never plaintext config or logs.
 - Missing AI must not block graph navigation, source inspection, graph Ask, or export.
 

@@ -14,7 +14,11 @@ export function createLanguageModel(settings: ModelSettings, apiKey?: string): L
   if (settings.provider === "ollama") {
     assertLocalOllamaUrl(settings.baseUrl);
     const ollama = createOllama({ baseURL: normalizeOllamaBaseUrl(settings.baseUrl) });
-    return ollama.completion(settings.model);
+    // Use the chat API (not the raw completion API) so the model template
+    // applies. The provider defaults think:false, so reasoning models answer
+    // directly instead of spending the whole token budget on hidden
+    // chain-of-thought and returning empty answer text.
+    return ollama(settings.model);
   }
 
   if (!apiKey) {

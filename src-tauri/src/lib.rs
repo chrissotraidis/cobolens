@@ -302,8 +302,10 @@ fn read_source_snippet(
     let content = read_source_text(&path, encoding.as_deref().unwrap_or("utf8"))?;
     let lines: Vec<&str> = content.lines().collect();
     let target = line.max(1);
-    let start = target.saturating_sub(8).max(1);
-    let end = (target + 8).min(lines.len().max(1));
+    // Generous window so the center Source view reads like a file (scrollable),
+    // not a keyhole, while keeping the cited line near the top.
+    let start = target.saturating_sub(12).max(1);
+    let end = (target + 60).min(lines.len().max(1));
     let snippet_lines: Vec<Value> = (start..=end)
         .map(|number| {
             json!({
@@ -960,7 +962,12 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(target, output_dir.to_string_lossy());
+        // write_export_files canonicalizes the destination (macOS resolves
+        // /var -> /private/var), so compare canonical paths.
+        assert_eq!(
+            target,
+            output_dir.canonicalize().unwrap().to_string_lossy()
+        );
         assert_eq!(
             fs::read_to_string(output_dir.join("cobolens-lineage.md")).unwrap(),
             "# Cobolens\n"

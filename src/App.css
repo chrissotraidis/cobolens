@@ -148,6 +148,7 @@ select:focus {
 
 .left-pane:focus-visible,
 .graph-pane:focus-visible,
+.center-pane:focus-visible,
 .code-panel:focus-visible,
 .chat-panel:focus-visible {
   outline: 2px solid rgba(102, 194, 165, 0.88);
@@ -174,8 +175,34 @@ select:focus {
 }
 
 .brand {
-  gap: 10px;
+  gap: 9px;
   font-weight: 700;
+}
+
+/* Quiet ghost icon button (IDE-style), not a boxed chip. */
+.rail-toggle {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #7f8b97;
+  background: transparent;
+  flex: 0 0 auto;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+
+.rail-toggle:hover {
+  color: #d8eee8;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rail-toggle[aria-pressed="true"] {
+  color: #66c2a5;
 }
 
 .brand-mark {
@@ -184,6 +211,7 @@ select:focus {
   border: 2px solid #5aa7a1;
   border-radius: 50%;
   box-shadow: inset 0 0 0 4px #11151a;
+  flex: 0 0 auto;
 }
 
 .global-search {
@@ -251,6 +279,7 @@ select:focus {
 .topbar-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
   justify-content: flex-end;
 }
 
@@ -258,6 +287,27 @@ select:focus {
   height: 30px;
   padding: 0 10px;
   white-space: nowrap;
+}
+
+/* Icon button: override the generic topbar-button padding so the 17px glyph
+   isn't crammed into an 8px content box. Square, centered, no inherited padding. */
+.topbar-actions .rail-toggle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+/* The "open/import" entry point, a quiet accent to pair with Export. */
+.topbar-open {
+  color: #d8f3ea !important;
+  border-color: rgba(90, 167, 161, 0.45) !important;
+  background: rgba(90, 167, 161, 0.14) !important;
+  font-weight: 600;
+}
+
+.topbar-open:hover {
+  border-color: rgba(90, 167, 161, 0.7) !important;
+  background: rgba(90, 167, 161, 0.2) !important;
 }
 
 .settings-backdrop {
@@ -317,14 +367,66 @@ select:focus {
 
 .shell {
   display: grid;
-  grid-template-columns: 248px minmax(340px, 1fr) minmax(420px, 38vw);
+  /* navigator | workspace (map/source, primary) | conversation (drag-resizable) */
+  grid-template-columns: 248px minmax(360px, 1fr) var(--right-w, 460px);
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
 .shell.is-ask-focused {
-  grid-template-columns: 248px minmax(340px, 1fr) minmax(420px, 38vw);
+  grid-template-columns: 248px minmax(360px, 1fr) var(--right-w, 460px);
+}
+
+/* Collapsible navigator (IDE-style): reclaim its column for the workspace. */
+.shell.rail-collapsed {
+  grid-template-columns: minmax(360px, 1fr) var(--right-w, 460px);
+}
+
+.shell.rail-collapsed .left-pane {
+  display: none;
+}
+
+/* Collapsible inspector: reclaim its column too. */
+.shell.inspector-collapsed {
+  grid-template-columns: 248px minmax(360px, 1fr);
+}
+
+.shell.inspector-collapsed.rail-collapsed {
+  grid-template-columns: minmax(360px, 1fr);
+}
+
+.shell.inspector-collapsed .right-pane {
+  display: none;
+}
+
+/* Drag handle on the workspace/inspector boundary. */
+.pane-divider {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 7;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.pane-divider::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.pane-divider:hover::after,
+.pane-divider:active::after {
+  background: #5aa7a1;
+  box-shadow: 0 0 0 1px rgba(90, 167, 161, 0.4);
 }
 
 .left-pane,
@@ -378,14 +480,19 @@ select:focus {
   opacity: 1;
 }
 
+/* A caption, not a control: no border/fill so it never reads as a button. */
 .desktop-preview-note {
-  padding: 8px 9px;
-  border: 1px solid rgba(125, 137, 150, 0.18);
-  border-radius: 6px;
-  color: #8c98a5;
-  background: rgba(125, 137, 150, 0.07);
+  padding: 2px 0;
+  color: #6f7a86;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.4;
+}
+
+.graph-empty-note {
+  margin: 2px 0 0;
+  color: #6f7a86;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .first-run-guide {
@@ -721,6 +828,25 @@ h2,
   background: rgba(125, 137, 150, 0.06);
 }
 
+.model-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.model-picker-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  color: #7d8996;
+  font-size: 11.5px;
+}
+
+.model-picker-meta .link-action {
+  flex: 0 0 auto;
+  height: auto;
+}
+
 .model-install-hint {
   display: grid;
   gap: 5px;
@@ -789,8 +915,30 @@ h2,
   color: #e8d796;
 }
 
-.export-status {
-  padding-top: 2px;
+.export-toast {
+  position: absolute;
+  top: 54px;
+  right: 16px;
+  z-index: 30;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 9px 12px;
+  border: 1px solid rgba(90, 167, 161, 0.5);
+  border-radius: 8px;
+  color: #d8eee8;
+  background: #14211f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.export-toast button {
+  flex-shrink: 0;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11.5px;
 }
 
 .ai-usage {
@@ -928,6 +1076,238 @@ h2,
   inset: 0;
 }
 
+/* ---- Center workspace: Map / Source toggle ---- */
+.center-pane {
+  display: grid;
+  grid-template-rows: 46px minmax(0, 1fr);
+  min-width: 0;
+  background: #0b0d10;
+}
+
+.center-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid #20262e;
+  background: rgba(13, 16, 20, 0.9);
+  /* Never let toolbar content spill past the (possibly narrow) center pane. */
+  overflow: hidden;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #262f39;
+  border-radius: 8px;
+  background: #0e1216;
+  flex: 0 0 auto;
+}
+
+.view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  min-width: 74px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 6px;
+  color: #9aa6b2;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.view-toggle button svg {
+  opacity: 0.75;
+}
+
+.view-toggle button.is-active {
+  color: #08130f;
+  background: #66c2a5;
+}
+
+.view-toggle button.is-active svg {
+  opacity: 1;
+}
+
+/* Source mode reads as "code": a warm-neutral toolbar accent distinct from the
+   map's cool grid, so you always know which view you're in. */
+.center-pane.center-source .center-toolbar {
+  box-shadow: inset 0 -2px 0 #5aa7a1;
+}
+
+.center-toolbar-meta .source-meta-symbol {
+  color: #e7ebef;
+  font-size: 12.5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* File switcher in the Source toolbar: jump to any file in the codebase. */
+.source-file-picker {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.source-file-picker select {
+  max-width: 340px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid #242d36;
+  border-radius: 6px;
+  color: #b7c2cd;
+  background: #12171d;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.source-file-picker select:hover {
+  border-color: rgba(90, 167, 161, 0.5);
+  color: #dbe3ea;
+}
+
+.center-toolbar-meta .swatch {
+  flex: 0 0 auto;
+}
+
+.inspector-title.inspector-title-name,
+.inspector-title-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  color: #e7ebef;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-title-name .swatch {
+  flex: 0 0 auto;
+}
+
+.view-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.center-toolbar-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.center-toolbar-meta small,
+.center-toolbar-meta .source-meta-file {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.center-toolbar-meta small {
+  color: #7d8996;
+  font-size: 11.5px;
+}
+
+.center-toolbar-meta .source-meta-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #b7c2cd;
+  font-size: 12px;
+}
+
+.center-toolbar-meta strong {
+  color: #dbe3ea;
+  font-size: 11.5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.center-toolbar .graph-toolbar-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.center-toolbar .graph-toolbar-actions button {
+  height: 26px;
+  min-width: 0;
+  padding: 0 11px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.center-body {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.center-pane.center-map .center-body {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    #0b0d10;
+  background-size: 32px 32px;
+}
+
+.center-body > .graph-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Source as the primary center reading surface: full height, scrollable. */
+.center-source-view {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: auto;
+  background: #0b0d10;
+}
+
+.center-source-view .source-view {
+  min-height: 100%;
+  grid-template-rows: auto;
+}
+
+/* The center toolbar already shows the file + line, so the in-view source
+   header is redundant here — hide it (removes the duplicate and any overlap). */
+.center-source-view .source-header {
+  display: none;
+}
+
+.center-source-view .source-focus-note {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  min-width: 100%;
+  background: #0d1a17;
+}
+
+.center-source-view .source-lines {
+  padding: 8px 0 24px;
+}
+
+.source-empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 24px;
+  color: #9aa6b2;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 52ch;
+}
+
 .graph-empty {
   position: absolute;
   inset: 0;
@@ -991,17 +1371,22 @@ h2,
 
 .graph-minimap {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
-  display: grid;
-  gap: 2px;
-  min-width: 128px;
-  padding: 9px 10px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
   border: 1px solid #27303a;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #9aa6b2;
-  background: rgba(17, 21, 26, 0.84);
-  font-size: 12px;
+  background: rgba(17, 21, 26, 0.92);
+  font-size: 11.5px;
+  /* Compact overlay pill: never blocks clicks on nodes underneath it. */
+  pointer-events: none;
+}
+
+.graph-minimap span {
+  white-space: nowrap;
 }
 
 .graph-node-list {
@@ -1068,14 +1453,17 @@ h2,
 }
 
 .right-pane {
+  /* Conversation/inspector column: the whole height is the inspector now
+     (source moved to the center workspace), so chat/Ask can see far more. */
+  position: relative;
   display: grid;
-  grid-template-rows: minmax(190px, 0.68fr) minmax(390px, 1.32fr);
+  grid-template-rows: minmax(0, 1fr);
   border-left: 1px solid #20262e;
   overflow: hidden;
 }
 
 .right-pane.is-ask-focused {
-  grid-template-rows: minmax(190px, 0.68fr) minmax(390px, 1.32fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .code-panel,
@@ -1085,8 +1473,10 @@ h2,
   min-height: 0;
 }
 
-.code-panel {
-  border-bottom: 1px solid #20262e;
+/* Source in the center is a single scroll surface, not a fixed dock. */
+.center-source-view.code-panel {
+  display: block;
+  grid-template-rows: none;
 }
 
 .panel-title {
@@ -1216,8 +1606,10 @@ pre {
 }
 
 .inspector-tabs {
-  display: grid;
-  grid-template-columns: minmax(92px, 1fr) minmax(54px, 0.58fr) minmax(72px, 0.84fr) minmax(74px, 0.8fr);
+  /* Tabs size to their labels and wrap instead of truncating: primary control
+     labels such as "Dependencies" must never ellipsize. */
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 9px 12px;
   border-bottom: 1px solid #20262e;
@@ -1225,13 +1617,12 @@ pre {
 }
 
 .inspector-tabs button {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: inline-flex;
   gap: 5px;
   align-items: center;
-  min-width: 0;
+  flex: 0 1 auto;
   height: 30px;
-  padding: 0 6px;
+  padding: 0 9px;
   color: #9aa6b2;
   font-size: 13px;
   text-align: left;
@@ -1244,8 +1635,6 @@ pre {
 }
 
 .inspector-tabs span {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1453,22 +1842,27 @@ pre {
 
 .summary-actions button,
 .summary-meta button {
-  height: 30px;
-  padding: 0 10px;
+  height: 27px;
+  padding: 0 11px;
+  font-size: 12.5px;
 }
 
-.summary-action-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+/* Compact action row (buttons sized to their labels), not full-width slabs.
+   Higher specificity than `.summary-actions > div` which would force grid. */
+.summary-actions > .summary-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.summary-action-buttons > button:first-child:nth-last-child(2) {
-  grid-column: 1 / -1;
+.summary-action-buttons button {
+  flex: 0 0 auto;
 }
 
 .summary-wide-action {
-  grid-column: 1 / -1;
+  color: #d9fff1;
+  border-color: rgba(90, 167, 161, 0.5);
+  background: rgba(90, 167, 161, 0.14);
 }
 
 .summary-output {
@@ -1538,13 +1932,43 @@ pre {
 }
 
 .summary-guard-note {
-  padding: 8px 9px;
-  border: 1px solid rgba(229, 199, 95, 0.28);
-  border-radius: 7px;
-  color: #e8d796;
-  background: rgba(229, 199, 95, 0.08);
+  padding: 6px 9px;
+  border: 1px solid rgba(229, 199, 95, 0.22);
+  border-radius: 6px;
+  color: #cbb876;
+  background: rgba(229, 199, 95, 0.06);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.inspector-empty {
+  padding: 14px 16px;
+  color: #8d99a6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inspector-empty p {
+  max-width: 46ch;
+}
+
+/* Quiet tertiary action: AI setup must not out-shout the graph-first workflow. */
+.link-action {
+  justify-self: start;
+  height: auto;
+  padding: 0;
+  border: none;
+  color: #7fb8b0;
+  background: transparent;
   font-size: 12px;
-  line-height: 1.45;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-action:hover {
+  color: #a9d6cf;
+  background: transparent;
 }
 
 .message-text {
@@ -1694,64 +2118,104 @@ pre {
   font-size: 11px;
 }
 
-.answer-route {
-  display: grid;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid rgba(125, 137, 150, 0.2);
-  border-radius: 8px;
+/* Compact status row: a mode chip + a live status dot, detail in tooltips. */
+.chat-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgba(125, 137, 150, 0.3);
+  border-radius: 999px;
   color: #9aa6b2;
-  background: rgba(125, 137, 150, 0.07);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
 }
 
-.answer-route strong {
-  color: #e7ebef;
-  font-size: 12px;
+.chat-mode-chip.graph {
+  color: #b8f0dc;
+  border-color: rgba(90, 167, 161, 0.4);
+  background: rgba(90, 167, 161, 0.1);
 }
 
-.answer-route span {
+.chat-mode-chip.model {
+  color: #e8d796;
+  border-color: rgba(229, 199, 95, 0.4);
+  background: rgba(229, 199, 95, 0.08);
+}
+
+.ai-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8c98a5;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.ai-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6f7a86;
+  flex: 0 0 auto;
+}
+
+.ai-status.ready {
+  color: #7fe0bf;
+}
+
+.ai-status.ready .ai-status-dot {
+  background: #4fd6a6;
+  box-shadow:
+    0 0 0 3px rgba(79, 214, 166, 0.18),
+    0 0 8px 1px rgba(79, 214, 166, 0.6);
+  animation: ai-pulse 2.2s ease-in-out infinite;
+}
+
+.ai-status.error {
+  color: #ffb4a2;
+}
+
+.ai-status.error .ai-status-dot {
+  background: #fc8d62;
+}
+
+.ai-status.checking {
+  color: #e8d796;
+}
+
+.ai-status.checking .ai-status-dot {
+  background: #e8d796;
+  animation: ai-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.answer-semantic-note {
+  padding: 7px 9px;
+  border: 1px solid rgba(229, 199, 95, 0.24);
+  border-radius: 7px;
+  color: #d9cd9d;
+  background: rgba(229, 199, 95, 0.06);
   font-size: 12px;
   line-height: 1.4;
-}
-
-.answer-route.graph {
-  color: #d8eee8;
-  border-color: rgba(90, 167, 161, 0.34);
-  background: rgba(90, 167, 161, 0.11);
-}
-
-.answer-route.model {
-  color: #e8d796;
-  border-color: rgba(229, 199, 95, 0.28);
-  background: rgba(229, 199, 95, 0.08);
-}
-
-.ask-readiness {
-  padding: 8px 9px;
-  border: 1px solid rgba(125, 137, 150, 0.2);
-  border-radius: 7px;
-  color: #9aa6b2;
-  background: rgba(125, 137, 150, 0.07);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.ask-readiness.ready {
-  color: #b8f0dc;
-  border-color: rgba(102, 194, 165, 0.24);
-  background: rgba(102, 194, 165, 0.08);
-}
-
-.ask-readiness.error {
-  color: #ffb4a2;
-  border-color: rgba(252, 141, 98, 0.3);
-  background: rgba(252, 141, 98, 0.09);
-}
-
-.ask-readiness.checking {
-  color: #e8d796;
-  border-color: rgba(229, 199, 95, 0.28);
-  background: rgba(229, 199, 95, 0.08);
 }
 
 .answer-turn {
@@ -2011,23 +2475,28 @@ pre {
   font-size: 11px;
 }
 
+/* Evidence reads as a clean scannable list: what it is on the left, the exact
+   file:line on the right; quiet until hover, and each row jumps to the code. */
 .citation-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  gap: 3px;
 }
 
 .citation-list button {
   display: grid;
-  gap: 1px;
-  max-width: 100%;
-  min-height: 36px;
-  padding: 5px 8px;
-  overflow: hidden;
-  color: #b8f0dc;
-  border-color: rgba(90, 167, 161, 0.36);
-  background: rgba(90, 167, 161, 0.1);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-color: #242d36;
+  background: #12171d;
   text-align: left;
+}
+
+.citation-list button:hover {
+  border-color: rgba(90, 167, 161, 0.55);
+  background: rgba(90, 167, 161, 0.08);
 }
 
 .citation-label,
@@ -2038,14 +2507,15 @@ pre {
 }
 
 .citation-label {
-  color: #d8eee8;
-  font-size: 12px;
+  color: #dbe3ea;
+  font-size: 12.5px;
 }
 
 .citation-site {
-  color: #8fb6b0;
+  color: #82a09a;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 11px;
+  text-align: right;
 }
 
 .evidence-block {
@@ -2058,6 +2528,20 @@ pre {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.evidence-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.evidence-heading small {
+  color: #5f6b76;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .summary-meta {
@@ -2086,42 +2570,31 @@ pre {
   line-height: 1.45;
 }
 
-@media (max-width: 1280px) and (min-width: 901px) {
+@media (max-width: 1280px) and (min-width: 1025px) {
   .topbar {
     grid-template-columns: 140px minmax(210px, 1fr) minmax(130px, auto) auto auto;
     gap: 12px;
   }
 
   .shell {
-    grid-template-columns: 232px minmax(300px, 1fr) minmax(400px, 40vw);
+    grid-template-columns: 232px minmax(300px, 1fr) var(--right-w, 440px);
   }
 
   .shell.is-ask-focused {
-    grid-template-columns: 232px minmax(300px, 1fr) minmax(400px, 40vw);
-  }
-
-  .right-pane {
-    grid-template-rows: minmax(178px, 0.62fr) minmax(390px, 1.38fr);
-  }
-
-  .right-pane.is-ask-focused {
-    grid-template-rows: minmax(178px, 0.62fr) minmax(390px, 1.38fr);
-  }
-
-  .source-line {
-    min-width: 0;
-  }
-
-  .source-line-text {
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
+    grid-template-columns: 232px minmax(300px, 1fr) var(--right-w, 440px);
   }
 }
 
-@media (max-width: 900px) {
+/* Below the desktop 3-pane threshold: one clean vertical column that scrolls.
+   It leads with a prominent, usable graph (not the navigator rail), then the
+   source viewer and inspector, with the navigator/status rail last. This
+   replaces the old cramped rail-beside-graph and phone-stack layouts, which
+   were unusable in the ~700-1024px range. */
+@media (max-width: 1024px) {
   .topbar {
-    grid-template-columns: minmax(126px, auto) minmax(160px, 1fr) auto;
+    grid-template-columns: minmax(120px, auto) minmax(90px, 1fr) auto;
     gap: 10px;
+    overflow: hidden;
   }
 
   .breadcrumbs,
@@ -2129,93 +2602,69 @@ pre {
     display: none;
   }
 
-  .shell {
-    grid-template-columns: 220px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) 300px;
+  /* Reclaim space so the search and actions never overlap on narrow widths. */
+  .global-search {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .shell.is-ask-focused {
-    grid-template-columns: 220px minmax(0, 1fr);
+  .global-search > span {
+    display: none;
   }
 
-  .left-pane {
-    gap: 16px;
-    padding: 14px 12px;
+  .shell,
+  .shell.is-ask-focused,
+  .shell.rail-collapsed,
+  .shell.inspector-collapsed,
+  .shell.inspector-collapsed.rail-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    /* workspace (map/source, row 1) -> inspector/chat (row 2) -> rail (row 3).
+       Rows are definite so overflow:hidden panes cannot collapse to zero. */
+    grid-template-rows: 56vh minmax(440px, auto) auto;
+    overflow-y: auto;
   }
 
-  .graph-pane {
+  /* On one column, collapsing the inspector removes its row (no empty gap). */
+  .shell.inspector-collapsed {
+    grid-template-rows: 56vh 0 auto;
+  }
+
+  /* Horizontal resize does not apply to a single stacked column. */
+  .pane-divider {
+    display: none;
+  }
+
+  .center-pane {
+    grid-column: 1;
+    grid-row: 1;
     min-width: 0;
+    border-right: 0;
+    border-bottom: 1px solid #20262e;
   }
 
-  .right-pane {
-    grid-column: 1 / -1;
+  .right-pane,
+  .right-pane.is-ask-focused {
+    grid-column: 1;
     grid-row: 2;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
-    border-top: 1px solid #20262e;
     border-left: 0;
-  }
-
-  .code-panel {
-    border-right: 1px solid #20262e;
-    border-bottom: 0;
+    border-bottom: 1px solid #20262e;
   }
 
   .chat-panel {
     min-width: 0;
   }
 
-  .right-pane.is-ask-focused {
-    grid-template-rows: minmax(0, 1fr);
-  }
-
-  .source-line {
-    min-width: 0;
-  }
-
-  .source-line-text {
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-  }
-}
-
-@media (max-width: 760px) {
-  .workspace {
-    grid-template-rows: 48px minmax(0, 1fr);
-  }
-
-  .topbar {
-    grid-template-columns: 104px minmax(0, 1fr) auto;
-  }
-
-  .topbar-actions button:first-child {
-    display: none;
-  }
-
-  .global-search {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .global-search span {
-    display: none;
-  }
-
-  .shell {
-    grid-template-columns: 180px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) 400px;
-  }
-
-  .shell.is-ask-focused {
-    grid-template-columns: 180px minmax(0, 1fr);
-  }
-
-  .right-pane {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 150px minmax(0, 1fr);
-  }
-
-  .right-pane.is-ask-focused {
-    grid-template-rows: 112px minmax(0, 1fr);
+  .left-pane {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: none;
+    gap: 16px;
+    padding: 14px 14px 20px;
+    border-right: 0;
+    border-top: 1px solid #20262e;
+    overflow: visible;
   }
 
   .right-pane.is-ask-focused .summary-stack {
@@ -2227,6 +2676,41 @@ pre {
     padding: 10px;
   }
 
+  .button-row.two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Code stays column-accurate (no wrap); the source view scrolls horizontally. */
+  .center-source-view {
+    overflow: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    grid-template-columns: 104px minmax(0, 1fr) auto;
+  }
+
+  /* On a single-column phone the panel-collapse toggle is meaningless; drop it
+     (never the Open button, which is the way in). */
+  .topbar-actions .rail-toggle {
+    display: none;
+  }
+
+  .global-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell,
+  .shell.is-ask-focused,
+  .shell.rail-collapsed {
+    grid-template-rows: 52vh minmax(440px, auto) auto;
+  }
+
+  .brand-name {
+    display: none;
+  }
+
   .right-pane.is-ask-focused .ask-focus-strip {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -2235,28 +2719,25 @@ pre {
     grid-column: 1 / -1;
   }
 
-  .button-row.two {
-    grid-template-columns: minmax(0, 1fr);
+  /* Settings becomes a full-width sheet on tiny screens. */
+  .settings-dialog {
+    width: 100vw;
+    border-left: 0;
   }
 
-  .code-panel {
-    border-right: 0;
-    border-bottom: 1px solid #20262e;
+  .center-toolbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .center-toolbar .graph-toolbar-actions button {
+    min-width: 84px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .graph-minimap {
     right: 8px;
     bottom: 8px;
-  }
-
-  .graph-toolbar {
-    gap: 8px;
-    padding: 0 10px;
-  }
-
-  .graph-toolbar button {
-    min-width: 88px;
-    padding: 0 8px;
-    font-size: 12px;
   }
 }

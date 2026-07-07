@@ -1,6 +1,35 @@
 # M6 UI QA
 
-Date: 2026-07-01
+Date: 2026-07-01. Addendum: 2026-07-06.
+
+## 2026-07-06 addendum: build-guide fix pass
+
+Verified live in the browser preview (fixture graph) at 1440x900 and 1100x800:
+
+- First run with no graph: the inspector shows a single "Open the sample..."
+  empty state instead of four dead tabs and three disabled buttons.
+- Browser `Open Sample` loads the committed demo graph on a fresh clone without
+  running `npm run m6:fixture-graph` first.
+- Inspector tabs wrap instead of truncating: `Dependencies 11` renders in full
+  at 1100px (previously `Dependenc... 11`).
+- Graph node labels for outer-ring symbols (for example `LINK RATEAPI`) stay
+  inside the canvas after raising Sigma `stagePadding` to 96.
+- Export shows a dismissable toast under the Export button (top-right) instead
+  of an off-screen status line at the bottom of the left rail.
+- Overview: AI setup is a quiet "Optional: set up..." link, not a full-width
+  primary button; `Summarize all with AI` appears only once AI is configured.
+- Settings AI section shows a separate `Embedding model` field
+  (default `nomic-embed-text`) and a bare-origin `Host`
+  (`http://127.0.0.1:11434`); a previously saved `.../api` host migrates to the
+  bare origin on load.
+- `Check AI` with the server stopped names the exact recovery command
+  (`ollama serve`); with a model installed but no embedding model, generation is
+  reported ready and the embedding gap is reported separately.
+- Model-backed Ask verified against a real local Ollama chat model
+  (`gemma4:12b-mlx`): returned an accepted, inline-cited answer (not the guard
+  fallback) after switching Ollama to the chat API and raising local token
+  budgets; the answer also showed the "semantic search unavailable" note
+  because no embedding model was installed.
 
 ## Fixture Graph
 
@@ -16,7 +45,9 @@ Then open:
 http://127.0.0.1:1420/?graph=/m6-bakeoff-graph.json
 ```
 
-`public/m6-bakeoff-graph.json` is generated output and is intentionally ignored.
+`public/m6-bakeoff-graph.json` is a committed demo asset so the browser
+`Open Sample` action works on a fresh clone; regenerate it with the command
+above after analyzer changes.
 
 ## Browser Evidence
 

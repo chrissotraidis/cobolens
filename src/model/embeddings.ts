@@ -26,7 +26,9 @@ export async function embedTexts({
   fetchImpl = fetch,
 }: EmbedTextsOptions): Promise<EmbeddingResult> {
   const inputs = texts.map((text) => text.trim()).filter(Boolean);
-  const embeddingModel = (model || settings.model).trim();
+  // Prefer the dedicated embedding model; never silently fall back to the
+  // generation model unless nothing else is configured.
+  const embeddingModel = (model || settings.embeddingModel || settings.model).trim();
   assertEmbeddingPrivacy(settings);
   if (!inputs.length) return { model: embeddingModel, vectors: [] };
 

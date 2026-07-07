@@ -14,22 +14,22 @@ const checks = [
     appearsInOrder(appSource, ['className="answer-header"', 'className="chat-composer"', 'className="answer-response"', 'className="question-chips"']),
   ],
   [
-    "Ask response contains progress, error, answer, and empty states",
+    "Chat response contains progress, error, answer, and empty states",
     includesAll(appSource, [
       'className="answer-response"',
       'status === "running"',
       'status === "error"',
       "answer ?",
-      "Ask a graph question or type a broader explanation",
+      "Grounded, cited answers about your codebase",
     ]),
   ],
   [
-    "Ask answer subtitle follows the displayed answer, not stale draft text",
+    "Chat answer subtitle follows the displayed answer, not stale draft text",
     includesAll(appSource, [
       "const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question))",
       "answer?.fallbackReason",
-      "Answered from the graph",
-      "Cited graph fallback",
+      "Answered from the dependency graph",
+      "grounded in your code",
     ]) && !appSource.includes("Graph-grounded fallback; model answer unavailable"),
   ],
   [
@@ -152,26 +152,24 @@ const checks = [
     ]),
   ],
   [
-    "Ask clearly distinguishes graph shortcuts from AI-backed questions",
+    "Chat clearly distinguishes graph shortcuts from AI-backed questions",
     includesAll(appSource, [
       "const activeRouteLabel = workingWithModel",
-      "AI answer",
-      "Graph answer",
-      "Instant, cited answer from the dependency graph.",
-      "gets only the retrieved, cited source context.",
-      'className={`answer-route ${workingWithModel ? "model" : "graph"}`}',
-      "Ask Graph",
-      "Ask AI",
-      "modelReadiness.status !== \"idle\"",
-      'className={`ask-readiness ${modelReadiness.status}`}',
-      "Ready to ask",
-      "Ready to answer instantly from the dependency graph.",
-      "Ask about data flow, dependencies, files, or behavior.",
-      "Still waiting on local Ollama; this request times out at 45s.",
+      "AI mode",
+      "Graph mode",
+      "Instant, cited answer from the dependency graph — no AI needed.",
+      "on only the retrieved, cited code slice.",
+      'className={`chat-mode-chip ${workingWithModel ? "model" : "graph"}`}',
+      'className={`ai-status ${modelReadiness.status}`}',
+      "aria-label={aiStatusTooltip}",
+      "Press Send",
+      "Press Send for an instant, cited answer from the dependency graph.",
+      "Ask anything about this codebase",
+      "Still waiting on local Ollama; this request times out at 90s.",
       "Stop is available",
       "try ${RECOMMENDED_SMALL_OLLAMA_MODEL}",
       "const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question)",
-      'const starterQuestionsLabel = answer ? "Ask another cited question" : "Try a cited question"',
+      'const starterQuestionsLabel = answer ? "Ask another question" : "Try asking"',
       "{visibleStarterQuestions.map((question) => {",
       "const graphQuestion = isGraphQuestion(question)",
       "Answer instantly from the graph",
@@ -183,13 +181,13 @@ const checks = [
       'setChatError(fallbackReason)',
       'setChatStatus("error")',
       "EvidenceList citations={answer.citations.slice(0, 8)}",
-      'aria-label="Current Ask focus"',
+      'aria-label="Current chat focus"',
       "focusLinkCount",
     ]) && appearsInOrder(appSource, [
       "const fallbackReason = friendlyModelError(err, modelSettings);",
       "if (isStoppedModelCall(fallbackReason))",
       "if (context)",
-    ]) && includesAll(appCss, [".answer-route", ".answer-route.graph", ".answer-route.model", ".ask-readiness.error", ".ask-focus-strip"]),
+    ]) && includesAll(appCss, [".chat-mode-chip", ".chat-mode-chip.graph", ".chat-mode-chip.model", ".ai-status.ready .ai-status-dot", ".ask-focus-strip"]),
   ],
   [
     "Settings shows honest AI usage and bulk token estimate before model calls",
@@ -213,10 +211,6 @@ const checks = [
       "suggestedModel: details.suggestedModel",
       "installedModels: isCloudProvider(modelSettings.provider) ? [] : current.installedModels",
       "RECOMMENDED_SMALL_OLLAMA_MODEL",
-      "function prioritizedOllamaModels(models: string[], currentModel: string)",
-      'const badge = isCurrent ? "Current" : isRecommendedSmall ? "Fast local" : ""',
-      'aria-label={`${isCurrent ? "Current model" : "Use model"} ${model}${isRecommendedSmall ? ", recommended small local model" : ""}`}',
-      'className="model-chip-name"',
       "For a smaller local test model, run:",
       "isSameOllamaModel(model, settings.model)",
       "ollamaReadinessDetails",
@@ -224,31 +218,77 @@ const checks = [
       "generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS",
       "const readiness = await inspectOllamaReadiness(modelSettings);",
       "installedModels: readiness.installedModels",
-    ]) && includesAll(appSource, ['from "./model/readiness"', 'aria-label="Installed Ollama models"']) && includesAll(appCss, [".model-chips", ".model-chip-name", ".model-chips button small", ".model-install-hint", ".button-row.two"]),
+    ]) && includesAll(appSource, ['from "./model/readiness"']) && includesAll(appCss, [".model-install-hint", ".button-row.two"]),
   ],
   [
-    "Right pane remains usable at default desktop browser widths",
-    includesAll(appCss, [
-      "@media (max-width: 1280px) and (min-width: 901px)",
-      "minmax(400px, 40vw)",
-      ".shell.is-ask-focused",
-      "minmax(400px, 40vw)",
-      "white-space: pre-wrap",
-      "overflow-wrap: anywhere",
+    "Model field is a picklist of locally installed models, auto-refreshed on open",
+    includesAll(appSource, [
+      'className="model-picker"',
+      "installedModels.map((model) => (",
+      '<option value="__custom__">Custom name…</option>',
+      "Refresh list",
+      "if (!settingsOpen || isCloudProvider(modelSettings.provider)) return;",
+      "refreshInstalledModels()",
+    ]) && includesAll(appCss, [".model-picker", ".model-picker-meta"]),
+  ],
+  [
+    "Center workspace toggles Map and Source with a segmented control",
+    includesAll(appSource, [
+      'type CenterView = "map" | "source"',
+      'useState<CenterView>("map")',
+      'className="view-toggle"',
+      'onClick={() => setCenterView("map")}',
+      'onClick={() => setCenterView("source")}',
+      "className={`center-pane center-${centerView}",
+    ]) && includesAll(appCss, [".center-pane", ".view-toggle", ".center-body", ".center-source-view"]),
+  ],
+  [
+    "Navigator rail collapses from the top bar",
+    includesAll(appSource, [
+      'readLayoutFlag("cobolens.railCollapsed"',
+      'className="rail-toggle"',
+      "setRailCollapsed((collapsed) => !collapsed)",
+      'railCollapsed ? " rail-collapsed" : ""',
+    ]) && includesAll(appCss, [".rail-toggle", ".shell.rail-collapsed", ".shell.rail-collapsed .left-pane"]),
+  ],
+  [
+    "Evidence and View source bring Source forward in the center workspace",
+    includesAll(appSource, [
+      "function jumpToCitation(citation: Citation",
+      'setCenterView("source")',
+      "function showSourcePanel()",
     ]),
   ],
   [
-    "Tablet and mobile breakpoints keep code and graph toolbar usable",
+    "Inspector column collapses and the workspace/inspector split is drag-resizable",
+    includesAll(appSource, [
+      "const [inspectorCollapsed, setInspectorCollapsed]",
+      "const [rightWidth, setRightWidth]",
+      "function startInspectorResize(event: ReactPointerEvent)",
+      'className="pane-divider"',
+      "setInspectorCollapsed((collapsed) => !collapsed)",
+      "onPointerDown={startInspectorResize}",
+    ]) && includesAll(appCss, [".pane-divider", ".shell.inspector-collapsed", "var(--right-w", "@media (max-width: 1280px) and (min-width: 1025px)"]),
+  ],
+  [
+    "Source reads like code: no-wrap lines, file/line in the center toolbar",
+    includesAll(appSource, ['className="source-meta-file"']) &&
+      cssBlock(appCss, ".center-source-view .source-header").includes("display: none") &&
+      cssBlock(appCss, ".source-line-text").includes("white-space: pre") &&
+      !cssBlock(appCss, ".source-line-text").includes("pre-wrap"),
+  ],
+  [
+    "Tablet and mobile breakpoints keep code and workspace toolbar usable",
     includesAll(appCss, [
-      "@media (max-width: 900px)",
-      "@media (max-width: 760px)",
-      ".source-line-text",
-      "white-space: pre-wrap",
+      "@media (max-width: 1024px)",
+      "@media (max-width: 560px)",
       ".button-row.two",
       "grid-template-columns: minmax(0, 1fr);",
-      ".graph-toolbar button",
-      "min-width: 88px",
-    ]),
+      ".center-toolbar .graph-toolbar-actions button",
+      "min-width: 84px",
+    ]) &&
+      // Below the 3-pane threshold the layout is a single workspace-first column.
+      appCss.includes("grid-template-rows: 56vh minmax(440px, auto) auto"),
   ],
   [
     "Ask composer remains available while reading answers",
@@ -256,12 +296,10 @@ const checks = [
       appearsInOrder(appSource, ['<div className="chat-composer"', '<div className="answer-response"']) &&
       includesAll(appCss, [
         ".right-pane.is-ask-focused",
-        "minmax(178px, 0.62fr) minmax(390px, 1.38fr)",
         ".chat-composer",
         "position: sticky",
         "top: 0",
         "grid-template-columns: minmax(0, 1fr) 92px",
-        "grid-template-rows: 112px minmax(0, 1fr)",
         ".right-pane.is-ask-focused .answer-card",
         ".right-pane.is-ask-focused .ask-focus-strip small",
       ]),
@@ -270,15 +308,14 @@ const checks = [
     "Inspector opens on Overview and keeps Ask as the conversational follow-up",
     includesAll(appSource, [
       'useState<InspectorTab>("summary")',
-      'setInspectorTab("summary")',
       'label: "Overview"',
-      'label: "Ask"',
+      'label: "Chat"',
       'label: "Dependencies"',
-      'label: "Source"',
       "aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}",
     ]) &&
-      appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Ask" }']) &&
-      includesAll(appCss, [".inspector-tabs", "minmax(92px, 1fr)", "minmax(74px, 0.8fr)"]),
+      appearsInOrder(appSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Chat" }']) &&
+      includesAll(appCss, [".inspector-tabs", "flex-wrap: wrap"]) &&
+      !cssBlock(appCss, ".inspector-tabs span").includes("text-overflow"),
   ],
   [
     "Scrollable panes use dark native scrollbars",
@@ -288,9 +325,9 @@ const checks = [
     "Relationship source buttons expose section-specific accessible labels",
     includesAll(appSource, [
       "aria-label={`${title}: show ${edgeLabel(edge, graph)}",
-      "Depends On",
-      "Used By",
-      'title="Data flow / runtime links"',
+      "Uses / calls / reads",
+      "Used by",
+      'title="Data flow & runtime links"',
     ]),
   ],
   [
@@ -338,18 +375,19 @@ const checks = [
     "Empty graph canvas guides first-run sample/folder, optional AI, and desktop-only folder open",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',
-      "First run",
-      "Start with the bundled sample or open a COBOL folder. AI is optional; the map and cited source work first.",
+      "Get started",
+      "Explore the bundled sample, or open your own COBOL folder. AI is optional",
       'className="graph-empty-steps"',
-      "Load a sample or folder.",
-      "Inspect the dependency map.",
-      "Add AI later for generated summaries and broader Ask.",
+      "Explore the dependency map and read cited source.",
+      "Add local AI later for summaries and open-ended chat.",
       "onOpenSample",
       "canOpenFolder",
-      "Open Folder runs in the desktop app.",
+      // Desktop-only folder open is now a caption, not a fake button.
+      "Opening your own COBOL folder needs the desktop app.",
+      'className="graph-empty-note"',
     ]) &&
-      includesAll(appSource, ['className={`graph-pane${focusedNode ? "" : " is-empty"}`}', "focusedNode ? ("]) &&
-      includesAll(appCss, [".graph-pane.is-empty", ".graph-empty-actions", ".graph-empty-actions span", ".graph-empty-steps"]),
+      includesAll(appSource, ['className={`center-pane center-${centerView}${centerView === "map" && !focusedNode ? " is-empty" : ""}`}']) &&
+      includesAll(appCss, [".graph-empty-actions", ".graph-empty-note", ".graph-empty-steps"]),
   ],
   [
     "Browser preview does not render desktop-only ingest actions as disabled primary buttons and shows the first-run path",
@@ -395,19 +433,17 @@ const checks = [
       ]),
   ],
   [
-    "Graph toolbar explains when the focused slice has no hidden direct neighbors",
+    "Graph toolbar hides the expand control when the focus has no hidden neighbors",
     includesAll(appSource, [
       "focusedNode ? (",
-      'const expandButtonLabel = focusExpanded ? "Collapse" : focusExpansion.hiddenByLimit ? "Expand" : "Focus complete"',
-      "No hidden direct neighbors for this focus; use search or the Codebase browser to jump elsewhere.",
-      "{focusedNode.name}",
+      "focusExpanded || focusExpansion.hiddenByLimit ? (",
+      'focusExpanded ? "Collapse" : `Expand +${focusExpansion.hiddenByLimit}`',
       "aria-label={expandButtonTitle}",
       "showGraphNodeList",
       "setShowGraphNodeList",
-      'aria-label={showGraphNodeList ? "Hide visible node list" : "Show visible node list"}',
-      '{showGraphNodeList ? "Hide nodes" : "Show nodes"}',
+      '{showGraphNodeList ? "Hide list" : "Nodes"}',
       "showNodeList={showGraphNodeList}",
-    ]) && includesAll(appCss, [".graph-toolbar button", "min-width: 112px", ".graph-toolbar > .graph-toolbar-actions"]),
+    ]) && includesAll(appCss, [".center-toolbar", ".center-toolbar .graph-toolbar-actions button"]),
   ],
   [
     "Left navigator exposes a grouped codebase browser",
@@ -495,6 +531,13 @@ console.log(
 
 function includesAll(text, needles) {
   return needles.every((needle) => text.includes(needle));
+}
+
+function cssBlock(css, selector) {
+  const start = css.indexOf(`${selector} {`);
+  if (start === -1) return "";
+  const end = css.indexOf("}", start);
+  return end === -1 ? "" : css.slice(start, end + 1);
 }
 
 function appearsInOrder(text, needles) {

@@ -1,3 +1,5 @@
+![Cobolens banner](public/cobolens-banner.png)
+
 # Cobolens
 
 Cobolens is a free, open-source, local-first desktop app for understanding COBOL, copybooks, and JCL. Point it at a codebase, inspect a focus-and-expand dependency map, jump into cited source, ask grounded questions, and export documentation without turning the project into a cloud migration exercise.

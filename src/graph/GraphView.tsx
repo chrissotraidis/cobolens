@@ -45,9 +45,6 @@ type GraphViewProps = {
   onSelectNode: (nodeId: string) => void;
   onSelectEdge: (edge: GraphEdge | null) => void;
   onExpandNode: (nodeId: string) => void;
-  canOpenFolder: boolean;
-  onOpenFolder: () => void;
-  onOpenSample: () => void;
   showNodeList: boolean;
 };
 
@@ -63,9 +60,6 @@ export function GraphView({
   onSelectNode,
   onSelectEdge,
   onExpandNode,
-  canOpenFolder,
-  onOpenFolder,
-  onOpenSample,
   showNodeList,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -167,25 +161,12 @@ export function GraphView({
       <div className="graph-empty">
         <div className="graph-empty-card">
           <strong>Get started</strong>
-          <span>Explore the bundled sample, or open your own COBOL folder. AI is optional — the map and cited source work without it.</span>
+          <span>Import a COBOL project or open the bundled sample. AI is optional.</span>
           <ol className="graph-empty-steps" aria-label="Getting-started steps">
-            <li>Open the sample{canOpenFolder ? " or a COBOL folder" : ""}.</li>
+            <li>Use Import Project for a local folder, or Sample for the demo graph.</li>
             <li>Explore the dependency map and read cited source.</li>
             <li>Add local AI later for summaries and open-ended chat.</li>
           </ol>
-          <div className="graph-empty-actions">
-            <button type="button" className="primary-action" onClick={onOpenSample}>
-              Open Sample
-            </button>
-            {canOpenFolder ? (
-              <button type="button" onClick={onOpenFolder}>
-                Open Folder
-              </button>
-            ) : null}
-          </div>
-          {!canOpenFolder ? (
-            <p className="graph-empty-note">Opening your own COBOL folder needs the desktop app.</p>
-          ) : null}
         </div>
       </div>
     );
@@ -196,7 +177,7 @@ export function GraphView({
       <div className="graph-empty">
         <div className="graph-empty-card">
           <strong>No focus node available</strong>
-          <span>Open Sample or re-scan the selected codebase.</span>
+          <span>Use Sample or re-scan the selected project.</span>
         </div>
       </div>
     );

@@ -26,6 +26,11 @@ const checks = [
     args: ["run", "build"],
   },
   {
+    name: "rendered UI smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/rendered-ui-smoke.mjs"],
+  },
+  {
     name: "export documentation smoke",
     command: process.execPath,
     args: ["tools/m6-verify/export-docs-smoke.mjs"],

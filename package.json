@@ -9,6 +9,7 @@
     "build:sidecar": "cargo build --release --manifest-path sidecar/cobolens-analyze/Cargo.toml && node tools/packaging/prepare-sidecar-resource.mjs",
     "tauri:before-build": "npm run build && npm run build:sidecar",
     "m6:verify": "node tools/m6-verify/run.mjs",
+    "ui:smoke": "node tools/m6-verify/rendered-ui-smoke.mjs",
     "v1:readiness": "node tools/v1-readiness/run.mjs",
     "ollama:check": "node tools/local-model/ollama-smoke.mjs",
     "ollama:summary-smoke": "node tools/local-model/ollama-summary-smoke.mjs",

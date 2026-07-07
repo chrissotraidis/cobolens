@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { type KeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentationExport,
   documentationExportPrefix,
@@ -10,6 +10,8 @@ import {
   estimateTokens,
 } from "./export/docs";
 import { GraphView } from "./graph/GraphView";
+import { analyzeBrowserProject } from "./lib/browserImport";
+import type { BrowserProjectImport } from "./lib/browserImport";
 import {
   GraphDocument,
   GraphEdge,
@@ -111,6 +113,7 @@ const MODEL_CALL_TIMEOUT_MS = 90_000;
 // capable local model that answers fine in Ask does not fail "Check AI".
 const MODEL_READINESS_TIMEOUT_MS = 40_000;
 const SEMANTIC_SEARCH_TIMEOUT_MS = 8_000;
+const EVIDENCE_PREVIEW_LIMIT = 4;
 const DEFAULT_SCAN_SETTINGS: ScanSettings = {
   format: "auto",
   extensions: ".cbl,.cob,.cpy,.jcl",
@@ -138,12 +141,18 @@ declare global {
   }
 }
 
+const BROWSER_DIRECTORY_INPUT_PROPS = {
+  directory: "",
+  webkitdirectory: "",
+} as Record<string, string>;
+
 function App() {
   const desktopAvailable = canUseTauri();
   const [status, setStatus] = useState<Status>("idle");
   const [root, setRoot] = useState<string>("");
   const [graph, setGraph] = useState<GraphDocument | null>(null);
   const [sourceBase, setSourceBase] = useState("");
+  const [browserSourceFiles, setBrowserSourceFiles] = useState<Record<string, string>>({});
   const [focusNodeId, setFocusNodeId] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null);
@@ -152,7 +161,6 @@ function App() {
   const [query, setQuery] = useState("");
   const [scanSettings, setScanSettings] = useState<ScanSettings>(DEFAULT_SCAN_SETTINGS);
   const [scanProgress, setScanProgress] = useState<AnalysisProgress | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
   const [snippet, setSnippet] = useState<SourceSnippet | null>(null);
   const [snippetLoading, setSnippetLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -180,6 +188,7 @@ function App() {
   const [showGraphNodeList, setShowGraphNodeList] = useState(false);
   const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
+  const browserImportInputRef = useRef<HTMLInputElement | null>(null);
   const activeChatAbortRef = useRef<AbortController | null>(null);
   const activeSummaryAbortRef = useRef<AbortController | null>(null);
   const preserveInspectorForEdgeRef = useRef(false);
@@ -194,10 +203,6 @@ function App() {
   const nodeById = useMemo(() => new Map(graph?.nodes.map((node) => [node.id, node]) ?? []), [graph]);
   const focusedNode = nodeById.get(focusNodeId) ?? null;
   const selectedNode = nodeById.get(selectedNodeId) ?? focusedNode;
-  const breadcrumbNodeIds = useMemo(
-    () => history.filter((nodeId) => nodeId !== focusNodeId && nodeById.has(nodeId)).slice(-2),
-    [focusNodeId, history, nodeById],
-  );
   const selectedSummaryState = selectedNode ? summaries[selectedNode.id] : undefined;
   const aiConfigured = isCloudProvider(modelSettings.provider) ? hasProviderKey : modelReadiness.status === "ready";
   const summaryNodes = useMemo(
@@ -350,7 +355,7 @@ function App() {
   useEffect(() => {
     const node = selectedNode;
     const target = sourceFocus ?? (node?.file ? { file: node.file, line: node.lines?.[0] ?? 1, nodeId: node.id } : null);
-    if ((!root && !sourceBase) || !target) {
+    if ((!root && !sourceBase && !Object.keys(browserSourceFiles).length) || !target) {
       setSnippet(null);
       setSnippetLoading(false);
       return;
@@ -359,7 +364,7 @@ function App() {
     let cancelled = false;
     setSnippet(null);
     setSnippetLoading(true);
-    readSourceSnippet(root, sourceBase, target.file, target.line, scanSettings.encoding)
+    readSourceSnippet(root, sourceBase, browserSourceFiles, target.file, target.line, scanSettings.encoding)
       .then((result) => {
         if (!cancelled) {
           setSnippet(result);
@@ -376,7 +381,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [root, scanSettings.encoding, selectedNode, sourceBase, sourceFocus]);
+  }, [browserSourceFiles, root, scanSettings.encoding, selectedNode, sourceBase, sourceFocus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,8 +470,7 @@ function App() {
 
   async function chooseFolder() {
     if (!canUseTauri()) {
-      setError("Open Folder is available in the desktop app. Use Open Sample to explore the browser demo.");
-      setStatus("error");
+      browserImportInputRef.current?.click();
       return;
     }
 
@@ -485,6 +489,22 @@ function App() {
         scan: normalizedScanSettings(scanSettings),
       });
       acceptGraph(result, selected);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus("error");
+    }
+  }
+
+  async function importBrowserProject(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    if (!files.length) return;
+
+    beginScan("Importing project...");
+    try {
+      const result = await analyzeBrowserProject(files, normalizedScanSettings(scanSettings));
+      acceptBrowserProject(result);
+      setExportStatus(`Imported ${result.graph.meta.fileCount} file${result.graph.meta.fileCount === 1 ? "" : "s"} locally.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
@@ -567,6 +587,7 @@ function App() {
   function beginScan(nextRoot: string, nextSourceBase = "") {
     setRoot(nextRoot);
     setSourceBase(nextSourceBase);
+    setBrowserSourceFiles({});
     setGraph(null);
     setSnippet(null);
     setSnippetLoading(false);
@@ -581,6 +602,7 @@ function App() {
     const initialFocus = firstFocusableNode(nextGraph);
     setRoot(nextRoot);
     setSourceBase(nextSourceBase);
+    setBrowserSourceFiles({});
     setGraph(nextGraph);
     setFocusNodeId(initialFocus);
     setSelectedNodeId(initialFocus);
@@ -588,7 +610,6 @@ function App() {
     setExpandedNodeIds(new Set());
     setHiddenNodeTypes(new Set());
     setShowGraphNodeList(false);
-    setHistory(initialFocus ? [initialFocus] : []);
     setSummaries({});
     setBulkSummaryStatus("");
     setChatAnswer(null);
@@ -603,6 +624,11 @@ function App() {
     setStatus("ready");
   }
 
+  function acceptBrowserProject(result: BrowserProjectImport) {
+    acceptGraph(result.graph, result.rootLabel);
+    setBrowserSourceFiles(result.sources);
+  }
+
   function focusOnNode(nodeId: string, options: { preserveChat?: boolean } = {}) {
     if (!nodeById.has(nodeId)) return;
     setFocusNodeId(nodeId);
@@ -610,7 +636,6 @@ function App() {
     setSelectedEdge(null);
     setSourceFocus(null);
     setExpandedNodeIds(new Set());
-    setHistory((current) => [...current.filter((id) => id !== nodeId), nodeId].slice(-8));
     // The conversation persists across selections (the chat log and answers stay
     // put, and the inspector tab is left where the user had it). Only the
     // in-progress draft is cleared. `preserveChat` additionally keeps the draft.
@@ -618,6 +643,14 @@ function App() {
       setChatQuestion("");
       setChatError("");
       if (chatStatus !== "running") setChatStatus("idle");
+    }
+  }
+
+  function readNodeSource(nodeId: string, options: { preserveChat?: boolean } = {}) {
+    focusOnNode(nodeId, options);
+    if (nodeById.get(nodeId)?.file) {
+      setCenterView("source");
+      window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
     }
   }
 
@@ -703,7 +736,7 @@ function App() {
   }
 
   function focusOnSearchResult(nodeId: string) {
-    focusOnNode(nodeId);
+    readNodeSource(nodeId);
     setQuery("");
   }
 
@@ -734,7 +767,6 @@ function App() {
     setChatStatus("idle");
     setChatError("");
     setInspectorTab("summary");
-    setHistory([homeNodeId]);
   }
 
   function chooseProvider(provider: ModelProvider) {
@@ -946,12 +978,12 @@ function App() {
     if (!node.file) {
       throw new Error("Open a codebase from the desktop app before using model features.");
     }
-    if (!root && !sourceBase) {
-      throw new Error("Open Sample or open a desktop codebase before using model features.");
+    if (!root && !sourceBase && !Object.keys(browserSourceFiles).length) {
+      throw new Error("Use Sample or import a project before using model features.");
     }
     const startLine = node.lines?.[0] ?? 1;
     const endLine = node.lines?.[1] ?? startLine;
-    return readSourceExcerpt(root, sourceBase, node.file, startLine, endLine, 220, scanSettings.encoding);
+    return readSourceExcerpt(root, sourceBase, browserSourceFiles, node.file, startLine, endLine, 220, scanSettings.encoding);
   }
 
   async function askQuestion(questionDraft = chatQuestion) {
@@ -1154,7 +1186,6 @@ function App() {
     if (citedNode) {
       setFocusNodeId(citedNode.id);
       setSelectedNodeId(citedNode.id);
-      setHistory((current) => [...current.filter((id) => id !== citedNode.id), citedNode.id].slice(-8));
     }
     if (citedEdge) {
       if (preserveInspectorTab) preserveInspectorForEdgeRef.current = true;
@@ -1238,16 +1269,21 @@ function App() {
               <rect x="3.7" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
             </svg>
           </button>
-          <span className="brand-mark" aria-hidden="true" />
+          <img className="brand-mark" src="/favicon.png" alt="" aria-hidden="true" />
           <span className="brand-name">Cobolens</span>
+          <span
+            className={`privacy-dot ${modelSettings.privacyMode}`}
+            role="img"
+            aria-label={privacyModeLabel(modelSettings)}
+            title={privacyModeLabel(modelSettings)}
+          />
         </div>
 
         <label className="global-search">
-          <span>Search codebase</span>
           <input
             type="search"
-            aria-label="Search codebase"
-            placeholder="Search programs, copybooks, jobs..."
+            aria-label="Search symbols"
+            placeholder="Find programs, copybooks, jobs..."
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
             onKeyDown={handleSearchKeyDown}
@@ -1256,41 +1292,48 @@ function App() {
         </label>
 
         <nav className="breadcrumbs" aria-label="Breadcrumb history">
-          <button type="button" onClick={goHome} disabled={!graph}>
-            Home
+          <button type="button" className="home-crumb" onClick={goHome} disabled={!graph} aria-label="Home" title="Home">
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+              <path
+                d="M2.5 7.2 8 2.8l5.5 4.4M4.2 6.6v6.1h7.6V6.6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.35"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
-          {breadcrumbNodeIds.map((nodeId) => (
-            <button key={nodeId} type="button" onClick={() => focusOnNode(nodeId)}>
-              {nodeById.get(nodeId)?.name ?? nodeId}
-            </button>
-          ))}
           {focusedNode ? (
             <span className="current-crumb" aria-current="page" title={`${focusedNode.name} - ${nodeTypeLabel(focusedNode.type)}`}>
-              {focusedNode.name} - {nodeTypeLabel(focusedNode.type)}
+              {focusedNode.name}
             </span>
           ) : null}
         </nav>
 
-        <div
-          className={`mode-indicator ${modelSettings.privacyMode}`}
-          aria-label={privacyModeLabel(modelSettings)}
-          title={privacyModeLabel(modelSettings)}
-        >
-          {modelSettings.privacyMode === "local" ? "Local: no code leaves" : `Cloud: ${PROVIDER_LABELS[modelSettings.provider]}`}
-        </div>
-
         <div className="topbar-actions" aria-label="Workspace actions">
           <button
             type="button"
-            className="topbar-open"
-            onClick={desktopAvailable ? chooseFolder : openSample}
-            title={
-              desktopAvailable
-                ? "Open a local COBOL codebase folder"
-                : "Open the bundled sample — opening your own folder needs the desktop app"
-            }
+            className="topbar-import"
+            onClick={chooseFolder}
+            disabled={status === "running"}
+            title={desktopAvailable ? "Import a local COBOL project folder" : "Import a local COBOL project folder in this browser"}
           >
-            {desktopAvailable ? "Open Folder" : "Open Sample"}
+            Import Project
+          </button>
+          <input
+            {...BROWSER_DIRECTORY_INPUT_PROPS}
+            ref={browserImportInputRef}
+            className="project-import-input"
+            type="file"
+            multiple
+            accept={scanSettings.extensions}
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={importBrowserProject}
+          />
+          <button type="button" className="topbar-sample" onClick={openSample} disabled={status === "running"} title="Open the bundled sample graph">
+            Sample
           </button>
           <button
             type="button"
@@ -1353,72 +1396,52 @@ function App() {
       >
         <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
           <section className="pane-block">
-            <h2>Ingest</h2>
-            {desktopAvailable ? (
-              <>
-                <button className="primary-action" type="button" onClick={chooseFolder} title="Open a local COBOL codebase">
-                  Open Folder
-                </button>
-                <button type="button" onClick={openSample}>
-                  Open Sample
-                </button>
-                <button type="button" onClick={rescanCurrent} disabled={!graph || status === "running"} title="Re-scan the current folder">
-                  Re-scan
-                </button>
-              </>
-            ) : (
-              <>
-                <button className="primary-action" type="button" onClick={openSample}>
-                  Open Sample
-                </button>
-                <div className="desktop-preview-note">Open Folder, Re-scan, and scan settings run in the desktop app.</div>
-              </>
-            )}
+            <h2>Project</h2>
             <div className="path-label">{root || "No codebase selected"}</div>
             <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
             {!graph ? (
               <div className="first-run-guide" aria-label="First run path">
                 <span>First run</span>
                 <ol>
-                  <li>{desktopAvailable ? "Open the sample or choose a COBOL folder." : "Open the sample graph in this browser preview."}</li>
+                  <li>Use Import Project to choose a COBOL folder, or Sample to load the demo.</li>
                   <li>Explore the map and cited source without AI.</li>
                   <li>Add Ollama or a cloud key only when you want AI summaries or AI Ask.</li>
                 </ol>
               </div>
+            ) : desktopAvailable ? (
+              <button type="button" onClick={rescanCurrent} disabled={status === "running"} title="Re-scan the current folder">
+                Re-scan
+              </button>
             ) : null}
             {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
             {status === "error" && error ? <div className="inline-error">{error}</div> : null}
           </section>
 
-          <section className="pane-block">
-            <h2>Search Results</h2>
-            <div className="search-results">
-              {searchResults.length ? (
-                searchResults.map((node) => (
-                  <button
-                    key={node.id}
-                    type="button"
-                    aria-label={`Search result ${node.name} ${node.type}`}
-                    onClick={() => focusOnSearchResult(node.id)}
-                  >
-                    <span className="swatch" style={{ background: nodeColor(node.type) }} />
-                    <span>{node.name}</span>
-                    <small>{node.type}</small>
-                  </button>
-                ))
-              ) : (
-                <div className="empty-copy">
-                  {graph
-                    ? query.trim()
-                      ? "No matching codebase items."
-                      : "Type to search programs, copybooks, jobs, and fields."
-                    : desktopAvailable
-                      ? "Open a folder to index the codebase."
-                      : "Open the sample to index the codebase."}
-                </div>
-              )}
-            </div>
-          </section>
+          {query.trim() ? (
+            <section className="pane-block">
+              <h2>Search Results</h2>
+              <div className="search-results">
+                {searchResults.length ? (
+                  searchResults.map((node) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      aria-label={`Search result ${node.name} ${node.type}`}
+                      onClick={() => focusOnSearchResult(node.id)}
+                    >
+                      <span className="swatch" style={{ background: nodeColor(node.type) }} />
+                      <span>{node.name}</span>
+                      <small>{node.type}</small>
+                    </button>
+                  ))
+                ) : (
+                  <div className="empty-copy">No matching graph symbols. Source text search is not implemented yet.</div>
+                )}
+              </div>
+            </section>
+          ) : null}
+
+          <SourceTree groups={codebaseGroups} selectedNodeId={focusNodeId} onSelectNode={readNodeSource} />
 
           <section className="pane-block">
             <div className="pane-heading-row">
@@ -1445,8 +1468,6 @@ function App() {
               ))}
             </div>
           </section>
-
-          <SourceTree groups={codebaseGroups} selectedNodeId={focusNodeId} onSelectNode={focusOnNode} />
 
           <section className="pane-block">
             <h2>Inventory</h2>
@@ -1509,7 +1530,7 @@ function App() {
                 Source
               </button>
             </div>
-            <div className="center-toolbar-meta">
+            <div className={`center-toolbar-meta${centerView === "source" ? " is-source" : ""}`}>
               {centerView === "map" ? (
                 focusedNode ? <small>{focusedNode.name} · {nodeTypeLabel(focusedNode.type)}</small> : null
               ) : selectedNode?.file ? (
@@ -1532,7 +1553,7 @@ function App() {
                       ))}
                     </select>
                   </label>
-                  <small>line {snippet?.highlightLine ?? selectedNode.lines?.[0] ?? 1}</small>
+                  <small className="source-line-chip">line {snippet?.highlightLine ?? selectedNode.lines?.[0] ?? 1}</small>
                 </>
               ) : (
                 <span className="source-meta-file">No source selected</span>
@@ -1574,9 +1595,6 @@ function App() {
                 onSelectNode={selectNode}
                 onSelectEdge={selectEdge}
                 onExpandNode={expandNode}
-                canOpenFolder={desktopAvailable}
-                onOpenFolder={chooseFolder}
-                onOpenSample={openSample}
                 showNodeList={showGraphNodeList}
               />
             </div>
@@ -1997,7 +2015,7 @@ function SourceTree({
       <div className="pane-heading-row">
         <h2>Codebase</h2>
       </div>
-      <div className="settings-footnote">Click a program, copybook, or job to focus it on the map and read its code.</div>
+      <div className="settings-footnote">Click a program, copybook, or job to read its source.</div>
       {groups.length ? (
         groups.map((group) => (
           <div className="source-tree-group" key={group.title}>
@@ -2700,7 +2718,7 @@ function ChatAnswerPanel({
                 {answer.semanticNote}
               </div>
             ) : null}
-            <EvidenceList citations={answer.citations.slice(0, 8)} onOpenCitation={onOpenCitation} />
+            <EvidenceList citations={answer.citations} onOpenCitation={onOpenCitation} />
           </>
         ) : (
           <p>{emptyResponseText}</p>
@@ -2776,15 +2794,26 @@ function EvidenceList({
   citations: Citation[];
   onOpenCitation: (citation: Citation) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!citations.length) return null;
+
+  const hasMore = citations.length > EVIDENCE_PREVIEW_LIMIT;
+  const visibleCitations = hasMore && !expanded ? citations.slice(0, EVIDENCE_PREVIEW_LIMIT) : citations;
+  const hiddenCount = citations.length - visibleCitations.length;
 
   return (
     <div className="evidence-block">
       <span className="evidence-heading">
         Evidence
-        <small>click to open in Source</small>
+        <small>{hasMore ? `showing ${visibleCitations.length} of ${citations.length}` : "click to open in Source"}</small>
       </span>
-      <CitationList citations={citations} onOpenCitation={onOpenCitation} />
+      <CitationList citations={visibleCitations} onOpenCitation={onOpenCitation} />
+      {hasMore ? (
+        <button type="button" className="evidence-more-toggle" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? "Show fewer evidence rows" : `Show ${hiddenCount} more`}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -3230,7 +3259,7 @@ function CodeSnippet({
           ) : (
             loading
               ? "Loading source snippet..."
-              : "Source snippet unavailable. Use Open Sample for the browser demo, or open the codebase in the desktop app."
+              : "Source snippet unavailable. Use Sample for the browser demo, or import the project in the desktop app."
           )}
         </code>
       </pre>
@@ -3321,9 +3350,9 @@ function canUseTauri() {
 
 function privacyModeLabel(settings: ModelSettings) {
   if (settings.privacyMode === "local") {
-    return "Local mode: inference uses localhost Ollama; code stays on this machine.";
+    return "Local: no code leaves";
   }
-  return `Cloud mode: retrieved code context is sent to ${PROVIDER_LABELS[settings.provider]}.`;
+  return `Cloud: ${PROVIDER_LABELS[settings.provider]}`;
 }
 
 function normalizedScanSettings(settings: ScanSettings) {
@@ -3477,6 +3506,7 @@ function isAbortError(err: unknown) {
 async function readSourceSnippet(
   root: string,
   sourceBase: string,
+  browserSourceFiles: Record<string, string>,
   file: string,
   line: number,
   encoding: string,
@@ -3490,11 +3520,11 @@ async function readSourceSnippet(
     });
   }
 
-  if (!sourceBase) {
-    throw new Error("Source is unavailable for this graph. Open Sample or open the codebase in the desktop app.");
+  const text = await readSourceText(sourceBase, browserSourceFiles, file);
+  if (text == null) {
+    throw new Error("Source is unavailable for this graph. Use Sample or import the project in the desktop app.");
   }
 
-  const text = await fetchSourceText(sourceBase, file);
   const lines = text.split(/\r?\n/);
   // Generous window so the center Source view reads like a file (scrollable),
   // not a keyhole, while keeping the cited line near the top.
@@ -3514,6 +3544,7 @@ async function readSourceSnippet(
 async function readSourceExcerpt(
   root: string,
   sourceBase: string,
+  browserSourceFiles: Record<string, string>,
   file: string,
   startLine: number,
   endLine: number,
@@ -3531,11 +3562,11 @@ async function readSourceExcerpt(
     });
   }
 
-  if (!sourceBase) {
-    throw new Error("Source is unavailable for this graph. Open Sample or open the codebase in the desktop app.");
+  const text = await readSourceText(sourceBase, browserSourceFiles, file);
+  if (text == null) {
+    throw new Error("Source is unavailable for this graph. Use Sample or import the project in the desktop app.");
   }
 
-  const text = await fetchSourceText(sourceBase, file);
   const lines = text.split(/\r?\n/);
   const safeStart = Math.max(1, startLine);
   const safeEnd = Math.min(lines.length, Math.max(safeStart, endLine));
@@ -3550,6 +3581,14 @@ async function readSourceExcerpt(
       .map((sourceLine, index) => `${padLine(safeStart + index)} ${sourceLine}`)
       .join("\n"),
   };
+}
+
+async function readSourceText(sourceBase: string, browserSourceFiles: Record<string, string>, file: string) {
+  if (Object.prototype.hasOwnProperty.call(browserSourceFiles, file)) {
+    return browserSourceFiles[file];
+  }
+  if (!sourceBase) return null;
+  return fetchSourceText(sourceBase, file);
 }
 
 async function fetchSourceText(sourceBase: string, file: string) {
@@ -3927,4 +3966,3 @@ function padLine(line: number) {
 }
 
 export default App;
-

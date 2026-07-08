@@ -106,9 +106,9 @@ is boilerplate — the guard should have rejected it; investigate the guard
 6. Semantic retrieval: with `nomic-embed-text` missing, a model answer shows the
    "semantic search was unavailable" note but still answers; install it and the
    note disappears.
-7. Timeout/Stop: a slow generation shows staged progress; Stop leaves a clear
-   stopped state; the 90s ceiling lets a slow 12B finish (streaming is the
-   proper future fix — see tech-debt).
+7. Timeout/Stop: a slow generation shows streamed draft text and staged
+   progress; Stop leaves a clear stopped state; if no model text arrives, the
+   first-token timeout gives a clear error.
 8. Readiness states: model not installed / server stopped / embedding missing
    each give a specific, actionable message (see `docs/tech-debt.md`).
 8a. Reasoning ("thinking") models (e.g. Qwen3 / deepseek-r1 variants): both the
@@ -152,6 +152,6 @@ without explicit product approval:
 Until that exists and is signed off, keep Cobolens read-only and honest about it.
 
 ## 5. Next work (tracked)
-- Streaming AI answers (removes the blind 90s ceiling) — biggest local-AI UX win.
+- Desktop Ollama install-vs-running detection for the AI readiness stepper.
 - Optional collapsible rail on narrow widths (graph-first without scrolling past nav).
 - Full-file source browser (currently a windowed snippet) — see `docs/tech-debt.md`.

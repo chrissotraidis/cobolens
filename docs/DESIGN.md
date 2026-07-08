@@ -1,165 +1,368 @@
-# Cobolens Design Methodology
+# Cobolens Design Contract
 
-This is the design contract for Cobolens. Every UI change must adhere to it. If a
-change violates a rule here, either change the design system deliberately (and
-update this file) or don't ship it.
+This is the UI contract for Cobolens. Use it before changing screens,
+components, copy, layout, or visual tokens.
 
-Cobolens is a **local workbench for reading and understanding COBOL** — closer to
-an IDE or a "talk to your codebase" tool than a dashboard. The person using it is
-a developer under time pressure trying to build a mental model of code they did
-not write. Every decision answers one question: *does this help them read the
-code and trust an answer about it?*
+Cobolens is a local workbench for reading and understanding COBOL, copybooks,
+and JCL. It should feel closer to an IDE plus a cited code assistant than a
+dashboard. The user is usually under time pressure, trying to build trust in an
+unfamiliar system. Every UI decision should answer:
 
-## 1. The three zones
+> Does this help the user read the code and trust an answer about it?
 
-The workspace is three vertical zones, left to right, in order of how the eye
-should flow: **navigate → read → converse**.
+If a change conflicts with this document, either change the design contract in
+the same pull request or do not ship the change.
 
-1. **Navigator (left, collapsible).** Project ingest, search results, legend/
-   filters, the codebase tree, and status (inventory, parse health, hints). It is
-   navigation and status only — never settings, never the primary reading
-   surface. It **collapses** to reclaim space (like an IDE sidebar / Claude's
-   collapsible columns). Collapsed by default is acceptable on narrow widths.
+## 1. Product Shape
 
-2. **Workspace (center, the largest zone).** A single main area that **toggles
-   between Map and Source**:
-   - **Source** is the default reason the tool exists — read the actual code.
-     It must be large, scrollable, and legible: monospace, line numbers, the
-     cited line clearly highlighted, generous line context.
-   - **Map** is the focus-and-expand dependency graph.
-   A segmented control switches them. Selecting a symbol, clicking a citation, or
-   "View source" brings Source forward; exploring dependencies brings Map
-   forward. The center is where you *look*.
+Preserve the three-zone workbench:
 
-3. **Conversation / Inspector (right).** Ask (chat with the codebase), Overview
-   (graph facts + optional AI), and Dependencies. This is where you *ask and
-   read answers*, so it gets real width and full height — a conversation column,
-   not a cramped dock.
+```text
+Navigator | Workspace Map/Source | Inspector/Chat
+```
 
-Rationale for the layout the user asked for: code is the point, so Source lives
-in the big center; the graph is one lens on it, not the permanent centerpiece;
-chat is a first-class right column; and the navigator gets out of the way.
+- **Navigator:** find and orient.
+- **Workspace:** read source or inspect the map.
+- **Inspector/Chat:** ask questions, review facts, inspect dependencies.
 
-## 2. Selection & evidence — one model, always visible
+Do not turn Cobolens into a dashboard, migration suite, code editor, hosted
+workspace, or AI-first chat app. The graph/source model is the product.
 
-- There is **one selection** app-wide. Clicking a graph node, a tree item, a
-  search result, a dependency row, or a citation all set the same selected
-  symbol, and every zone reflects it.
-- **Citations are the trust mechanism.** Clicking any "Evidence" citation or a
-  relationship site MUST bring **Source** forward in the center and highlight the
-  exact line, with a visible "Focused citation: file:line" marker. The user
-  should never click evidence and wonder where it went. Evidence → code is the
-  single most important interaction; make it obvious and instant.
-- Every substantive claim (graph or AI) carries a clickable `file:line` citation.
-  AI answers that can't be grounded fall back to a cited graph answer and say so.
+## 2. Layout Rules
 
-## 3. Collapse, resize & toggles — the user controls the space
+### Navigator
 
-The user owns their screen. Both side columns collapse, and the split between
-the workspace and the conversation is draggable.
+Purpose: project entry, search, codebase navigation, filters, and status.
 
-- **Both side panels collapse.** The navigator collapses from the top-bar
-  two-pane icon; the inspector/chat collapses from a chevron on its own header.
-  Collapsing either gives its width to the workspace. Collapse works at **every**
-  width — on narrow single-column it collapses the section in place (height), not
-  only on wide layouts. Collapse state **persists** across reloads.
-- **The workspace ↔ conversation split is resizable.** A drag handle between the
-  center and the right column lets the user widen chat (to read long answers) or
-  widen the workspace (to read code). Honour a sensible min for each; persist the
-  ratio. "You can expand the left but not the right" is a bug — both directions
-  must work.
-- **Segmented toggles** (Map / Source) switch center views. Active segment filled
-  with the accent; inactive quiet. One toggle, one concept.
-- A toggle/collapse/resize must only reflow the zones it targets. No surprise
-  jumps elsewhere.
+The navigator is not the primary reading surface and not a settings console.
+Keep it narrow, scannable, and collapsible.
 
-## 4. Density & legibility rules
+Do:
 
-- **No dead vertical space.** A panel's content fills its column from the top; it
-  never floats in the middle of a tall empty box. Each pane is a single scroll
-  region — you never have nested scroll traps or a short content block stranded
-  with blank space above and below. If content is short, the panel is short (or
-  top-aligned); it does not reserve a fixed tall frame it can't fill.
-- **No walls of text.** Prose (graph facts, AI answers) is trimmed and
-  structured — short lead sentence, then scannable cited lines. Long metadata
-  paragraphs are broken into labelled rows, not a run-on paragraph the user must
-  parse.
-- **Sticky headers are opaque and above content.** Any sticky element (the Source
-  file header, panel titles) has a solid background and a z-index above the
-  scrolling body. Code/text must never bleed through a sticky header.
-- **Code does not wrap by default.** COBOL is column-sensitive; the Source view
-  keeps lines intact and scrolls horizontally when needed, rather than wrapping
-  a statement onto the gutter. Wrapping is a last-resort fallback only on the
-  narrowest phones.
-- **Compact controls.** Default control height is 28px (30px for a primary
-  action); segmented toggles 24–26px. Avoid full-width bulky buttons where a
-  normal-width button reads fine — buttons are sized to their label, grouped, and
-  quiet unless primary. Two big side-by-side buttons that dominate a panel are a
-  smell; prefer a compact row.
-- **No primary label truncates.** Ellipsis only for repeated secondary metadata
-  (file paths in lists); the full value is one interaction away.
-- **Code is readable first.** Monospace ~13px, dim line-number gutter, focused
-  line highlighted with an accent rail, generous scrollable context.
-- **No nested cards.** One border per region; inside, use type and spacing.
-- **Feedback is local to its trigger.**
-- **Disabled states explain themselves inline**, not only via title tooltips.
+- Put primary navigation above status.
+- Keep the codebase tree easy to reach.
+- Group secondary status into compact sections or accordions.
+- Use node-type swatches consistently with the graph legend.
+- Collapse on medium/narrow screens without trapping the user.
 
-## 5. Visual tokens
+Don't:
 
-Colors (dark, technical):
-- App background `#0b0d10`; panels/toolbars `#11151a`; raised `#151a20`.
-- Borders `#20262e` (structural), `#27303a` (subtle).
-- Text: primary `#dbe3ea` / `#e7ebef`; secondary `#9aa6b2`; dim `#7d8996`.
-- Accent (local / active / focus): `#66c2a5` → `#5aa7a1`; tinted fills use
-  `rgba(90,167,161,0.12)` with border `rgba(90,167,161,0.5)`.
-- Warning/guard: `#e8d796`. Error: `#ffb4a2`.
-- Node-type colors come from `nodeColor()` and are the legend's source of truth;
-  reuse them everywhere a type is shown (swatches, chips).
+- Stack ingest, search, filters, inventory, parse health, and hints as equal
+  weight forever.
+- Put AI setup or scan-setting forms in the navigator.
+- Hide the codebase tree below a long wall of status blocks.
+- Use full-width buttons for actions that fit in compact controls.
 
-Type: system UI stack for chrome; monospace (`ui-monospace, SFMono-Regular,
-Menlo, Consolas, monospace`) for code, file paths, and citations. Chrome text
-12–14px; headings are 11–12px uppercase tracked labels.
+### Workspace
 
-Shape & motion: 6–8px radii on controls, 999px pills for status; 1px borders;
-transitions ≤140ms; respect `prefers-reduced-motion`.
+Purpose: the main reading and exploration surface.
 
-## 6. States (every surface defines all five)
+The workspace is the largest zone. It toggles between **Map** and **Source**.
+Source is where evidence lands. Map is how relationships are explored.
 
-- **Empty:** name the one action that fills it (e.g. "Open the sample to begin").
-- **Loading:** say what's happening; show progress where the analyzer/model emits
-  it.
-- **Disabled:** inline reason.
-- **Error:** the failed thing + the reason + the next command (copyable).
-- **Success:** confirmed at the point of action.
+Do:
 
-## 7. Responsive tiers
+- Keep the Map/Source segmented control visible and compact.
+- Bring Source forward when a citation, relationship source, or "View source" is
+  clicked.
+- Bring Map forward when the user chooses a graph exploration action.
+- Give Source and Map stable dimensions; controls must not resize the canvas or
+  code reader unexpectedly.
 
-- **≥1200px:** three zones side by side (navigator | workspace | conversation).
-- **~900–1200px:** navigator collapses by default; workspace + conversation share
-  the width; the navigator opens as an overlay/temporary column on toggle.
-- **<900px:** one scrolling column, workspace-first (Map/Source toggle up top,
-  large), then conversation, then a collapsed navigator the user can expand.
-- The user must never be trapped in a layout they cannot navigate or widen.
+Don't:
 
-## 8. AI / local model surface
+- Make the graph the permanent centerpiece at the expense of source reading.
+- Put Source in a cramped side dock.
+- Let an inspector tab or chat state resize the workspace without explicit user
+  action.
 
-- One AI status truth (the top-bar mode indicator + Settings). Graph answers need
-  no model; AI is opt-in and quiet until configured.
-- **Model selection is a picklist you can always see, not a memory test.** The
-  installed-model list loads when Settings opens **and** on Refresh, shows a
-  loading state while it fetches, and stays populated. The user must never be
-  forced to type a model name they can read in their terminal. When the Ollama
-  server is down, say so and how to start it (`ollama serve`) — never fall back to
-  a blank field with no list.
-- A text field remains only for genuinely custom/remote names, secondary to the
-  picklist.
-- Privacy is stated where it's meaningful: "Local: no code leaves" in local mode;
-  explicit consent copy for cloud.
+### Inspector / Chat
 
----
+Purpose: answer, explain, and inspect the current selection.
 
-Adherence check for any UI PR: Does Source read like code (no wrap, opaque
-header)? Does clicking evidence land on the exact line? Can BOTH side panels
-collapse, at every width? Can the user drag to widen chat? Does any panel strand
-content in blank space? Are buttons compact, not bulky? Is the installed-model
-list visible without typing? If any answer is wrong, fix it before shipping.
+The right column is a conversation and evidence column, not a miscellaneous
+drawer. It must stay readable at normal desktop widths and collapsible when the
+user wants more workspace.
+
+Do:
+
+- Keep Chat, Overview, Dependencies, and Source-related details task-oriented.
+- Keep answers structured: short lead, scannable bullets, cited evidence.
+- Keep Ask available while reading the answer.
+- Let the user widen or collapse the column.
+
+Don't:
+
+- Resize unrelated panes when the user switches inspector tabs.
+- Clear chat history or graph expansion just because the selection changed.
+- Present AI output as more authoritative than graph/source evidence.
+
+## 3. Selection And Evidence
+
+There is one app-wide selection. Graph nodes, tree items, search results,
+dependency rows, source links, and citations all update the same selected symbol.
+
+Citations are the trust mechanism.
+
+Required behavior:
+
+- Clicking evidence opens Source in the workspace.
+- The cited line is highlighted.
+- The source toolbar or marker names the focused citation as `file:line`.
+- The clicked answer or dependency context remains visible enough that the user
+  understands why they landed there.
+- AI answers that cannot pass citation guards fall back to a cited graph answer
+  and say so plainly.
+
+Do:
+
+- Prefer exact `file:line` citations over vague references.
+- Use citations in graph answers, AI answers, summaries, dependencies, parse
+  warnings, and exports.
+- Keep source jumps fast and obvious.
+
+Don't:
+
+- Make a citation scroll a hidden pane with no visible feedback.
+- Show substantive claims without source or graph evidence.
+- Auto-refocus the graph in a way that discards the user's expanded context
+  unless the user explicitly chooses that focus.
+
+## 4. Source Reader
+
+COBOL is column-sensitive. Source readability is a product requirement, not
+polish.
+
+Do:
+
+- Use monospace type around 13px.
+- Keep line numbers dim but readable.
+- Highlight the focused line with an accent rail or tint.
+- Highlight the selected symbol's line range subtly; the exact citation line must
+  remain stronger and separately marked.
+- Preserve line integrity; horizontal scroll beats wrapping.
+- Use an opaque sticky toolbar/header when sticky elements are needed.
+- Keep file navigation visible, with the current file and line range clear.
+- Design current snippet behavior so it can grow into full-file virtualized
+  reading later.
+
+Don't:
+
+- Wrap source by default.
+- Let source text bleed through sticky headers.
+- Hide the selected symbol inside a tiny keyhole without context.
+- Use decorative cards around code.
+
+Future source-reader work should move toward full-file reading,
+jump-to-definition, and references without breaking the current citation flow.
+
+## 5. Graph And Dependencies
+
+The graph is a focused relationship lens, not a full-graph hairball.
+
+Do:
+
+- Start from a focus node.
+- Show direct relationships first.
+- Use expansion deliberately and preserve expansion when reasonable.
+- Keep visible node controls keyboard-accessible.
+- Explain relationships close to where the user clicked.
+- Use the same node colors in graph labels, legend, chips, and lists.
+
+Don't:
+
+- Render every node by default.
+- Use disabled "complete" controls when there is nothing to expand.
+- Clip essential toolbar controls at narrow widths.
+- Let edge labels or dependency descriptions become paragraph walls.
+
+## 6. Chat, Overview, And AI
+
+Graph answers work without AI. AI is optional and opt-in.
+
+Do:
+
+- Lead with graph-grounded answers when the graph can answer the question.
+- Label graph, local AI, and cloud AI routes honestly.
+- Keep model setup in Settings.
+- Stream long local model answers when implemented.
+- Keep Stop available during model calls.
+- Run citation guards on final AI text.
+- Explain local failures with the next useful action, such as `ollama serve`.
+
+Don't:
+
+- Require AI for navigation, source inspection, graph Ask, or export.
+- Send code to cloud providers without explicit user setup.
+- Treat a slow local model as a silent hang.
+- Hide embedding failures by pretending semantic retrieval ran.
+
+## 7. Density, Hierarchy, And Copy
+
+Cobolens should be dense enough for repeated engineering work and calm enough to
+scan under pressure.
+
+Do:
+
+- Use compact controls: 28px default, 30px primary, 24-26px segmented toggles.
+- Use headings as small labels, not marketing headlines.
+- Prefer rows, sections, and lists over nested cards.
+- Keep panel content top-aligned.
+- Put feedback near the action that caused it.
+- Make disabled states explain themselves inline.
+- Keep copy concrete: "Open sample", "No matching graph symbols", "Ollama server
+  is not reachable".
+
+Don't:
+
+- Use hero sections, decorative cards, marketing panels, or empty illustration
+  space.
+- Strand a short panel in a tall blank frame.
+- Create nested scroll traps.
+- Use vague copy like "Something went wrong" without a next step.
+- Truncate primary labels. Truncate only repeated secondary metadata, with the
+  full value available by tooltip, title, or detail row.
+
+## 8. Visual Tokens
+
+The current visual language is dark, technical, and restrained. Refine it; do
+not replace it casually.
+
+Colors:
+
+- App background: `#0b0d10`
+- Panels/toolbars: `#11151a`
+- Raised surfaces: `#151a20`
+- Structural border: `#20262e`
+- Subtle border: `#27303a`
+- Primary text: `#dbe3ea` / `#e7ebef`
+- Secondary text: `#9aa6b2`
+- Dim text: `#7d8996`
+- Accent/local/focus: `#66c2a5` to `#5aa7a1`
+- Accent tint: `rgba(90,167,161,0.12)`
+- Accent border: `rgba(90,167,161,0.5)`
+- Warning/guard: `#e8d796`
+- Error: `#ffb4a2`
+
+Type:
+
+- Chrome: system UI stack.
+- Code, file paths, citations: `ui-monospace, SFMono-Regular, Menlo, Consolas,
+  monospace`.
+- Chrome text: 12-14px.
+- Section labels: 11-12px uppercase, modest tracking.
+- Do not scale font size with viewport width.
+
+Shape and motion:
+
+- Controls: 6-8px radius.
+- Status pills: 999px radius.
+- Borders: 1px.
+- Transitions: 140ms or less.
+- Respect `prefers-reduced-motion`.
+
+Node-type colors come from `nodeColor()` and are the source of truth for graph
+semantics.
+
+## 9. States
+
+Every meaningful surface defines these states:
+
+- **Empty:** name the one action that fills it.
+- **Loading:** say what is happening; show progress when available.
+- **Disabled:** explain why and how to enable it.
+- **Error:** name the failed action, reason, and next step.
+- **Success:** confirm near the action, then get out of the way.
+
+Examples:
+
+- Empty workspace: "Open the sample to begin."
+- No search result: "No matching graph symbols. Source text search is not
+  implemented yet."
+- Local AI down: "Ollama is not reachable. Start it with `ollama serve`."
+- Export success: show the exported file names or destination.
+
+## 10. Responsive Behavior
+
+The user must never be trapped in a layout they cannot navigate, widen, or
+collapse.
+
+Tiers:
+
+- **1200px and up:** navigator, workspace, and inspector side by side.
+- **900-1199px:** navigator may collapse by default; workspace and inspector
+  share the width.
+- **Under 900px:** one scrolling column, workspace first, then inspector/chat,
+  then navigator access.
+
+Required behavior:
+
+- Both side panels collapse at every width.
+- Collapse state persists.
+- The workspace/inspector split is draggable on widths where columns sit side by
+  side.
+- Narrow layouts keep Map/Source controls visible.
+- Source keeps readable code and horizontal scroll.
+- No pane collapses to zero because of grid overflow.
+
+## 11. Accessibility
+
+Accessibility is part of the workbench contract.
+
+Do:
+
+- Provide landmarks for the major zones.
+- Keep skip links for keyboard users.
+- Preserve visible focus rings.
+- Use named buttons for icon-only controls.
+- Keep graph visible-node controls keyboard-accessible.
+- Ensure citations, dependency rows, and source jump controls are buttons or
+  links with useful labels.
+- Do not rely on color alone for status or node type.
+
+Don't:
+
+- Hide essential controls behind hover-only affordances.
+- Use icon buttons without labels or tooltips.
+- Break tab order when panes collapse.
+- Treat static source grep checks as proof of accessible runtime behavior.
+
+## 12. Verification Expectations
+
+UI changes must be verified in the running app, not only by reading code.
+
+Minimum for most UI changes:
+
+- Launch the browser preview.
+- Open the sample.
+- Select a symbol from the navigator.
+- Switch Map and Source.
+- Ask a graph-backed question.
+- Click an evidence citation and confirm Source highlights the right line.
+- Resize the window.
+- Collapse both side panels.
+- Drag the workspace/inspector divider when available.
+
+Automated checks should prove behavior where practical. Source-grep smokes are
+allowed for stable contracts, but they are not a substitute for a driven browser
+smoke of the core loop.
+
+## 13. PR Checklist
+
+Before merging a UI change, answer yes to each relevant item:
+
+- Does the change preserve Navigator | Workspace | Inspector?
+- Does Source still read like code: no default wrap, clear line numbers, opaque
+  sticky chrome?
+- Does clicking evidence open Source and highlight the exact cited line?
+- Can both side panels collapse at the tested widths?
+- Can the user widen chat or workspace without surprise layout jumps?
+- Does Ask avoid discarding graph expansion unless the user chooses to refocus?
+- Are controls compact and labels untruncated?
+- Are empty, loading, disabled, error, and success states handled?
+- Are icon-only controls named?
+- Did the relevant smoke checks pass?
+- Did someone verify the changed flow in the browser or desktop app?
+
+If an answer is no, fix the UI, update this contract deliberately, or document
+the debt in `docs/tech-debt.md`.

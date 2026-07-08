@@ -96,6 +96,9 @@ Use the main release-candidate suite before pushing broad product changes:
 npm run m6:verify
 ```
 
+This suite expects the Rust toolchain on `PATH`; it builds the debug analyzer
+sidecar before running the parser fixture and Rust/Tauri checks.
+
 Use the broader readiness sweep when packaging, local Ollama, benchmark, or desktop runtime evidence matters:
 
 ```sh

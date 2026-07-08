@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const packageJson = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8"));
+const readme = await readFile(resolve(repoRoot, "README.md"), "utf8");
 const tauriConfig = await readFile(resolve(repoRoot, "src-tauri", "tauri.conf.json"), "utf8");
 const tauriConfigJson = JSON.parse(tauriConfig);
 const tauriLib = await readFile(resolve(repoRoot, "src-tauri", "src", "lib.rs"), "utf8");
@@ -53,6 +54,10 @@ const checks = {
     workflow.includes("if-no-files-found: error") &&
     workflow.includes("src-tauri/target/release/bundle/appimage/*.AppImage") &&
     workflow.includes("src-tauri/target/release/bundle/nsis/*.exe"),
+  "README keeps packaging claims unsigned until signing is validated":
+    readme.includes("GitHub Actions builds unsigned Linux and Windows bundles for QA") &&
+    readme.includes("These are unsigned QA/release-candidate bundles") &&
+    readme.includes("Signed public installers are not claimed"),
 };
 
 console.log(JSON.stringify({ checks }, null, 2));

@@ -6,6 +6,82 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const checks = [
   {
+    name: "demo asset policy smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/demo-assets-smoke.mjs"],
+  },
+  {
+    name: "citation focus smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/citation-focus-smoke.mjs"],
+  },
+  {
+    name: "graph selectors smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/graph-selectors-smoke.mjs"],
+  },
+  {
+    name: "summary planning smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/summary-planning-smoke.mjs"],
+  },
+  {
+    name: "summary graph smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/summary-graph-smoke.mjs"],
+  },
+  {
+    name: "ask focus smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/ask-focus-smoke.mjs"],
+  },
+  {
+    name: "model runtime smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/model-runtime-smoke.mjs"],
+  },
+  {
+    name: "inspector progress smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/inspector-progress-smoke.mjs"],
+  },
+  {
+    name: "chat history smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/chat-history-smoke.mjs"],
+  },
+  {
+    name: "layout state smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/layout-state-smoke.mjs"],
+  },
+  {
+    name: "source line smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/source-line-smoke.mjs"],
+  },
+  {
+    name: "source reader smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/source-reader-smoke.mjs"],
+  },
+  {
+    name: "app settings smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/app-settings-smoke.mjs"],
+  },
+  {
+    name: "verification contract smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/verification-contract-smoke.mjs"],
+  },
+  {
+    name: "Rust analyzer debug build",
+    command: "cargo",
+    args: ["build", "--manifest-path", "sidecar/cobolens-analyze/Cargo.toml"],
+    missingCommandHelp: "Install the Rust toolchain from https://rustup.rs/, then rerun npm run m6:verify.",
+  },
+  {
     name: "strict bake-off fixture",
     command: process.execPath,
     args: ["tools/m6-bakeoff/run.mjs"],
@@ -105,12 +181,14 @@ const checks = [
     command: "cargo",
     args: ["test"],
     cwd: resolve(repoRoot, "sidecar", "cobolens-analyze"),
+    missingCommandHelp: "Install the Rust toolchain from https://rustup.rs/, then rerun npm run m6:verify.",
   },
   {
     name: "Tauri shell tests",
     command: "cargo",
     args: ["test"],
     cwd: resolve(repoRoot, "src-tauri"),
+    missingCommandHelp: "Install the Rust toolchain from https://rustup.rs/, then rerun npm run m6:verify.",
   },
 ];
 
@@ -171,7 +249,7 @@ function spawnCheck(check) {
       stdio: "inherit",
     });
     child.on("error", (error) => {
-      console.error(error.message);
+      console.error(formatSpawnError(check, error));
       resolveRun(1);
     });
     child.on("close", (code) => resolveRun(code ?? 1));
@@ -180,4 +258,15 @@ function spawnCheck(check) {
 
 function npmCommand() {
   return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+
+function formatSpawnError(check, error) {
+  const lines = [`Unable to start ${check.name}: ${error.message}`];
+  if (error.code === "ENOENT") {
+    lines.push(`Missing required command: ${check.command}`);
+  }
+  if (check.missingCommandHelp) {
+    lines.push(check.missingCommandHelp);
+  }
+  return lines.join("\n");
 }

@@ -17,10 +17,10 @@ and the larger slices (6) remain forward-looking.
 - BUG-1 [FIXED] browser demo `Open Sample` — committed `public/m6-bakeoff-graph.json`; un-ignored in `.gitignore`; error names the regen command.
 - BUG-2 [FIXED] `resource path 'binaries' doesn't exist` — `src-tauri/binaries/.gitkeep` tracked, `.gitignore` ignores only built binaries, packaging script no longer wipes the dir. `cargo test` 17/17; `npm run m6:verify` 23/23 end-to-end from clean clone.
 - BUG-3 [FIXED] embedding model — `embeddingModel` (default `nomic-embed-text`) added to `ModelSettings`, wired through `embedTexts`, the index key, settings migration, and a Settings field.
-- BUG-4 [OPEN] streaming Ask — remains Slice 5 (see below); local token budgets were raised as an interim mitigation for thinking models.
+- BUG-4 [FIXED] Ask and summary streaming — both now stream draft text through `streamText`, use a first-token timeout, and guard final cited output.
 - BUG-5 [FIXED] export feedback — dismissable top-right toast, verified at top=54/right=16.
 - BUG-6 [FIXED] truncation — inspector tabs wrap (verified "Dependencies 11" full at 1100px); Sigma `stagePadding` 68 -> 96 stops edge-label clipping.
-- BUG-7 [PARTIAL] left rail — export status pulled to a toast; the full rail restructure is Slice 2 (still open).
+- BUG-7 [FIXED] left rail hierarchy — export status moved to a toast; navigation stays primary and status/filter blocks are secondary accordions.
 - BUG-8 [OPEN] source browser — remains Slice 3.
 - BUG-9 [FIXED] `Check AI` states — readiness and fetch-failure copy now name `ollama serve`; `ollama:check` probes embeddings separately.
 - BUG-10 [FIXED] AI-setup hierarchy — full-width "Set up AI first" replaced by a quiet link; bulk summarize hidden until AI configured.
@@ -32,7 +32,7 @@ and the larger slices (6) remain forward-looking.
 - NEW-1 [FIXED] readiness probe failed thinking models — `num_predict: 24` was consumed by reasoning before any visible text (reproduced with `gemma4:12b-mlx`: `done_reason:"length"`, empty response). Raised to 160 in both probes.
 - NEW-2 [FIXED] Ask used the raw completion API — switched `providers.ts` to the chat API and raised local token budgets (ask 260->512, summary 260->384). Verified end to end: a real local model returned an accepted, inline-cited answer instead of the guard fallback.
 
-**Deliberately not done** (feature-scale, tracked as debt/slices): streaming Ask, full-file source browser, left-rail restructure, the readiness stepper. See `docs/tech-debt.md`.
+**Deliberately not done** (feature-scale, tracked as debt/slices): full-file source browser, source-chunk semantic indexing, and desktop Ollama install-vs-running detection. See `docs/tech-debt.md`.
 
 Verification after the pass: `npm run build` pass; `npm run m6:verify` 23/23; `cargo test` 17/17; live browser checks plus a real Ollama matrix (server stopped, model missing -> recovery chips, embeddings missing -> visible note, full cited generation). The temporary Ollama server used for the generation check was stopped afterward.
 
@@ -43,7 +43,7 @@ Verification after the pass: `npm run build` pass; `npm run m6:verify` 23/23; `c
 > Note (2026-07-06): this diagnosis records the state **before** the fix pass.
 > Items 1, 2, 3, 6 (its "Check AI" half), and 7 are now fixed or reduced; items
 > 4 (source browser), part of 4's layout, and 5 (local model flow, now unblocked
-> but not streaming) remain. See the STATUS banner above and the per-bug tags in
+> with Ask/summary streaming but desktop CLI-detect work still open) remain. See the STATUS banner above and the per-bug tags in
 > section 2.
 
 The core engine is real: the Rust sidecar produces a solid `GraphDocument`, graph Ask answers with correct citations (verified live: "What depends on LINEAGE?" → `STEP010 RUNS LINEAGE at jcl/DAILYLN.jcl:2`), citation clicks jump source correctly, and export produces the three artifacts. The product around that engine is what fails a real user. In priority order:
@@ -51,7 +51,7 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 1. **Both first-run paths fail on a fresh clone.** Browser: "Open Sample" fetches `/m6-bakeoff-graph.json` (src/App.tsx:450), which is gitignored (.gitignore:14) and only exists after `npm run m6:fixture-graph`. Desktop: README's first command `npm run tauri dev` (README.md:100) fails because `tauri.conf.json` declares `binaries/` as a bundled resource but `src-tauri/binaries/` is gitignored (.gitignore:17) and only created by `npm run build:sidecar`. A new user cannot start the app either way by following the README top-to-bottom.
 2. **The release gate itself fails on a fresh checkout.** `npm run m6:verify` — documented as the main verification suite (README.md:211-213) — dies at "Tauri shell tests" with `resource path 'binaries' doesn't exist`, for the same reason as above. The readiness audit cites this suite as evidence while it does not pass from a clean clone.
 3. **Local AI has no complete product flow.** There is no embedding-model concept: `embedTexts` defaults the embedding model to the *generation* model (src/model/embeddings.ts:29, called without a model at src/App.tsx:893-900). Semantic retrieval failures are silently swallowed (`.catch(() => [])`, src/retrieval/context.ts:35), so with Ollama down — the current state of this machine — "semantic" Ask degrades invisibly. `Check AI` with the server stopped says "Start Ollama or check the host" (src/model/readiness.ts:49) but never says `ollama serve`, never distinguishes not-installed from stopped, and never checks embeddings at all (tools/local-model/ollama-smoke.mjs tests generation only).
-4. **Ask does not stream.** `generateText` (src/model/chat.ts:30) buffers the whole completion behind a 45s timeout (src/App.tsx:101). On CPU-bound local Ollama this reads as a hung app with a countdown of increasingly apologetic progress notes (src/App.tsx:2593-2604) — the exact opposite of how local chat should feel.
+4. **AI answers now stream, but source retrieval is still graph-only.** Ask and summaries now stream draft text through `streamText` with first-token timeout and guarded final output. The remaining Slice 5 work is source-chunk semantic indexing plus clearer retrieval status.
 5. **Source browsing is a 15-line snippet viewer.** `read_source_snippet` returns ±8 lines around a target (src-tauri/src/lib.rs:305-307; browser mirror src/App.tsx:3186-3187; verified live: 15 `.source-line` elements, no way to scroll beyond). There is no full-file view, no file-level tree (the "Codebase" browser lists graph units, not files), no syntax highlighting. This cannot support "the first hour with an unfamiliar system."
 6. **The layout leaks at every seam.** Verified live at 1100×800: left rail content is 1861px tall in an 852px pane (8 stacked blocks); search results, the "Dependenc… 11" tab, the composer draft, and graph node labels (`LINK RATEAPI`) all truncate or clip; export feedback renders at y≈1575 — off-screen at the bottom of the left rail (src/App.tsx:1325) while the Export button lives in the top-right.
 7. **"AI is optional" is contradicted by the UI.** The widest, most prominent button on the default Overview tab is "Set up AI first" (src/App.tsx:2104-2120), plus a second "Set up AI for summaries" at the bottom (src/App.tsx:2156). The graph-first story the PRD tells is not the visual hierarchy the app shows.
@@ -88,14 +88,14 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 - **Fix shape:** Add `embeddingModel` to `ModelSettings` (default `nomic-embed-text`), thread it through `embedTexts` and `semanticGraphIndexKey`, add an embeddings probe to `inspectOllamaReadiness` and `ollama-smoke.mjs` (POST `/api/embed` with a one-word input), and surface a visible "semantic search unavailable: <reason>" note in the Ask answer metadata instead of swallowing.
 - **Verify:** Extend tools/m6-verify/model-readiness-smoke.mjs and embedding-privacy-smoke.mjs; manual matrix rows "generation ready / embedding missing" below.
 
-### BUG-4 — Ask/summary responses do not stream; 45s hard timeout — **P1** — **[OPEN — Slice 5; interim: local token budgets raised]**
+### BUG-4 — Ask/summary responses do not stream; whole-call timeout — **P1** — **[FIXED 2026-07-07]**
 - **Repro:** Working Ollama on CPU, ask any AI-routed question.
 - **Expected:** Tokens appear as generated; Stop cancels mid-stream; slow models still feel alive.
-- **Actual:** `generateText` buffers everything (src/model/chat.ts:30, src/model/summaries.ts:35); the UI shows a spinner with escalating patience copy (src/App.tsx:2593-2604) and kills the call at 45s (src/App.tsx:101 `MODEL_CALL_TIMEOUT_MS`). A model that streams a fine answer in 60s is indistinguishable from a hung one and gets guillotined.
-- **Files:** src/model/chat.ts, src/model/summaries.ts, src/App.tsx:3124-3156 (`runTimedModelCall`), src/App.tsx:2209+ (ChatAnswerPanel rendering).
-- **Why it matters:** Local-first + CPU inference makes streaming a functional requirement, not polish. The 45s ceiling plus buffering is the main reason "talking to the codebase" doesn't feel wired.
-- **Fix shape:** Switch to `streamText` from the `ai` SDK (already a dependency), render incremental text in the existing `answer-response` block, run the citation guard on the *final* text (keep the guarded-fallback behavior), and change the timeout semantics to "no first token within N seconds" + "user-visible Stop" rather than a whole-call ceiling.
-- **Verify:** Update tools/m6-verify/model-chat-contract-smoke.mjs for the streaming API surface; manual: watch tokens render with `llama3.2:1b`; Stop mid-stream leaves "Ask was stopped." without replacing the prior answer.
+- **Actual:** Fixed. Ask now streams draft text in the Chat answer card, summaries stream draft text in the Summary panel, and both guard final text before evidence/final summary output is trusted.
+- **Files:** `src/model/chat.ts`, `src/model/summaries.ts`, `src/model/modelRuntime.ts`, `src/App.tsx`, `src/inspector/ChatAnswerPanel.tsx`, `src/inspector/SummaryDock.tsx`.
+- **Why it matters:** Local-first + CPU inference makes streaming a functional requirement, not polish. The app now feels alive during model output instead of waiting for a whole completion.
+- **Fix shape:** Done with shared first-token timeout plumbing, streamed draft rendering, Stop via the existing abort controller, and final citation guard semantics.
+- **Verify:** `tools/m6-verify/model-chat-contract-smoke.mjs` covers Ask streaming; `tools/m6-verify/summary-prompt-smoke.mjs` and `tools/m6-verify/ui-contract-smoke.mjs` cover summary streaming.
 
 ### BUG-5 — Export feedback is invisible — **P1 (verified live)** — **[FIXED 2026-07-06]**
 - **Repro:** Load sample at 1440×900, click "Export" in the top bar.
@@ -115,32 +115,32 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 - **Fix shape:** Rework the top bar to a two-tier or priority-collapse layout (brand + search + actions; focus/mode as a second row or moved into panes); give tabs icon+full-label with a minimum pane width instead of ellipsis; let search results wrap to two lines with the full name; increase Sigma `stagePadding` / camera ratio so focus-slice labels fit.
 - **Verify:** Screenshot pass at 960/1100/1280/1440; a CSS-level check that `.inspector-tabs button` and `.search-results` names don't use `text-overflow: ellipsis` for primary labels.
 
-### BUG-7 — Left rail is an 1861px stack of eight blocks — **P1 (verified live)** — **[PARTIAL — export status removed; restructure is Slice 2]**
+### BUG-7 — Left rail is an 1861px stack of eight blocks — **P1 (verified live)** — **[FIXED 2026-07-07]**
 - **Repro:** Load sample; inspect `.left-pane` scroll metrics (measured 1861px content in 852px).
 - **Expected:** Navigation (Codebase browser, search results) reachable without scrolling; status (Inventory, Parse Health, Graph Hints) available but not competing.
-- **Actual:** Order is Ingest → Search Results → Legend & Filters → Codebase → Inventory → Parse Health → Graph Hints → export status (src/App.tsx:1216-1326). The Codebase browser — the primary navigation surface — starts below the fold; Search Results occupies fixed space even when empty; the always-visible first-run card repeats the graph pane's empty card.
-- **Files:** src/App.tsx:1215-1326, src/App.css:320+.
+- **Actual:** Fixed. The rail now leads with project/search/codebase navigation, then groups Legend & Filters, Inventory, Parse Health, and Graph Hints in secondary accordions.
+- **Files:** `src/navigator/NavigatorRail.tsx`, `src/navigator/NavigatorPanels.tsx`, `src/App.css`.
 - **Why it matters:** This is the "overloaded rail" problem the PRD explicitly warns about (docs/COBOL-Lens-PRD.md:98-109 says navigation and status only — but it's all stacked as equals).
-- **Fix shape:** Collapse the rail to two zones: a primary "Project" zone (open actions condensed to one row, then the Codebase tree, with search results replacing the tree only while a query is active) and a collapsible "Status" zone (Inventory + Parse Health + Hints as accordion sections with summary counts in headers). Filters/legend move to a popover on the graph toolbar where they act.
-- **Verify:** At 900px height, Codebase tree visible without scrolling after load; accordion state persists per session; existing accessibility smoke still passes.
+- **Fix shape:** Done with a primary navigation zone and a secondary status/filter zone. The graph filters still live in the rail for now, but collapsed under the secondary group instead of competing with navigation.
+- **Verify:** Rendered/UI/accessibility smokes cover the closed status accordions and opening Legend & Filters.
 
 ### BUG-8 — Source viewing is a fixed ±8-line snippet — **P1** — **[OPEN — Slice 3]**
 - **Repro:** Select any node; try to read the whole file, or scroll past the snippet.
 - **Expected:** A real file reader: full file scroll, the cited line highlighted and centered, line numbers, at least basic COBOL keyword highlighting, and next/previous citation navigation.
-- **Actual:** Desktop `read_source_snippet` returns lines target±8 (src-tauri/src/lib.rs:305-307); browser mirror same (src/App.tsx:3186-3187). Verified live: 15 rendered lines, scrolling ends there. The "Source" inspector tab is not a source view at all — it's a card *describing* the source panel with a "Focus source viewer" button (src/App.tsx:2840-2882).
-- **Files:** src-tauri/src/lib.rs:294-359, src/App.tsx:3164-3238 (snippet/excerpt readers), src/App.tsx:2884-2938 (CodeSnippet), src/App.css (code-panel sizing).
+- **Actual:** Desktop `read_source_snippet` returns a bounded window around the target line; the browser mirror in `src/lib/sourceReader.ts` does the same. Verified live: snippet rendering ends at the returned window. Source is now the center workspace view, but it is still a snippet reader rather than a full-file browser.
+- **Files:** src-tauri/src/lib.rs (`read_source_snippet`), src/lib/sourceReader.ts (browser mirror), src/workspace/WorkspacePane.tsx (center Source surface), src/source/CodeSnippet.tsx (snippet rendering), src/App.css (code-panel sizing).
 - **Why it matters:** This is problem #5 in the user report and the README's own roadmap item #2. Understanding COBOL requires reading whole paragraphs and DATA DIVISION context, not 15-line keyholes.
 - **Fix shape:** Add a `read_source_file` Tauri command (windowed: return the full file up to a size cap, or paged ranges), render a virtualized full-file view in the code panel with the citation line highlighted; keep the snippet API for excerpt/AI use. File-level entries in the Codebase tree open the file at line 1.
 - **Verify:** New Tauri test for `read_source_file` bounds/encoding; manual: open `src/LINEAGE.cbl`, scroll whole file, citation still centers and highlights; large-file cap behavior on a >16MB file.
 
-### BUG-9 — `Check AI` error states don't lead the user anywhere — **P1 (verified live)** — **[FIXED copy 2026-07-06; CLI-detect + stepper is Slice 4]**
+### BUG-9 — `Check AI` error states don't lead the user anywhere — **P1 (verified live)** — **[PARTIAL — stepper fixed; desktop CLI-detect open]**
 - **Repro:** Ollama CLI installed but server stopped (this machine's state). Settings → Check AI.
 - **Expected:** State-specific guidance: "Ollama is installed but not running — run `ollama serve` (or open the Ollama app)", distinct from "not installed → install link" and "running but model missing → `ollama pull …` with one-click model chips."
-- **Actual:** Generic "Could not reach Ollama at http://127.0.0.1:11434/api. Start Ollama, check the host, or switch providers." (src/model/readiness.ts:49). The app cannot detect CLI presence from the browser context at all, and the desktop shell has no command for it either. The `ollama pull` hint renders only in the model-missing error path (src/App.tsx:1855-1857, 1905-1910). The npm smoke knows more than the app does (ollama-smoke.mjs distinguishes CLI vs HTTP vs model vs generation).
-- **Files:** src/model/readiness.ts:41-113, src/App.tsx:694-775 (check/refresh/prepare), src-tauri/src/lib.rs (no ollama-detect command), Settings panel src/App.tsx:1820-1986.
+- **Actual:** Partial. Settings now shows a compact readiness stepper for install/serve, generation model, embedding model, and final test states. The app still cannot distinguish "Ollama not installed" from "installed but stopped" because it only reaches Ollama through HTTP; the desktop shell has no CLI-detect command yet.
+- **Files:** `src/settings/SettingsDialog.tsx`, `src/model/readiness.ts`, `src-tauri/src/lib.rs` (no ollama-detect command).
 - **Why it matters:** This is the "no clear offline AI setup path" complaint. The information exists in the repo's tooling but not in the product.
-- **Fix shape:** Desktop: add a small Tauri command that checks for the `ollama` binary (`which ollama`) so the wizard can distinguish not-installed vs stopped; render a stepper in Settings: Installed → Server running → Generation model → Embedding model → Test, each row with its state and its one command (copyable). Browser: same stepper but with "detected via HTTP only" caveats.
-- **Verify:** Manual matrix rows (no CLI / CLI+stopped / running+no model / model+no embed / all green); extend model-readiness-smoke for the new states.
+- **Fix shape:** Desktop: add a small Tauri command that checks for the `ollama` binary (`which ollama`) so the first step can distinguish not-installed vs stopped. Browser stays HTTP-only.
+- **Verify:** Manual matrix rows (no CLI / CLI+stopped / running+no model / model+no embed / all green); extend model-readiness-smoke for the new desktop-only state if the command lands.
 
 ### BUG-10 — Overview's primary CTA is AI setup, contradicting graph-first positioning — **P2 (verified live)** — **[FIXED 2026-07-06]**
 - **Repro:** Load sample; look at the default Overview tab.
@@ -149,7 +149,7 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 - **Fix shape:** Demote unconfigured-AI actions to a single quiet link ("AI summary available after setup →"); when AI *is* configured, promote "Generate AI summary" to normal weight. Keep "Summarize all" inside Settings' usage card or an overflow menu — bulk cost belongs near the estimate.
 - **Verify:** Screenshot review; ui-contract check that only one AI-setup entry point renders in Overview.
 
-### BUG-11 — QA suite presents source greps as UI/accessibility evidence — **P2 (process bug, bounded)** — **[PARTIAL — docs corrected 2026-07-06; driven-browser smoke still open, see docs/tech-debt.md]**
+### BUG-11 — QA suite presents source greps as UI/accessibility evidence — **P2 (process bug, bounded)** — **[PARTIAL — docs corrected 2026-07-06; core-loop rendered UI smoke added 2026-07-07; brittle source checks remain, see docs/tech-debt.md]**
 - **Repro:** Read tools/m6-verify/ui-contract-smoke.mjs (reads App.tsx/App.css as text, asserts `includes(...)` — 4 `includes(` composites in the head alone) and accessibility-smoke.mjs (same pattern); compare docs/v1-readiness-audit.md rows FR-13…FR-24 marked "Evidenced" citing these smokes plus manually recorded notes in docs/m6-ui-qa.md.
 - **Expected:** Claims labeled as what they are: static contract checks + one-time manual QA notes, not automated UI verification. Ideally one thin driven-browser smoke (Playwright or the existing preview harness) for load-sample → search → focus → citation-jump → export.
 - **Actual:** README calls m6:verify a "verification suite" covering "UI contract smoke" and "accessibility smoke" (README.md:231-247); v1-readiness-audit lists `npm run m6:verify` as evidence command #1 while it fails from a clean clone (BUG-2).
@@ -290,10 +290,12 @@ Each state maps to one UI row in the setup stepper with one copyable command (`o
 
 ## 6. Implementation Slices
 
-Status after the 2026-07-06 pass: **Slice 1 is done**; **Slice 4 is partially
-done** (embedding-model setting, separate readiness/embedding checks, chat API,
-and command-naming copy landed; the guided stepper UI is not built). Slices 2,
-3, and 5 remain as scoped below.
+Status after the 2026-07-07 pass: **Slice 1 is done**; **Slice 2 is mostly
+paid down**; **Slice 4 is partially done** (embedding-model setting, separate
+readiness/embedding checks, chat API, command-naming copy, and the lightweight
+Settings stepper landed; desktop CLI detection is still open); **Slice 5 is partially done** (Ask and summaries stream
+with first-token timeout; source-chunk indexing is still open). Source browser/full-file work
+remains.
 
 ### Slice 1 — First-run integrity (unblock everything) — DONE
 Committed the demo graph, tracked `src-tauri/binaries/` via `.gitkeep`, stopped
@@ -311,14 +313,14 @@ fix is in place but nothing in CI clones clean and re-runs the suite.
 
 ### Slice 2 — Layout and design-system cleanup
 - **Goal:** No truncation at ≥960px; left rail restructured (project header + file tree + status accordions); stable pane geometry; export feedback local to the button; demo-mode badge replacing scattered desktop-only notes; Overview AI CTAs demoted.
-- **Files:** src/App.tsx (rail sections ~1215-1326, topbar ~1137-1188, SummaryDock ~2029-2163, export status), src/App.css (topbar grid :159, shell grid :320, tab/list ellipsis rules), src/graph/GraphView.tsx (label padding).
+- **Files:** src/App.tsx (root shell/orchestration), src/workspace/WorkspacePane.tsx, src/topbar/TopBar.tsx, src/navigator/NavigatorRail.tsx, src/inspector/InspectorPane.tsx, src/inspector/ChatAnswerPanel.tsx, src/inspector/SummaryDock.tsx, src/App.css (topbar grid, shell grid, tab/list rules), src/graph/GraphView.tsx (label padding).
 - **Outcome:** The app reads as one deliberate workbench at 1280×800 and 1440×900; problems 3, 4, and part of 2 in the user report are closed.
 - **Tests:** Update ui-contract-smoke expectations (it greps for class structures that will change — budget for this); screenshot pass at 960/1100/1440; accessibility smoke (skip links/landmarks must survive restructuring).
-- **Risks:** ui-contract-smoke is tightly coupled to current markup strings — the slice must update the smoke in the same PR or verify goes red. Rail restructure touches the largest component in the repo (App.tsx is 3589 lines); consider extracting rail components first as a no-behavior-change refactor commit.
+- **Risks:** ui-contract-smoke is still partly coupled to source strings — the slice must update the smoke in the same PR or verify goes red. Rail restructure still touches the largest root component; consider extracting rail components first as a no-behavior-change refactor commit.
 
 ### Slice 3 — Real source browser
 - **Goal:** Full-file reading with highlighted citations; file-based tree entries; Source promoted to a center-pane tab; the inspector "Source" tab removed.
-- **Files:** src-tauri/src/lib.rs (new `read_source_file` command + tests), src/App.tsx (CodeSnippet → FileView, snippet fetch effect ~324-353, browser source-bundle reader ~3240-3275), src/App.css, left-rail tree component.
+- **Files:** src-tauri/src/lib.rs (new `read_source_file` command + tests), src/workspace/WorkspacePane.tsx (`CodeSnippet` -> `FileView`), src/source/CodeSnippet.tsx, src/App.tsx (snippet state/effects), src/lib/sourceReader.ts, src/App.css, left-rail tree component.
 - **Outcome:** Problem 5 closed: a user can actually read LINEAGE.cbl top to bottom, with cited lines marked.
 - **Tests:** Rust tests for bounds/encoding/size-cap; browser demo check that the source bundle serves full files (it already contains full text — m6-bakeoff-source.json is a file→text map); manual: citation from Ask centers the right line in the full file.
 - **Risks:** Very large files (up to the 16MB scan cap) need virtualization or a windowed fallback — cap the full-file view (e.g. 20k lines) with an explicit "showing first N lines" notice rather than freezing. Keep the ±8 snippet path for the AI excerpt reader untouched.
@@ -326,18 +328,21 @@ fix is in place but nothing in CI clones clean and re-runs the suite.
 ### Slice 4 — Local AI readiness stepper + embedding model — PARTIALLY DONE
 Landed in the 2026-07-06 pass: `embeddingModel` setting + Settings field,
 `ollama:check` embedding probe, chat-API switch, and error copy that names
-`ollama serve`/`ollama pull`. **Still open:** the five-step stepper UI and the
-desktop `which ollama` CLI-detect command (install-vs-stopped distinction). The
-remaining scope below is the stepper work.
-- **Goal:** Settings AI section becomes the five-step readiness stepper; `embeddingModel` added to settings with its own checks; desktop `ollama` CLI detection; `ollama:check` extended to embeddings; error copy names exact commands.
+`ollama serve`/`ollama pull`. Landed in the 2026-07-07 pass: the lightweight
+Settings readiness stepper. **Still open:** the desktop `which ollama`
+CLI-detect command (install-vs-stopped distinction).
+- **Goal:** Settings AI section becomes a staged readiness stepper; `embeddingModel` added to settings with its own checks; desktop `ollama` CLI detection; `ollama:check` extended to embeddings; error copy names exact commands.
 - **Files:** src/model/config.ts, src/model/readiness.ts, src/model/embeddings.ts, src/App.tsx (Settings panel ~1559-1986, checkModelReadiness ~694-775), src-tauri/src/lib.rs (CLI-detect command), tools/local-model/ollama-smoke.mjs, tools/m6-verify/model-readiness-smoke.mjs + embedding-privacy-smoke.mjs, README local-AI section.
 - **Outcome:** Problems 6 and half of 7 closed: a user with nothing installed reaches working local AI by following the panel top to bottom.
 - **Tests:** Readiness/embedding smokes for each state; settings schema migration test (old saved settings without `embeddingModel` normalize cleanly — extend `normalizeModelSettings`, src/App.tsx:3070-3089); manual matrix rows below.
 - **Risks:** Settings schema change must not invalidate the semantic index key format incompatibly (the key embeds the model string — src/App.tsx:3306-3308 changes to use `embeddingModel`); keychain/provider paths must remain untouched.
 
 ### Slice 5 — Streaming retrieval-backed Ask
-- **Goal:** AI Ask and summaries stream; first-token timeout replaces the 45s ceiling; source-chunk semantic indexing with visible index/build status; retrieval status surfaced in answers; Ask no longer auto-refocuses the graph.
-- **Files:** src/model/chat.ts, src/model/summaries.ts, src/App.tsx (runTimedModelCall ~3124, askQuestion ~873-968, ChatAnswerPanel ~2209-2438), src/retrieval/semantic.ts (source chunks), src/retrieval/context.ts (status reporting, unswallow errors), optional desktop vector-store commands in lib.rs.
+- **Goal:** AI Ask and summaries stream; first-token timeout replaces the whole-call timeout; source-chunk semantic indexing with visible index/build status; retrieval status surfaced in answers; Ask no longer auto-refocuses the graph.
+- **Status:** Partial. Ask and summaries stream draft text, have first-token
+  timeout, and still guard final output; source-chunk indexing and the remaining
+  readiness-stepper polish are still open.
+- **Files:** src/model/chat.ts, src/model/summaries.ts, src/model/modelRuntime.ts (timeout semantics), src/App.tsx (askQuestion orchestration), src/inspector/ChatAnswerPanel.tsx, src/retrieval/semantic.ts (source chunks), src/retrieval/context.ts (status reporting, unswallow errors), optional desktop vector-store commands in lib.rs.
 - **Outcome:** Problem 7 closed: "talk to this codebase" feels alive on CPU-class hardware, degrades honestly, and cites reliably.
 - **Tests:** model-chat-contract-smoke updated for streaming; semantic-retrieval-smoke extended for source chunks and for the "embedding unavailable → explicit status" path; manual: `llama3.2:1b` streamed answer + mid-stream Stop + guard-fallback case.
 - **Risks:** The citation guard currently assumes final text — streaming needs the draft/stamped rendering to avoid flashing uncited prose as final; keep the guarded fallback semantics byte-compatible with export provenance labels. Ollama streaming via `ollama-ai-provider-v2` should use the chat API path (`ollama(model)` rather than `.completion()`, providers.ts:17) — verify prompt fidelity with the existing prompt smokes.

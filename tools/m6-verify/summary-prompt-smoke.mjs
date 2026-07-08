@@ -5,8 +5,24 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const summariesSource = await readFile(resolve(repoRoot, "src", "model", "summaries.ts"), "utf8");
+const summaryGenerationSource = await readFile(resolve(repoRoot, "src", "inspector", "useSummaryGeneration.ts"), "utf8");
+const summaryDockSource = await readFile(resolve(repoRoot, "src", "inspector", "SummaryDock.tsx"), "utf8");
 
 const checks = {
+  "summaries stream model text": summariesSource.includes('import { streamText } from "ai"') &&
+    summariesSource.includes("for await (const delta of result.textStream)") &&
+    !summariesSource.includes('import { generateText } from "ai"'),
+  "summary exposes streaming callbacks": summariesSource.includes("onFirstToken?: () => void") &&
+    summariesSource.includes("onTextDelta?: (text: string) => void") &&
+    summariesSource.includes("onTextDelta?.(text)"),
+  "Summary generation hook streams drafts through summary state": summaryGenerationSource.includes('runStreamingModelCall("Summary generation"') &&
+    summaryGenerationSource.includes("onFirstToken: noteFirstToken") &&
+    summaryGenerationSource.includes("onTextDelta: (draftText) => {") &&
+    summaryGenerationSource.includes('[node.id]: { status: "running", draftText }') &&
+    !summaryGenerationSource.includes('runTimedModelCall("Summary generation"'),
+  "Summary panel renders streamed draft text": summaryDockSource.includes("draftText?: string") &&
+    summaryDockSource.includes('className="summary-draft"') &&
+    summaryDockSource.includes("Draft summary"),
   "local summary budget is smaller than cloud budget":
     summariesSource.includes("const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 384") &&
     summariesSource.includes("const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420"),

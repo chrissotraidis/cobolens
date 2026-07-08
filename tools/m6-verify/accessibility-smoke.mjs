@@ -5,17 +5,27 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const appSource = await readFile(resolve(repoRoot, "src", "App.tsx"), "utf8");
+const appShellSource = await readFile(resolve(repoRoot, "src", "AppShell.tsx"), "utf8");
+const topBarSource = await readFile(resolve(repoRoot, "src", "topbar", "TopBar.tsx"), "utf8");
+const navigatorRailSource = await readFile(resolve(repoRoot, "src", "navigator", "NavigatorRail.tsx"), "utf8");
+const workspaceSource = await readFile(resolve(repoRoot, "src", "workspace", "WorkspacePane.tsx"), "utf8");
+const workspaceSkipLinksSource = await readFile(resolve(repoRoot, "src", "workspace", "WorkspaceSkipLinks.tsx"), "utf8");
+const inspectorPaneSource = await readFile(resolve(repoRoot, "src", "inspector", "InspectorPane.tsx"), "utf8");
+const inspectorTabsSource = await readFile(resolve(repoRoot, "src", "inspector", "InspectorTabs.tsx"), "utf8");
+const chatAnswerPanelSource = await readFile(resolve(repoRoot, "src", "inspector", "ChatAnswerPanel.tsx"), "utf8");
+const summaryDockSource = await readFile(resolve(repoRoot, "src", "inspector", "SummaryDock.tsx"), "utf8");
+const messagePartsSource = await readFile(resolve(repoRoot, "src", "inspector", "MessageParts.tsx"), "utf8");
+const uiSource = `${appSource}\n${appShellSource}\n${topBarSource}\n${navigatorRailSource}\n${workspaceSource}\n${workspaceSkipLinksSource}\n${inspectorPaneSource}\n${inspectorTabsSource}\n${chatAnswerPanelSource}\n${summaryDockSource}\n${messagePartsSource}`;
 const appCss = await readFile(resolve(repoRoot, "src", "App.css"), "utf8");
 const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphView.tsx"), "utf8");
 
 const checks = {
-  "workspace exposes skip links before the top bar": appearsInOrder(appSource, [
+  "workspace exposes skip links before the top bar": appearsInOrder(appShellSource, [
     'className="workspace"',
-    'className="skip-links"',
-    'href="#navigator-panel"',
-    '<header className="topbar">',
-  ]),
-  "skip links target the major work areas": includesAll(appSource, [
+    '<WorkspaceSkipLinks',
+    '<TopBar',
+  ]) && includesAll(workspaceSkipLinksSource, ['className="skip-links"', 'href="#navigator-panel"']),
+  "skip links target the major work areas": includesAll(uiSource, [
     'href="#navigator-panel"',
     'href="#dependency-graph"',
     'href="#inspector-panel"',
@@ -23,7 +33,7 @@ const checks = {
     'id="dependency-graph"',
     'id="inspector-panel"',
   ]),
-  "skip targets are programmatically focusable landmarks": includesAll(appSource, [
+  "skip targets are programmatically focusable landmarks": includesAll(uiSource, [
     'aria-label="Navigator" tabIndex={-1}',
     'aria-label="Workspace"',
     'aria-label="Source code" tabIndex={-1}',
@@ -50,12 +60,12 @@ const checks = {
     "`Focus ${node.label}`",
     "onClick={() => activateVisibleNode(node.id)}",
   ]),
-  "graph node list can be toggled with button state": includesAll(appSource, [
+  "graph node list can be toggled with button state": includesAll(uiSource, [
     'aria-pressed={showGraphNodeList}',
     'aria-label={showGraphNodeList ? "Hide the list of visible nodes" : "List the nodes visible on the map"}',
     'className="toggle-button"',
   ]),
-  "Ask and citation controls remain named": includesAll(appSource, [
+  "Ask and citation controls remain named": includesAll(uiSource, [
     'aria-label="Ask about the codebase"',
     'aria-label="Suggested questions"',
     "aria-label={`Open citation ${citation.label} at ${citationSite(citation)}`}",

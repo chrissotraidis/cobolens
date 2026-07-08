@@ -236,6 +236,7 @@ function buildFocusSlice(
   const syntheticNodeIds = new Set<string>();
   const syntheticNodeOwners = new Map<string, string>();
   let hiddenNeighborCount = 0;
+  let syntheticIndex = 0;
 
   const focusNode = nodeById.get(focusNodeId) ?? document.nodes[0];
   visibleNodeIds.add(focusNode.id);
@@ -270,7 +271,6 @@ function buildFocusSlice(
     });
   }
 
-  let syntheticIndex = 0;
   for (const edgeKeyValue of visibleEdgeKeys) {
     const edge = edgeByKey.get(edgeKeyValue);
     if (!edge || !visibleNodeIds.has(edge.from) || !visibleNodeIds.has(edge.to)) continue;

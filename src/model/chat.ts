@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { streamText } from "ai";
 import type { RetrievedContext } from "../retrieval/context";
 import { enforceGroundedAnswerCitations } from "./answerGuard";
 import type { ModelSettings } from "./config";
@@ -22,14 +22,18 @@ export async function generateGroundedAnswer({
   settings,
   apiKey,
   abortSignal,
+  onFirstToken,
+  onTextDelta,
 }: {
   question: string;
   context: RetrievedContext;
   settings: ModelSettings;
   apiKey?: string;
   abortSignal?: AbortSignal;
+  onFirstToken?: () => void;
+  onTextDelta?: (text: string) => void;
 }): Promise<GroundedAnswer> {
-  const result = await generateText({
+  const result = streamText({
     model: createLanguageModel(settings, apiKey),
     system: groundedAnswerSystemPrompt(settings.rosettaLanguage),
     prompt: [
@@ -49,7 +53,18 @@ export async function generateGroundedAnswer({
     abortSignal,
   });
 
-  const guarded = enforceGroundedAnswerCitations(result.text, context);
+  let text = "";
+  let sawFirstToken = false;
+  for await (const delta of result.textStream) {
+    if (!sawFirstToken) {
+      sawFirstToken = true;
+      onFirstToken?.();
+    }
+    text += delta;
+    onTextDelta?.(text);
+  }
+
+  const guarded = enforceGroundedAnswerCitations(text, context);
   return { text: guarded.text, guarded: guarded.guarded, guardReason: guarded.reason };
 }
 

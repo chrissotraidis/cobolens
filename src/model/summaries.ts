@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { streamText } from "ai";
 import type { GraphDocument, GraphNode, SourceExcerpt } from "../lib/graph";
 import type { Citation } from "../retrieval/context";
 import { enforceGroundedAnswerCitations, type GuardedAnswerText } from "./answerGuard";
@@ -26,6 +26,8 @@ export async function generateUnitSummary({
   settings,
   apiKey,
   abortSignal,
+  onFirstToken,
+  onTextDelta,
 }: {
   graph: GraphDocument;
   node: GraphNode;
@@ -33,8 +35,10 @@ export async function generateUnitSummary({
   settings: ModelSettings;
   apiKey?: string;
   abortSignal?: AbortSignal;
+  onFirstToken?: () => void;
+  onTextDelta?: (text: string) => void;
 }): Promise<UnitSummary> {
-  const result = await generateText({
+  const result = streamText({
     model: createLanguageModel(settings, apiKey),
     system: summarySystemPrompt(settings.rosettaLanguage),
     prompt: summaryUserPrompt(graph, node, excerpt, settings),
@@ -43,11 +47,22 @@ export async function generateUnitSummary({
     abortSignal,
   });
 
+  let text = "";
+  let sawFirstToken = false;
+  for await (const delta of result.textStream) {
+    if (!sawFirstToken) {
+      sawFirstToken = true;
+      onFirstToken?.();
+    }
+    text += delta;
+    onTextDelta?.(text);
+  }
+
   const guarded = guardUnitSummaryText({
     graph,
     node,
     excerpt,
-    text: result.text,
+    text,
   });
 
   return {

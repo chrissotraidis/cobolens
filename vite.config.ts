@@ -7,6 +7,26 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("/sigma/") || id.includes("/graphology/")) return "graph-vendor";
+          if (
+            id.includes("/@ai-sdk/") ||
+            id.includes("/@openrouter/") ||
+            id.includes("/ai/") ||
+            id.includes("/ollama-ai-provider-v2/")
+          ) {
+            return "ai-vendor";
+          }
+          if (id.includes("/@tauri-apps/")) return "tauri-vendor";
+          return "vendor";
+        },
+      },
+    },
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

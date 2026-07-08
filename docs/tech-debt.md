@@ -1,6 +1,6 @@
 # Cobolens Tech Debt
 
-Last updated: 2026-07-07.
+Last updated: 2026-07-08.
 
 This is the honest running ledger of known debt: things that work well enough
 for the local v1 release candidate but are shortcuts, deferrals, or rough edges
@@ -24,50 +24,61 @@ and it is enforced-ish by the smokes.
 1. `npm run dev` for the browser preview. Click **Open Sample** to load the
    committed fixture (`public/m6-bakeoff-graph.json`). There is no folder-open in
    the browser — that needs the desktop app (`npm run tauri dev`).
-2. Make changes in `src/` (mostly `src/App.tsx` ~3.9k lines, `src/App.css`,
-   `src/graph/GraphView.tsx`, `src/model/*`, `src/retrieval/*`).
+2. Make changes in `src/` (mostly `src/App.tsx` just under 400 lines plus extracted
+   feature files under `src/settings/`, `src/navigator/`, `src/source/`,
+   `src/workspace/`, `src/inspector/`, `src/App.css`,
+   `src/graph/GraphView.tsx`, `src/model/*`, and `src/retrieval/*`).
 3. **Verify by actually driving the UI**, not by reading code — resize the
    window, drag the pane divider, collapse both side panels, switch Map/Source,
    ask a graph question and an AI question, click evidence. Many past regressions
    were "looked fine in code, broken on screen."
-4. `npm run build` (tsc + vite) then `npm run m6:verify` (23 checks) must pass.
-   **The UI-contract and accessibility smokes are string-greps over `App.tsx`/
-   `App.css`** (`tools/m6-verify/ui-contract-smoke.mjs`, `accessibility-smoke.mjs`)
-   — when you change copy, class names, or markup you WILL break them; update the
-   assertions in the same change. This is itself debt (see below).
+4. `npm run build` (tsc + vite) then `npm run m6:verify` must pass.
+   **The UI-contract smoke is now module-scoped, and the accessibility smoke
+   still includes source checks over extracted UI files and `App.css`**
+   (`tools/m6-verify/ui-contract-smoke.mjs`, `accessibility-smoke.mjs`) — when
+   you change copy, class names, or markup you may need to update focused
+   assertions in the same change. This is smaller now, but still debt (see
+   below).
 5. Local AI: `npm run ollama:check <model>` verifies the CLI/HTTP/generation/
    embeddings path. Reasoning ("thinking") models need `think:false` (already set
    in the probe and provider) or they return empty text.
 
 **Biggest open debt, ranked:**
-1. **`src/App.tsx` is a ~3.9k-line monolith** [large] — the single hardest thing
-   about working here. Extract the top bar, left rail, center workspace, and
-   inspector into components; extract the many `function X(){}` helpers. Until
-   this is done every change is high-friction and the grep-smokes are brittle.
-2. **Smokes are static greps, not behavior tests** [medium] — add ONE driven
-   browser smoke (Playwright or reuse the preview harness) for the core loop
-   (open sample → search → focus → Map/Source → ask → evidence→source) and stop
-   asserting exact copy strings. This would end the "every copy tweak breaks the
-   build" cycle.
-3. **Ask does not stream** [large] — `generateText` buffers behind a 90s ceiling
-   (`src/model/chat.ts`, `src/App.tsx` `MODEL_CALL_TIMEOUT_MS`). Switch to
-   `streamText`; run the citation guard on the final text. Biggest local-AI UX win.
-4. **Source is a windowed snippet, not a real file reader** [medium] — `−12/+60`
+1. **`src/App.tsx` is still a just-under-400-line root file** [large] — the single
+   hardest thing about working here. The first helper/panel extractions are done,
+   and project/session state, scan/load actions, and settings/model orchestration
+   are now out of the root. The three-pane shell wrapper, skip links, and export
+   toast are extracted too, but App still owns enough top-level wiring that
+   every change is higher-friction and the grep-smokes are brittle.
+2. **Some UI smokes still use source-string contracts** [medium] — the rendered
+   UI smoke now drives the core loop (first-run → open/import sample →
+   search/focus → Map/Source → graph Ask → evidence→source) and tablet/narrow
+   layout behavior, and the UI-contract smoke no longer builds one whole-app
+   source blob. It now reads extracted modules directly for stable hooks, while
+   the accessibility smoke still reads source/CSS. Move the remaining fragile
+   assertions toward runtime behavior or durable `data-testid`s over time.
+   Citation target resolution, graph selector behavior, summary planning,
+   summary graph copy/evidence, Ask focus routing, model runtime behavior,
+   inspector progress copy, Ask history, layout state, source line state, source
+   reader behavior, and app settings persistence now have focused behavior
+   smokes, so this remaining debt is mostly narrow source-string contracts.
+3. **Desktop cannot distinguish Ollama missing from Ollama stopped** [small] —
+   Settings now has a lightweight readiness stepper, but the app still only
+   learns about Ollama through the HTTP API. Desktop can eventually add a tiny
+   CLI-detect command; keep browser behavior HTTP-only.
+4. **Source is a windowed snippet, not a real file reader** [medium] — `-12/+60`
    lines (`src-tauri/src/lib.rs` `read_source_snippet`, browser mirror in
-   `src/App.tsx`). No virtualized whole-file view, no syntax highlighting, no
+   `src/lib/sourceReader.ts`). No virtualized whole-file view, no syntax highlighting, no
    symbol-click / jump-to-definition. The Source file-switcher dropdown is a
    stopgap; a real file tree/tabs would be better.
-5. **Left rail is a long stacked scroll** [medium] — Ingest, Search, Legend,
-   Codebase, Inventory, Parse Health, Hints as equal blocks. Should be a project
-   header + file tree + collapsible status accordions.
-
 **Layout gotchas already fixed (don't reintroduce):** an `overflow:hidden` pane in
 an `auto` grid track collapses to 0 (rail + right-pane bugs) — use definite row/
 column minimums; the inspector width is a CSS var `--right-w` clamped by
-`clampRightWidth()` so it can't cover the map; `.topbar-actions button` sets
-`padding:0 10px` which will crush any icon button unless overridden.
+`src/lib/layoutState.ts`'s `clampRightWidth()` so it can't cover the map;
+`.topbar-actions button` sets `padding:0 10px` which will crush any icon button
+unless overridden.
 
-## Recently paid down (2026-07-06)
+## Recently paid down (2026-07-07)
 
 For context, the build-guide fix pass closed these; they are no longer debt:
 
@@ -75,64 +86,286 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   (`.gitkeep`); `public/m6-bakeoff-graph.json` is a committed demo asset;
   `write_export_files` test canonicalizes paths for macOS. `npm run m6:verify`
   now passes end-to-end from a clean clone.
+- Fresh-clone verification: `npm run m6:verify` now builds the Rust analyzer
+  debug sidecar before running the fixture suite, missing `cargo` reports a
+  setup-oriented error, and `.github/workflows/health.yml` runs the suite on a
+  clean Ubuntu checkout.
+- Verification contract: `tools/m6-verify/verification-contract-smoke.mjs`
+  keeps the runner, README, M6 verification guide, and health workflow aligned
+  on the Rust/Cargo prerequisite and missing-Cargo remedy.
+- Driven UI coverage: `tools/m6-verify/rendered-ui-smoke.mjs` now exercises the
+  core browser loop through first-run empty-state guidance, import/sample,
+  runtime skip-link landmark focus, Settings setup/focus, side-panel collapse
+  geometry, graph node-list toggle state, Legend filter hide/reset behavior,
+  Inventory counts, Parse Health status, Graph Hints status, Overview Ask
+  follow-up, Ask-tab geometry, Overview View source, symbol focus, Map/Source
+  toggle, Source file switching, Source reader code layout, relationship
+  detail/endpoints, relationship endpoint refocus, tablet/narrow responsive
+  layout, symbol-search keyboard flow, graph expand/hide behavior, graph Ask,
+  Ask composer availability, compact/expanded evidence, and citation-to-source
+  focus/readability that keeps Chat visible.
+- Citation target resolution: `tools/m6-verify/citation-focus-smoke.mjs` now
+  covers exact relationship-label matching, explicit node ids, source-range
+  fallback, and unknown citation targets for `src/source/citationFocus.ts`. The
+  main verifier runs it before the Rust analyzer build step, so it still reports
+  in environments missing Cargo.
+- Graph selectors: `tools/m6-verify/graph-selectors-smoke.mjs` now covers
+  codebase inventory counts, first focus, source tree grouping, source file
+  representatives, Graph Hints source units, and ranked/limited symbol search
+  results for `src/lib/graphSelectors.ts`. Graph-derived App view data now lives
+  in `src/graph/useGraphDerivedData.ts` instead of being assembled inline.
+- Summary planning: `tools/m6-verify/summary-planning-smoke.mjs` now covers
+  summary generation candidates and bulk token estimates for
+  `src/inspector/summaryPlanning.ts`. `src/App.tsx` delegates those summary
+  planning derivations instead of owning the filter and token heuristic inline.
+- Summary graph copy/evidence: `tools/m6-verify/summary-graph-smoke.mjs` now
+  covers graph-backed overview text, selected-node answers, guarded summary
+  fallbacks, source/relationship evidence, external-node honesty, and COBOL
+  logical-file/DD/dataset bridge wording for `src/inspector/summaryGraph.ts`.
+- Ask focus routing: `tools/m6-verify/ask-focus-smoke.mjs` now covers the
+  overview/orientation questions that should not auto-refocus the graph versus
+  symbol-specific questions that may sync Ask focus via `src/retrieval/askFocus.ts`.
+- Model runtime: `tools/m6-verify/model-runtime-smoke.mjs` now covers first-token
+  timeout copy, Stop handling after streaming begins, controller cleanup, friendly
+  provider errors, and semantic embedding cache keys for `src/model/modelRuntime.ts`.
+- Inspector progress copy: `tools/m6-verify/inspector-progress-smoke.mjs` now
+  covers AI waiting/streaming detail text and bulk summary fallback labels for
+  `src/inspector/aiProgress.ts` and `src/inspector/summaryProgress.ts`.
+- Ask history: `tools/m6-verify/chat-history-smoke.mjs` now covers recent-answer
+  ordering, duplicate replacement, the six-answer cap, and no-mutation behavior
+  for `src/inspector/chatHistory.ts`.
+- Layout state: `tools/m6-verify/layout-state-smoke.mjs` now covers local
+  storage fallbacks, persisted layout values, storage-error tolerance, and the
+  inspector width clamp in `src/lib/layoutState.ts`.
+- Source lines: `tools/m6-verify/source-line-smoke.mjs` now covers source range
+  labels, selected/focused/citation marker precedence, composed line classes, and
+  accessible line-state text for `src/source/sourceLineLabels.ts`.
+- Source reader: `tools/m6-verify/source-reader-smoke.mjs` now covers browser
+  snippets, excerpts, source bundle caching, encoded path lookup, missing-source
+  errors, and `m6-bakeoff` graph/source URL pairing for
+  `src/lib/sourceReader.ts`.
+- App settings: `tools/m6-verify/app-settings-smoke.mjs` now covers saved
+  model/scan normalization, local/cloud provider field cleanup, browser
+  persistence, malformed browser settings, and fallback defaults for
+  `src/lib/appSettings.ts`.
+- Build chunking: `vite.config.ts` now uses conservative manual chunks for
+  graph, AI, Tauri, and shared vendor dependencies. `npm run build` no longer
+  emits the single-large-bundle warning; the largest current chunk is the
+  AI vendor bundle at about 420 KB raw / 104 KB gzip.
+- Demo asset policy: `README.md` now names the release/analyzer-change
+  regeneration rule for `public/m6-bakeoff-graph.json` and
+  `public/m6-bakeoff-source.json`; `tools/m6-verify/demo-assets-smoke.mjs`
+  validates committed demo assets, fixture source parity, citation line ranges,
+  and the documented policy before the Rust analyzer build step.
+- Packaging claims: `README.md` keeps the packaging section explicit that current
+  bundles are unsigned QA/release-candidate artifacts, and
+  `tools/m6-verify/packaging-contract-smoke.mjs` checks that signed public
+  installers are not claimed before signing is validated.
+- Ask geometry: the Ask tab no longer adds `is-ask-focused` to the workspace
+  shell, so switching inspector tabs cannot change outer pane proportions. Ask
+  focus sync now uses `preserveExpansion: true`, keeping user-expanded graph
+  context while still updating the selected symbol behind the answer.
+- Source reading: `CodeSnippet` now distinguishes the selected symbol range from
+  the exact focused/citation line. The source toolbar shows `lines start-end`
+  for range selections, selected-range rows get a subtle rail, and focused
+  citation rows use a distinct `C` marker. Source line labels and state helpers
+  now live in `src/source/sourceLineLabels.ts`, and source snippet loading now
+  lives in `src/source/useSourceSnippet.ts`.
+- Left rail hierarchy: the rail now reads as Project/Search/Codebase first, with
+  Legend & Filters, Inventory, Parse Health, and Graph Hints grouped under
+  native collapsible `details` accordions in a secondary Status and filters
+  region.
+- Ask and summary streaming: model-backed Ask and AI summaries now use
+  `streamText`, show clearly labeled draft text while the request is running,
+  apply a first-token timeout, and still run the citation guard on the final text
+  before evidence/final summary text appears.
+- App structure: app settings normalization/storage helpers moved to
+  `src/lib/appSettings.ts`; settings load/save effects moved to
+  `src/settings/useAppSettingsPersistence.ts`; browser/Tauri source-reading
+  helpers moved to `src/lib/sourceReader.ts`; Tauri environment detection moved to
+  `src/lib/tauri.ts`; the root chrome presenter moved to `src/AppShell.tsx`;
+  the Settings dialog host moved to
+  `src/settings/SettingsHost.tsx`; the Settings dialog and AI/scan settings
+  panels moved to `src/settings/SettingsDialog.tsx`; the navigator rail moved to
+  `src/navigator/NavigatorRail.tsx`; navigator-side panels moved to
+  `src/navigator/NavigatorPanels.tsx`; the source snippet viewer moved to
+  `src/source/CodeSnippet.tsx`; source snippet loading moved to
+  `src/source/useSourceSnippet.ts`; model source-excerpt reading moved to
+  `src/source/useSourceExcerptReader.ts`; dependency/relationship inspector panels
+  moved to `src/inspector/DependencyPanels.tsx`; the top bar moved to
+  `src/topbar/TopBar.tsx`; inspector tabs moved to
+  `src/inspector/InspectorTabs.tsx`; the Overview/Summary panel moved to
+  `src/inspector/SummaryDock.tsx`; summary graph/evidence and selected-node
+  graph explanation helpers moved to `src/inspector/summaryGraph.ts`; graph
+  selectors/search ranking/source grouping helpers moved to
+  `src/lib/graphSelectors.ts`; shared graph label formatting moved to
+  `src/lib/graphLabels.ts`; persisted layout reading and inspector width
+  clamping moved to `src/lib/layoutState.ts`; workspace layout state/persistence,
+  side-panel toggles, and inspector resize handling moved to
+  `src/workspace/useWorkspaceLayout.ts`;
+  workspace Map/Source view state, node focus, Home reset, Source switching,
+  Ask evidence citation handling, relationship/citation jumps, and selected-edge
+  actions moved to
+  `src/workspace/useWorkspaceNavigation.ts`;
+  shared AI progress helpers moved to
+  `src/inspector/aiProgress.ts`; bulk summary progress formatting moved to
+  `src/inspector/summaryProgress.ts`; Ask focus-sync routing moved to
+  `src/retrieval/askFocus.ts`; model call timeout/error/key helpers moved to
+  `src/model/modelRuntime.ts`; the Ask/Chat panel moved to
+  `src/inspector/ChatAnswerPanel.tsx`; shared inspector evidence/message
+  components moved to `src/inspector/MessageParts.tsx`; the center Map/Source
+  workspace moved to `src/workspace/WorkspacePane.tsx`; the inspector shell,
+  tabs host, resize divider, and panel routing moved to
+  `src/inspector/InspectorPane.tsx`; the Navigator/Workspace/Inspector layout
+  wrapper moved to `src/workspace/WorkspaceShell.tsx`; workspace skip links
+  moved to `src/workspace/WorkspaceSkipLinks.tsx`; documentation export
+  orchestration moved to `src/export/runDocumentationExport.ts`; export
+  toast/status handling moved to
+  `src/export/useDocumentationExport.ts`, with the visible toast in
+  `src/export/ExportToast.tsx`; citation target resolution moved to
+  `src/source/citationFocus.ts`; inspector tab state and scroll routing moved to
+  `src/inspector/useInspectorRouting.ts`; bounded Ask history dedupe/capping moved to
+  `src/inspector/chatHistory.ts`; Ask question/status/answer/error/history state
+  and restore/clear/navigation/project-load reset handlers moved to
+  `src/inspector/useChatState.ts`; Ask
+  graph/model routing, semantic retrieval, streaming draft updates, fallback,
+  and cancel handling moved to `src/inspector/useAskGeneration.ts`; summary
+  state, graph overview summary action, streaming generation, bulk progress, and
+  cancel handling moved to `src/inspector/useSummaryGeneration.ts`; summary
+  candidate and bulk token planning moved to `src/inspector/summaryPlanning.ts`;
+  desktop analysis
+  progress listening moved to `src/scan/useAnalysisProgress.ts`; project session
+  state moved to `src/scan/useProjectState.ts`; project open/import/sample/rescan
+  actions, browser import input ref, and dev graph loading moved to
+  `src/scan/useProjectActions.ts`;
+  scan/model settings, settings dialog state,
+  model-call count, and AI readiness composition moved to
+  `src/settings/useAppSettingsState.ts`; provider
+  keychain state/actions moved to `src/settings/useProviderKeyState.ts`; model
+  readiness, provider choice, local model-list refresh, and model-call preflight
+  moved to `src/settings/useModelReadiness.ts`; graph expansion/filter/node-list
+  state moved to `src/graph/useGraphViewState.ts`; graph-derived view data moved
+  to `src/graph/useGraphDerivedData.ts`; symbol search query/results and keyboard
+  handling moved to `src/navigator/useSymbolSearch.ts`. These are the first
+  no-behavior extraction slices.
 - Local AI: dedicated embedding model separate from the generation model; local
   Ollama uses the chat API; readiness/`ollama:check` probe generation and
-  embeddings separately; semantic-retrieval failure surfaces visibly.
+  embeddings separately; semantic-retrieval failure surfaces visibly; Settings
+  shows a compact AI readiness stepper for install/serve, generation model,
+  embedding model, and final test states.
 - UX: export toast, non-truncating inspector tabs, wider graph label padding,
   demoted AI-setup CTAs, first-run inspector empty state.
 
 ## Application structure
 
-### App.tsx is a ~3.7k-line monolith — **[large]**
-- **What:** `src/App.tsx` holds the root component, ~20 sub-components
-  (SettingsDialog, SummaryDock, ChatAnswerPanel, RelationshipList, CodeSnippet,
-  ...), and ~40 free functions (retrieval glue, formatting, source IO, settings
-  normalization) in one file.
+### App.tsx is a just-under-400-line root file — **[large]**
+- **What:** `src/App.tsx` holds the root component, state wiring, and product
+  shell composition in one file.
+  Settings normalization/storage helpers have been extracted to `src/lib/`;
+  settings load/save effects moved to `src/settings/useAppSettingsPersistence.ts`;
+  root chrome composition moved to `src/AppShell.tsx`;
+  Settings host moved to `src/settings/SettingsHost.tsx`; Settings moved to
+  `src/settings/SettingsDialog.tsx`; the navigator rail moved to
+  `src/navigator/NavigatorRail.tsx`; navigator panels moved to
+  `src/navigator/NavigatorPanels.tsx`; the source snippet viewer moved to
+  `src/source/CodeSnippet.tsx`; source snippet loading moved to
+  `src/source/useSourceSnippet.ts`; model source-excerpt reading moved to
+  `src/source/useSourceExcerptReader.ts`; dependency inspector panels moved to
+  `src/inspector/DependencyPanels.tsx`; the top bar moved to
+  `src/topbar/TopBar.tsx`; inspector tabs moved to
+  `src/inspector/InspectorTabs.tsx`; the Overview/Summary panel moved to
+  `src/inspector/SummaryDock.tsx`; summary graph/evidence and selected-node
+  graph explanation helpers moved to `src/inspector/summaryGraph.ts`; graph
+  selectors/search ranking/source grouping helpers moved to
+  `src/lib/graphSelectors.ts`; shared graph label formatting moved to
+  `src/lib/graphLabels.ts`; persisted layout reading and inspector width
+  clamping moved to `src/lib/layoutState.ts`; workspace layout state/persistence,
+  side-panel toggles, and inspector resize handling moved to
+  `src/workspace/useWorkspaceLayout.ts`;
+  workspace Map/Source view state, node focus, Home reset, Source switching,
+  Ask evidence citation handling, relationship/citation jumps, and selected-edge
+  actions moved to
+  `src/workspace/useWorkspaceNavigation.ts`;
+  shared AI progress helpers moved to
+  `src/inspector/aiProgress.ts`; bulk summary progress formatting moved to
+  `src/inspector/summaryProgress.ts`; Ask focus-sync routing moved to
+  `src/retrieval/askFocus.ts`; model call timeout/error/key helpers moved to
+  `src/model/modelRuntime.ts`; the Ask/Chat panel moved to
+  `src/inspector/ChatAnswerPanel.tsx`; shared evidence/message components moved
+  to `src/inspector/MessageParts.tsx`; the center Map/Source workspace moved to
+  `src/workspace/WorkspacePane.tsx`; the inspector shell, tabs host, resize
+  divider, and panel routing moved to `src/inspector/InspectorPane.tsx`;
+  the Navigator/Workspace/Inspector layout wrapper moved to
+  `src/workspace/WorkspaceShell.tsx`;
+  workspace skip links moved to `src/workspace/WorkspaceSkipLinks.tsx`;
+  documentation export moved to `src/export/runDocumentationExport.ts`; export
+  toast/status handling moved to `src/export/useDocumentationExport.ts`, with
+  the visible toast in `src/export/ExportToast.tsx`;
+  citation target resolution moved to `src/source/citationFocus.ts`; inspector
+  tab state and scroll routing moved to `src/inspector/useInspectorRouting.ts`; bounded Ask
+  history dedupe/capping moved to `src/inspector/chatHistory.ts`; Ask
+  question/status/answer/error/history state and restore/clear/navigation/
+  project-load reset handlers moved to `src/inspector/useChatState.ts`; Ask graph/model routing, semantic retrieval,
+  streaming draft updates, fallback, and cancel handling moved to
+  `src/inspector/useAskGeneration.ts`; summary state, graph overview summary
+  action, streaming generation, bulk progress, and cancel handling moved to
+  `src/inspector/useSummaryGeneration.ts`;
+  summary candidate and bulk token planning moved to
+  `src/inspector/summaryPlanning.ts`; desktop analysis progress
+  listening moved to `src/scan/useAnalysisProgress.ts`; project session state
+  moved to `src/scan/useProjectState.ts`; project open/import/sample/rescan
+  actions, browser import input ref, and dev graph loading moved to
+  `src/scan/useProjectActions.ts`;
+  scan/model settings, settings dialog state, model-call count, and AI readiness
+  composition moved to `src/settings/useAppSettingsState.ts`;
+  provider keychain state/actions moved to
+  `src/settings/useProviderKeyState.ts`; model readiness, provider choice, local
+  model-list refresh, and model-call preflight moved to
+  `src/settings/useModelReadiness.ts`; graph expansion/filter/node-list state
+  moved to `src/graph/useGraphViewState.ts`; graph-derived view data moved to
+  `src/graph/useGraphDerivedData.ts`; symbol search query/results and keyboard
+  handling moved to `src/navigator/useSymbolSearch.ts`. The remaining App root
+  wiring is still monolithic.
 - **Why it matters:** Every UI change touches the largest file in the repo, and
   the grep-based UI-contract smoke is tightly coupled to its exact markup
   strings, so refactors ripple into test churn. It also makes the layout/IA work
   (below) risky.
 - **Where:** `src/App.tsx`.
-- **Fix:** Extract by feature into `src/panels/` (Inspector, Ask, Overview,
-  Dependencies, Settings), `src/topbar/`, `src/rail/`, and `src/lib/` helpers as
-  a no-behavior-change refactor first, then update the smoke to target stable
-  `data-testid`s instead of markup strings.
+- **Fix:** Continue extracting the workspace shell and remaining orchestration
+  helpers as no-behavior-change refactors first, then update the
+  smoke to target stable `data-testid`s instead of markup strings.
 
-### Settings/model state is threaded by hand through deep prop drilling — **[medium]**
-- **What:** `ModelSettings`, readiness, and callbacks are passed down several
-  component layers (App -> SettingsDialog -> ModelSettingsPanel; App ->
-  right pane -> ChatAnswerPanel/SummaryDock).
+### Settings/model state is still threaded through presentation components — **[medium]**
+- **What:** `src/settings/useAppSettingsState.ts` now owns scan/model settings,
+  provider key state, readiness, and model-call count, but `ModelSettings`,
+  readiness, and callbacks are still passed into presentation components
+  (`App -> SettingsDialog -> ModelSettingsPanel`; `App -> InspectorPane ->
+  ChatAnswerPanel/SummaryDock`).
 - **Why it matters:** Adding a field (as the embedding model just showed)
   requires edits at every layer.
-- **Where:** `src/App.tsx`.
-- **Fix:** A small React context for model/settings state once App.tsx is split;
-  do not add a state library (Principle 0).
+- **Where:** `src/settings/useAppSettingsState.ts`, `src/App.tsx`, and the
+  settings/inspector presentation components.
+- **Fix:** Keep the new hook boundary, then consider a tiny feature-local context
+  only if prop threading continues to slow real changes; do not add a state
+  library (Principle 0).
 
 ## Testing and verification
 
-### "UI contract" and "accessibility" smokes are static source greps — **[medium]**
-- **What:** `tools/m6-verify/ui-contract-smoke.mjs` and `accessibility-smoke.mjs`
-  read `App.tsx`/`App.css` as text and assert substrings/CSS rules exist. They do
-  not run the app.
-- **Why it matters:** They pass whether or not the running UI behaves, and they
-  break on cosmetic refactors that change markup strings. Docs should not present
-  them as runtime UI verification (the readiness audit now flags this).
+### UI contract and accessibility smokes still include source-string contracts — **[medium]**
+- **What:** `tools/m6-verify/rendered-ui-smoke.mjs` drives the core browser loop,
+  and `tools/m6-verify/ui-contract-smoke.mjs` now reads extracted modules
+  directly instead of one broad whole-app source blob. It and
+  `accessibility-smoke.mjs` still assert selected substrings/CSS rules exist.
+- **Why it matters:** The running-app coverage catches core-loop regressions, but
+  cosmetic refactors can still break source-string checks. First-run,
+  responsive layout, panel geometry, source reading, citations, navigator
+  status panels, Ask, and graph behavior are now covered by the rendered browser
+  smoke; keep trimming remaining source checks toward durable hooks, not broad
+  runtime UI proof.
 - **Where:** `tools/m6-verify/ui-contract-smoke.mjs`,
   `tools/m6-verify/accessibility-smoke.mjs`.
-- **Fix:** Add one driven-browser smoke (Playwright, or the existing preview
-  harness) covering the core loop: load sample -> search -> focus -> Ask (graph)
-  -> citation jump -> export. Keep the source greps but relabel them as
-  "source contract checks".
-
-### No fresh-clone CI gate — **[small]**
-- **What:** Nothing in CI clones into a clean dir and runs
-  `npm ci && npm run build && npm run m6:verify`. The two P0s just fixed were
-  both fresh-clone-only failures that a warm working tree hid.
-- **Why it matters:** Regressions of this class are invisible to contributors
-  who already generated fixtures/binaries locally.
-- **Where:** `.github/workflows/`.
-- **Fix:** A CI job that runs the suite in a clean checkout; add a check that the
-  demo graph and `.gitkeep` are tracked by git.
+- **Fix:** Move fragile assertions toward runtime checks or stable `data-testid`s
+  as the App.tsx split creates clearer component boundaries.
 
 ### Desktop GUI unverified on macOS — **[small]**
 - **What:** Verification of the desktop shell is via `cargo test` and
@@ -146,20 +379,6 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 
 ## Local AI
 
-### AI Ask/summaries buffer instead of streaming — **[large]**
-- **What:** `generateGroundedAnswer`/`generateUnitSummary` use `generateText`,
-  which returns only when the whole completion is done, behind a fixed 45s
-  ceiling (`MODEL_CALL_TIMEOUT_MS`, `src/App.tsx:103`).
-- **Why it matters:** On CPU-class local Ollama a good 60s answer is
-  indistinguishable from a hang and gets killed. Streaming is a functional
-  requirement for local-first chat, not polish.
-- **Where:** `src/model/chat.ts`, `src/model/summaries.ts`,
-  `src/App.tsx` (`runTimedModelCall`, `ChatAnswerPanel`).
-- **Fix:** Switch to `streamText`; render incrementally; run the citation guard
-  on the final text (draft style -> stamped/guarded); change the timeout to
-  "no first token within N seconds" plus the existing Stop control. This is
-  Slice 5 in the build guide.
-
 ### Fixed local token budget with thinking-model headroom is a heuristic — **[small]**
 - **What:** Local budgets were raised (ask 512, summary 384, readiness probe
   `num_predict` 160) so thinking-capable models (for example `gemma4:12b-mlx`)
@@ -168,8 +387,8 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   before visible text; a tiny model wastes headroom.
 - **Where:** `src/model/chat.ts`, `src/model/summaries.ts`,
   `src/model/readiness.ts`, `tools/local-model/ollama-smoke.mjs`.
-- **Fix:** Once streaming lands, budget on first-token/visible-token rather than
-  a total cap; consider reading the model's thinking capability from tags.
+- **Fix:** Tune visible-token budgets against real local hardware and consider
+  reading the model's thinking capability from tags.
 
 ### Semantic index embeds graph facts, not source — **[medium]**
 - **What:** `buildSemanticChunks` embeds one metadata sentence per node
@@ -192,29 +411,31 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   writing a JSON file under AppData, keyed identically; keep localStorage for the
   browser demo. Depends on the open question about index location.
 
-### No Ollama CLI-vs-server detection; setup is a form, not a stepper — **[medium]**
+### No Ollama CLI-vs-server detection — **[small]**
 - **What:** The app cannot distinguish "Ollama not installed" from "installed
   but not running" (it only reaches the HTTP API). Error copy now names
-  `ollama serve`, but Settings is still a flat form rather than a staged
-  Install -> Serve -> Generation model -> Embedding model -> Test wizard.
+  `ollama serve`, and Settings has a staged readiness stepper, but the first row
+  still has to treat install/serve as one HTTP-reachability state.
 - **Why it matters:** A first-time local-AI user still has to self-diagnose which
-  step they are on.
+  of those two setup states they are on.
 - **Where:** `src/model/readiness.ts`, `src/App.tsx` (Settings panel),
   `src-tauri/src/lib.rs` (would need a `which ollama` command).
-- **Fix:** Slice 4 in the build guide: a desktop CLI-detect command plus a
-  readiness stepper UI, each row with one copyable command.
+- **Fix:** Add a desktop CLI-detect command (`which ollama` or equivalent) and
+  keep the browser stepper HTTP-only.
 
 ## Source browsing
 
-### Source view is a fixed +/-8-line snippet — **[large]**
-- **What:** `read_source_snippet` returns lines target +/- 8; the browser mirror
-  matches. There is no full-file scroll, no syntax highlighting, no symbol
-  clicks. The inspector "Source" tab describes the panel rather than being a
-  reader.
+### Source view is a windowed snippet — **[large]**
+- **What:** `read_source_snippet` returns a generous but still bounded window
+  around the target line (`-12/+60` lines in the desktop command and browser
+  mirror). There is no full-file scroll, no syntax highlighting, no symbol clicks.
 - **Why it matters:** Understanding COBOL needs whole paragraphs and DATA
   DIVISION context; a 15-line keyhole undercuts the citation-trust story.
-- **Where:** `src-tauri/src/lib.rs` (`read_source_snippet`), `src/App.tsx`
-  (`CodeSnippet`, `SourceInspectorPanel`, source IO).
+- **Where:** `src-tauri/src/lib.rs` (`read_source_snippet`),
+  `src/lib/sourceReader.ts` (browser fallback), `src/source/CodeSnippet.tsx`
+  (rendering), `src/source/useSourceSnippet.ts` (snippet loading),
+  `src/workspace/WorkspacePane.tsx` (center Source surface), and `src/App.tsx`
+  (source focus orchestration).
 - **Fix:** Slice 3 in the build guide: a `read_source_file` command (size-capped
   / windowed), a virtualized full-file reader with the cited line highlighted,
   file-level tree entries, and later symbol-click navigation. Keep the snippet
@@ -225,9 +446,10 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 ### Cover-up + toggle-button fixes — 2026-07-07 (fifth UX pass)
 - **Fixed the inspector covering the map:** dragging the pane divider (or a
   persisted width) could squeeze the center pane until its toolbar spilled and
-  the graph was hidden. Width is now clamped by `clampRightWidth()` (and in the
-  drag handler) so the center keeps a usable minimum; `.center-toolbar` clips and
-  its action buttons are compact so they never overflow.
+  the graph was hidden. Width is now clamped by `src/lib/layoutState.ts`
+  (including the drag handler) so the center keeps a usable minimum;
+  `.center-toolbar` clips and its action buttons are compact so they never
+  overflow.
 - **"Focus complete" removed:** the expand control was a confusing disabled
   "Focus complete" when a focus had no hidden neighbors — it now simply hides,
   and shows "Expand +N" only when there is something to expand. "Show nodes" →
@@ -257,8 +479,7 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   listing every file in the codebase, so "where are the other files?" is answered
   in place — pick a file to open it (and focus its symbol).
 - **Remaining:** the file switcher is a native select (could become a richer
-  file tree / tabs); Source could still highlight the selected symbol's full line
-  range.
+  file tree / tabs).
 
 ### Copy + interaction pass — 2026-07-07 (third UX pass)
 - **Fixed:** model answers rendered as a wall of text because the formatter only
@@ -278,11 +499,10 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   toolbar so the current view is obvious; the Source toolbar shows the focused
   symbol (swatch + name + file + line); Evidence is a clean single-line list
   (label left, `file:line` right) with a "click to open in Source" hint.
-- **Remaining:** the Source view could highlight the selected symbol's full line
-  range (not just the cited line); a broader tooltip audit; Overview still
-  top-aligns short content (acceptable).
+- **Remaining:** a broader tooltip audit; Overview still top-aligns short
+  content (acceptable).
 
-### UX refinement pass — 2026-07-07 (per refined docs/DESIGN.md §3-4, 8)
+### UX refinement pass — 2026-07-07 (per refined docs/DESIGN.md layout, density, and AI rules)
 - **Fixed:** the sticky Source header overlapped scrolling code (now the center
   toolbar owns the file/line and the redundant in-source header is hidden); code
   no longer wraps (column-accurate, horizontal scroll); the Overview/Ask action
@@ -331,58 +551,6 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 - **Where:** `src/App.css` media queries (`max-width: 1280/1024/560`),
   `src/graph/GraphView.tsx` (camera/label config).
 
-### Left rail is still an equal-weight stack of blocks — **[medium]**
-- **What:** The rail stacks Ingest, Search, Legend & Filters, Codebase,
-  Inventory, Parse Health, and Graph Hints as peers. On desktop the Codebase
-  browser (primary navigation) sits below the fold; on narrow the whole rail is
-  pushed below the graph/inspector.
-- **Why it matters:** The PRD says the rail is "navigation and status only";
-  today it is an overloaded scroll.
-- **Where:** `src/App.tsx` (left pane), `src/App.css`.
-- **Fix:** Build-guide Slice 2: a project header + file tree as the spine,
-  status as collapsed accordions, filters in a graph-toolbar popover, and a
-  collapse toggle for narrow widths.
-
-### Switching to the Ask tab reshapes the grid — **[small]**
-- **What:** The `is-ask-focused` class on `.shell`/`.right-pane` changes column
-  proportions when Ask is active, so panes jump on tab switch.
-- **Why it matters:** Violates the "stable geometry" rule; user-initiated tab
-  changes should not resize untouched panes.
-- **Where:** `src/App.tsx` (`inspectorTab === "ask"` class toggles),
-  `src/App.css`.
-- **Fix:** Give Ask room without resizing siblings (internal scroll), or make the
-  proportion change opt-in.
-
-### Ask auto-refocuses the graph and discards expansion state — **[small]**
-- **What:** After answering, Ask calls `focusOnNode(...)` on the first matched
-  node, and `focusOnNode` clears `expandedNodeIds`.
-- **Why it matters:** Asking a question silently throws away the graph the user
-  expanded.
-- **Where:** `src/App.tsx` (`askQuestion` focus sync, `focusOnNode`).
-- **Fix:** Offer a "Focus <symbol>" chip instead of auto-refocusing, or preserve
-  expansion across an Ask-driven focus.
-
-## Build and packaging
-
-### Single ~980 KB JS bundle, no code splitting — **[small]**
-- **What:** `vite build` emits one ~980 KB (263 KB gzip) chunk and warns about
-  it. Sigma/graphology and the AI SDKs all load up front.
-- **Why it matters:** Slower first paint, especially for the browser demo; the
-  warning is noise on every build.
-- **Where:** `vite.config.ts`, dynamic-import boundaries in `src/`.
-- **Fix:** `manualChunks` for the graph and AI-SDK vendors, and/or lazy-load the
-  AI provider modules (only needed when a model action runs).
-
-### Committed demo graph can drift from analyzer output — **[small]**
-- **What:** `public/m6-bakeoff-graph.json` is now a committed artifact of
-  `npm run m6:fixture-graph`. Nothing fails if the analyzer changes and the
-  committed graph is stale.
-- **Why it matters:** The browser demo could silently show an out-of-date graph.
-- **Where:** `public/m6-bakeoff-graph.json`,
-  `tools/m6-bakeoff/export-fixture-graph.mjs`, `tools/m6-verify/run.mjs`.
-- **Fix:** Either a verify check that regenerating matches the committed file, or
-  a documented "regenerated at release" policy (see open question below).
-
 ## Open questions blocking some of the above
 
 1. Is the browser demo a supported distribution channel or a QA harness? Governs
@@ -391,4 +559,3 @@ For context, the build-guide fix pass closed these; they are no longer debt:
    whether the desktop-GUI gap matters for release claims.
 3. Where does the desktop vector index live — webview storage or an AppData
    file? Blocks the vector-store item above.
-4. Demo-graph freshness policy: fail CI on drift, or regenerate at release?

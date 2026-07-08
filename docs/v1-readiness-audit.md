@@ -24,7 +24,7 @@ the chat API (so thinking-capable models' reasoning stays out of cited answers);
 readiness/`ollama:check` probe generation and embeddings separately; and
 semantic-retrieval failure surfaces a visible note instead of degrading
 silently. See [tech-debt.md](tech-debt.md) for the remaining local-AI work
-(streaming, a guided readiness stepper).
+(desktop Ollama install-vs-running detection and retrieval/source follow-ups).
 
 ## Original audit
 

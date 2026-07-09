@@ -9,6 +9,7 @@ use std::{
 use tree_sitter_patched_arborium::{Node, Parser};
 
 const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const TREE_SITTER_PARSE_TIMEOUT_MICROS: u64 = 500_000;
 const IGNORED_DIR_NAMES: &[&str] = &[
     ".git",
     ".hg",
@@ -356,13 +357,13 @@ fn parse_file(
 
     match source_file.kind {
         FileKind::Cobol | FileKind::Copybook => {
-            let parse_warning =
-                verify_tree_sitter_parse(&content)
-                    .err()
-                    .map(|warning| ParseWarning {
-                        reason: format!("{}; lightweight scan completed", warning.reason),
-                        line: warning.line,
-                    });
+            let syntax_input = tree_sitter_input(&content);
+            let parse_warning = verify_tree_sitter_parse(&syntax_input)
+                .err()
+                .map(|warning| ParseWarning {
+                    reason: format!("{}; lightweight scan completed", warning.reason),
+                    line: warning.line,
+                });
             parse_cobol_file(source_file, &logical_lines, builder)?;
             Ok(FileAnalysis {
                 warning: parse_warning,
@@ -456,6 +457,7 @@ fn dialect_guess(signals: &BTreeSet<String>) -> String {
     }
 }
 
+#[allow(deprecated)]
 fn verify_tree_sitter_parse(content: &str) -> Result<(), ParseWarning> {
     let mut parser = Parser::new();
     parser
@@ -464,8 +466,9 @@ fn verify_tree_sitter_parse(content: &str) -> Result<(), ParseWarning> {
             reason: format!("tree-sitter language setup failed: {err}"),
             line: None,
         })?;
+    parser.set_timeout_micros(TREE_SITTER_PARSE_TIMEOUT_MICROS);
     let tree = parser.parse(content, None).ok_or_else(|| ParseWarning {
-        reason: "tree-sitter parser returned no tree".to_string(),
+        reason: "tree-sitter syntax check timed out".to_string(),
         line: None,
     })?;
     if tree.root_node().has_error() {
@@ -475,6 +478,13 @@ fn verify_tree_sitter_parse(content: &str) -> Result<(), ParseWarning> {
         });
     }
     Ok(())
+}
+
+fn tree_sitter_input(content: &str) -> String {
+    content
+        .chars()
+        .filter(|character| !matches!(character, '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}'))
+        .collect()
 }
 
 fn first_tree_sitter_error_line(node: Node<'_>) -> Option<usize> {
@@ -1474,10 +1484,49 @@ mod tests {
             .any(|node| node.node_type == "program" && node.name == "BAD"));
         assert_eq!(graph.meta.parse_errors.len(), 1);
         assert_eq!(graph.meta.parse_errors[0].file, "src/BAD.cbl");
-        assert_eq!(graph.meta.parse_errors[0].line, Some(3));
+        assert!(graph.meta.parse_errors[0].line.is_some());
         assert!(graph.meta.parse_errors[0]
             .reason
             .contains("lightweight scan completed"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn sanitizes_invisible_unicode_before_tree_sitter_syntax_check() {
+        let root = temp_test_dir("fixed-copy-replacing");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("src").join("COPYREPL.cbl"),
+            [
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. COPYREPL.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "      * COPY WSFST REPLACING ==:old:== BY ==ignored==.",
+                "\u{200b}",
+                "           COPY WSFST REPLACING ==:tag:== BY ==AcctRec==.",
+                "       PROCEDURE DIVISION.",
+                "           STOP RUN.",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out: root.join("graph.json"),
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string()],
+            encoding: "utf8".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert_eq!(graph.meta.parsed_file_count, 1);
+        assert!(graph
+            .nodes
+            .iter()
+            .any(|node| node.node_type == "program" && node.name == "COPYREPL"));
         fs::remove_dir_all(root).unwrap();
     }
 

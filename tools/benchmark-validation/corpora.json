@@ -1,0 +1,23 @@
+[
+  {
+    "name": "COBOL Legacy Benchmark Suite",
+    "directory": "COBOL-Legacy-Benchmark-Suite",
+    "repository": "https://github.com/sentientsergio/COBOL-Legacy-Benchmark-Suite.git",
+    "commit": "c4d72b4ab04e348f7046f1ce6f2dceb0ffb7dbf5",
+    "expect": "expectations/legacy.json"
+  },
+  {
+    "name": "IBM Z Open Editor sample",
+    "directory": "zopeneditor-sample",
+    "repository": "https://github.com/IBM/zopeneditor-sample.git",
+    "commit": "41f70551d85233829a90f7891af2b56092b471c3",
+    "expect": "expectations/ibm.json"
+  },
+  {
+    "name": "dscobol Cobol-Projects",
+    "directory": "Cobol-Projects",
+    "repository": "https://github.com/dscobol/Cobol-Projects.git",
+    "commit": "2cc05108d07d8d1ee2297e4f5bd6d274638b7f6e",
+    "expect": "expectations/dscobol.json"
+  }
+]

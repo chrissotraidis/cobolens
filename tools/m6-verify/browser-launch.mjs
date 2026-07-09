@@ -41,7 +41,7 @@ export async function launchBrowser(cdpPort, userDataDir, options = {}) {
       pause,
     });
     if (result.ready) return result.child;
-    stopChild(result.child, result.hasExited);
+    await stopChild(result.child, result.hasExited);
     failures.push(formatAttemptFailure(result));
     if (attempt < attempts) await pause(Math.min(500, pollMs));
   }
@@ -167,8 +167,29 @@ function formatAttemptFailure(result) {
   return details.join("\n");
 }
 
-function stopChild(child, hasExited) {
-  if (!hasExited) child.kill?.("SIGTERM");
+async function stopChild(child, hasExited) {
+  if (hasExited || child.exitCode !== null && child.exitCode !== undefined) return;
+
+  let exited = false;
+  const exit = new Promise((resolveExit) => {
+    child.once?.("exit", () => {
+      exited = true;
+      resolveExit();
+    });
+  });
+  child.kill?.("SIGTERM");
+  await Promise.race([exit, delay(2_000)]);
+  if (!exited) {
+    child.kill?.("SIGKILL");
+    await Promise.race([exit, delay(500)]);
+  }
+}
+
+function delay(delayMs) {
+  return new Promise((resolveDelay) => {
+    const timer = setTimeout(resolveDelay, delayMs);
+    timer.unref?.();
+  });
 }
 
 function positiveInteger(value, fallback) {

@@ -1,0 +1,33 @@
+{
+  "minimums": {
+    "files": 190,
+    "parseCoverage": 1,
+    "cleanParseCoverage": 0.38,
+    "nodes": 2100,
+    "edges": 7800,
+    "citedEdgeCoverage": 0.99
+  },
+  "maximums": {
+    "fatalParseFailures": 0,
+    "durationMs": 30000
+  },
+  "requiredSignals": [
+    "programs",
+    "copybooks",
+    "dataItems",
+    "datasets",
+    "jclJobs",
+    "jclSteps",
+    "jclDd",
+    "db2Tables",
+    "calls",
+    "performs",
+    "copies",
+    "runs",
+    "reads",
+    "writes",
+    "moves",
+    "queries",
+    "usesDd"
+  ]
+}

@@ -96,6 +96,11 @@ Benchmark evidence from 2026-06-30:
 - `npm run validate:benchmark -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite` passed for the Rust sidecar: 77 files discovered, 37 parsed, 40 parse errors recorded gracefully, 739 nodes, 821 edges.
 - `npm run m6:compare-candidates -- --root .cache/benchmarks/COBOL-Legacy-Benchmark-Suite --timeout-ms 70000` passed for all three candidates after hardening. Rust emitted 739 nodes / 821 edges; ProLeap emitted 1302 nodes / 1618 edges with DB2 and CICS signals; mapa emitted 1506 nodes / 2256 edges by falling back to lexical/JCL enrichment after its COBOL CallTree jar timed out.
 
+The current three-repository Rust baseline and reproducible corpus workflow are
+recorded in [parser-corpus-benchmark.md](parser-corpus-benchmark.md). Prefer
+that dated report for current production-sidecar coverage; the 2026-06-30
+numbers above remain historical parser-candidate comparison evidence.
+
 ## Packaging Readiness
 
 Run:

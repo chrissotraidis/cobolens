@@ -1,5 +1,17 @@
 # Benchmark Validation
 
+The real-corpus suite uses three pinned, gitignored repositories. Set them up
+once, then run the repeatable thresholds with:
+
+```sh
+npm run benchmark:corpora:setup
+npm run benchmark:corpora
+```
+
+Raw per-repository and aggregate reports are written under
+`.cache/benchmark-reports/`. Repository URLs, revisions, and expectations live
+in `corpora.json`; source code remains outside version control under `.cache/`.
+
 The PRD names the COBOL Legacy Benchmark Suite and IBM zopeneditor sample as release validation targets. They are not bundled in this repo.
 
 Run this helper after placing a benchmark checkout on disk:
@@ -27,7 +39,8 @@ The script runs the current analyzer sidecar through the stable
 `GraphDocument` contract. It intentionally does not download large corpora or
 claim validation when the benchmark is absent.
 
-The validator checks the pieces that matter for the PRD v1 acceptance criteria:
+Without `--expect`, the validator is the strict M6 fixture gate and checks the
+pieces that matter for the PRD v1 acceptance criteria:
 
 - the graph schema is valid and non-empty;
 - parsing is forgiving: parse failures are listed with file and reason instead
@@ -40,6 +53,12 @@ The validator checks the pieces that matter for the PRD v1 acceptance criteria:
   usage;
 - the lightweight scan covers every benchmark source file;
 - every graph edge has a file+line citation site.
+
+For real repositories, `--expect` keeps the schema, reference, and citation
+integrity checks but loads repository-specific minimum metrics and semantic
+signals, plus maximum fatal-failure and run-time limits. This prevents a COBOL-only repository from failing merely because it
+does not contain JCL or CICS, while still detecting parser regressions against
+the same pinned source revision.
 
 The JSON report includes parse coverage, clean parse coverage, recoverable
 syntax warning counts, fatal parse failure counts, node/edge type counts,

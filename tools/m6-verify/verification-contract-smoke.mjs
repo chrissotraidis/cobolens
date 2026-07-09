@@ -41,6 +41,8 @@ const checks = {
     browserLaunch.includes("Browser stderr:") &&
     browserLaunchSmokeIndex !== -1 &&
     browserLaunchSmokeIndex < renderedSmokeIndex,
+  "CI allows a cold browser extra startup time":
+    healthWorkflow.includes("COBOLENS_BROWSER_START_TIMEOUT_MS: 45000"),
   "CI pins Node and installs Rust quality components":
     healthWorkflow.includes("node-version: 22") &&
     packageWorkflow.includes("node-version: 22") &&

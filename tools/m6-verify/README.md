@@ -72,6 +72,9 @@ JavaScript-only smokes that run before that point still provide partial signal,
 but the suite is not green until the Rust analyzer and Tauri checks run.
 
 The rendered browser smoke allows two bounded 30-second browser startup attempts.
+The clean Linux CI job gives each attempt 45 seconds because first-run font and
+browser initialization can be slower on a fresh runner. A failed attempt is
+fully stopped before the next one reuses the debugging port.
 Set `COBOLENS_BROWSER_START_TIMEOUT_MS` or
 `COBOLENS_BROWSER_START_ATTEMPTS` only when diagnosing a known environment.
 Failure output names the browser executable, attempt count, exit status, last

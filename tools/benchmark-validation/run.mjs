@@ -28,6 +28,7 @@ const tempRoot = await mkdtemp(resolve(tmpdir(), "cobolens-benchmark-"));
 const out = resolve(tempRoot, "graph.json");
 
 try {
+  const startedAt = performance.now();
   const result = await runAnalyzer(root, out);
   if (!result.ok) {
     console.error(`analyzer failed with ${result.code}`);
@@ -36,12 +37,13 @@ try {
   }
 
   const graph = JSON.parse(await readFile(out, "utf8"));
-  const report = summarizeGraph(graph, root);
-  const failures = validateGraph(graph, report);
-  if (failures.length) {
-    for (const failure of failures) console.error(failure);
-    process.exit(1);
-  }
+  const report = {
+    ...summarizeGraph(graph, root),
+    durationMs: Math.round(performance.now() - startedAt),
+  };
+  const expectations = options.expect
+    ? JSON.parse(await readFile(options.expect, "utf8"))
+    : undefined;
 
   if (options.report) {
     await mkdir(dirname(options.report), { recursive: true });
@@ -50,6 +52,12 @@ try {
   if (options.graph) {
     await mkdir(dirname(options.graph), { recursive: true });
     await writeFile(options.graph, `${JSON.stringify(graph, null, 2)}\n`);
+  }
+
+  const failures = validateGraph(graph, report, expectations);
+  if (failures.length) {
+    for (const failure of failures) console.error(failure);
+    process.exit(1);
   }
 
   console.log(JSON.stringify({ ...report, report: options.report, graph: options.graph }, null, 2));
@@ -61,7 +69,9 @@ function parseArgs(args) {
   const parsed = {};
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (!["--root", "--report", "--graph"].includes(arg)) throw new Error(`unknown argument: ${arg}`);
+    if (!["--root", "--report", "--graph", "--expect"].includes(arg)) {
+      throw new Error(`unknown argument: ${arg}`);
+    }
     const value = args[index + 1];
     if (!value) throw new Error(`${arg} requires a path`);
     parsed[arg.slice(2)] = resolve(value);
@@ -113,7 +123,7 @@ function runAnalyzer(root, out) {
   });
 }
 
-function validateGraph(graph, report) {
+function validateGraph(graph, report, expectations) {
   const failures = [];
   if (graph.schemaVersion !== 1) failures.push("schemaVersion must be 1");
   if (!Array.isArray(graph.nodes)) failures.push("nodes must be an array");
@@ -143,14 +153,7 @@ function validateGraph(graph, report) {
     }
   }
 
-  if (report.parseCoverage < 1) {
-    failures.push(`benchmark lightweight scan coverage must be 100%, got ${report.parseCoverage}`);
-  }
-  if (report.citedEdgeCoverage < 1) {
-    failures.push(`benchmark cited edge coverage must be 100%, got ${report.citedEdgeCoverage}`);
-  }
-
-  const requiredSignals = [
+  const strictSignals = [
     "programs",
     "copybooks",
     "dataItems",
@@ -171,7 +174,43 @@ function validateGraph(graph, report) {
     "queries",
     "usesDd",
   ];
-  for (const signal of requiredSignals) {
+  const thresholds = expectations ?? {
+    minimums: {
+      parseCoverage: 1,
+      citedEdgeCoverage: 1,
+    },
+    requiredSignals: strictSignals,
+  };
+
+  for (const [metric, minimum] of Object.entries(thresholds.minimums ?? {})) {
+    if (!Number.isFinite(minimum)) {
+      failures.push(`invalid minimum for ${metric}`);
+      continue;
+    }
+    if (!Number.isFinite(report[metric])) {
+      failures.push(`unknown benchmark metric: ${metric}`);
+      continue;
+    }
+    if (report[metric] < minimum) {
+      failures.push(`benchmark ${metric} must be at least ${minimum}, got ${report[metric]}`);
+    }
+  }
+
+  for (const [metric, maximum] of Object.entries(thresholds.maximums ?? {})) {
+    if (!Number.isFinite(maximum)) {
+      failures.push(`invalid maximum for ${metric}`);
+      continue;
+    }
+    if (!Number.isFinite(report[metric])) {
+      failures.push(`unknown benchmark metric: ${metric}`);
+      continue;
+    }
+    if (report[metric] > maximum) {
+      failures.push(`benchmark ${metric} must be at most ${maximum}, got ${report[metric]}`);
+    }
+  }
+
+  for (const signal of thresholds.requiredSignals ?? []) {
     if (!report.semanticSignals[signal]) failures.push(`missing benchmark semantic signal: ${signal}`);
   }
 

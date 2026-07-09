@@ -44,4 +44,6 @@ jobs:
         run: npm ci
 
       - name: Run release-candidate verification
+        env:
+          COBOLENS_BROWSER_START_TIMEOUT_MS: 45000
         run: npm run m6:verify

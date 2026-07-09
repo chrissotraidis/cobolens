@@ -1,6 +1,47 @@
 # V1 Readiness Audit
 
-Date: 2026-07-06 (updated). Original audit: 2026-07-01.
+Date: 2026-07-09 (updated). Original audit: 2026-07-01.
+
+## 2026-07-09 update: release-confidence gate
+
+The required local `m6:verify` suite passes, but release confidence is not yet
+fully proven because the two latest GitHub `health` runs on `main` were red. The
+latest failure occurred while waiting ten seconds for Chrome's remote debugging
+port rather than in an application assertion.
+
+The current worktree replaces that fixed startup with two bounded 30-second
+attempts, unique attempt profiles, early exit detection, and actionable browser
+diagnostics. A focused smoke simulates an early process failure and verifies the
+retry and final error. Health and package workflows now pin Node.js 22, install
+`rustfmt` and `clippy`, and the required suite runs formatting and warning-denying
+lint checks for both Rust crates.
+
+This update does not claim a green remote gate yet. Release-confidence proof
+requires three consecutive successful `main` health runs after these changes are
+published.
+
+## 2026-07-09 update: Local AI reliability gate
+
+Local AI readiness now ignores stale responses from superseded provider/model
+settings, and the readiness sweep selects an installed non-embedding Ollama
+model unless `COBOLENS_READINESS_MODEL` explicitly names one. This prevents a
+finished scan or settings refresh from reverting a working model to the
+incorrect **Set up AI** state.
+
+Grounded Ask now gives Ollama an explicit evidence/citation whitelist, runs with
+thinking disabled and a stable seed, filters claims independently, preserves
+safe cited model text, and supplements only missing material from graph
+evidence. Common harmless wrappers such as `file:path:line`, `[[path:line]]`,
+and numeric footnote markers are normalized before validation; citations outside
+the retrieved context remain rejected. A single bounded citation-format retry
+is allowed before the explicit cited graph fallback.
+
+The live `qwen3.5:2b-nvfp4` evidence run completed ten representative questions:
+nine retained model content, one used the explicit cited graph fallback, every
+question streamed, the repeated question returned another grounded answer, and
+cancellation settled in 5 ms. The grounded Summary smoke also passed. These are
+local reference-model results, not a claim that every Ollama model has equivalent
+quality.
 
 ## 2026-07-06 update: fresh-clone integrity
 

@@ -28,6 +28,8 @@ This runner verifies the completed M6 surface:
 - source line smoke for range labels, citation markers, and accessible line states,
 - source reader smoke for browser snippets, excerpts, source bundle caching, and encoded path lookup,
 - app settings smoke for saved model/scan normalization and browser persistence,
+- browser launch smoke for bounded startup retry and actionable process/port
+  failure diagnostics,
 - verification contract smoke for the documented fresh-checkout prerequisites,
   missing-Cargo remedy, and clean GitHub Actions path,
 - graph-grounded documentation export smoke,
@@ -41,6 +43,7 @@ This runner verifies the completed M6 surface:
 - embedding privacy smoke for localhost-only local embeddings,
 - model answer guard smoke for exact inline citation enforcement,
 - summary guard smoke for exact inline citation enforcement,
+- Rust `cargo fmt --check` and `cargo clippy -- -D warnings` for both crates,
 - Rust sidecar `cargo test`,
 - Tauri shell `cargo test`, including command-level coverage for bundled sample
   analysis, source snippets, graph-cache reuse/invalidation, and path traversal
@@ -58,11 +61,19 @@ Advisory failures do not fail this current-state verification; the production si
 npm run m6:verify
 ```
 
-Prerequisites are Node.js/npm and Rust/Cargo. If Cargo is missing, the runner
+Prerequisites are Node.js/npm, Rust/Cargo, and the Rust `rustfmt` and `clippy`
+components. Install the components with `rustup component add rustfmt clippy`.
+If Cargo is missing, the runner
 stops at the Rust analyzer build with `Missing required command: cargo` and the
 setup remedy `Install the Rust toolchain from https://rustup.rs/`. The
 JavaScript-only smokes that run before that point still provide partial signal,
 but the suite is not green until the Rust analyzer and Tauri checks run.
+
+The rendered browser smoke allows two bounded 30-second browser startup attempts.
+Set `COBOLENS_BROWSER_START_TIMEOUT_MS` or
+`COBOLENS_BROWSER_START_ATTEMPTS` only when diagnosing a known environment.
+Failure output names the browser executable, attempt count, exit status, last
+debugging-port error, and captured stderr.
 
 The true parser swap remains gated by benchmark-scale comparison and packaging readiness.
 
@@ -74,6 +85,12 @@ npm run ollama:check
 npm run ollama:summary-smoke
 npm run ollama:ask-smoke
 ```
+
+The Ask smoke uses ten representative questions and proves streamed drafts,
+claim-level citation filtering, one bounded citation retry, repeat-request
+grounding, and prompt cancellation. The required suite still covers the
+request-scoping logic that prevents stale readiness responses from overwriting
+newer settings.
 
 Desktop shell startup is also environment-specific because it needs a running
 dev server and a GUI display. With Vite already listening on `127.0.0.1:1420`,

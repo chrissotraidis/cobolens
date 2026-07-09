@@ -116,7 +116,8 @@ export function useAskGeneration({
         }),
       );
       onModelCallComplete();
-      const displayedAnswer = answer.guarded
+      const fellBackToGraph = Boolean(answer.guarded && !answer.repaired);
+      const displayedAnswer = fellBackToGraph
         ? graphAnswerFallback(
             graph,
             question,
@@ -129,9 +130,14 @@ export function useAskGeneration({
         question,
         text: displayedAnswer.text,
         citations: displayedAnswer.citations,
-        source: answer.guarded ? "graph" : "model",
-        guarded: answer.guarded,
-        fallbackReason: answer.guarded ? `Citation guard: ${answer.guardReason ?? "citation issues"}.` : undefined,
+        source: fellBackToGraph ? "graph" : "model",
+        guarded: fellBackToGraph,
+        citationFiltered: Boolean(answer.repaired),
+        fallbackReason: answer.repaired
+          ? "Citation guard removed uncited Local AI claims and kept only source-backed text."
+          : fellBackToGraph
+            ? `Citation guard: ${answer.guardReason ?? "citation issues"}.`
+            : undefined,
         semanticNote:
           answerContext.semanticError
             ? `Semantic retrieval was unavailable (${answerContext.semanticError}), so this answer used graph and keyword retrieval.`

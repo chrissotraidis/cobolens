@@ -53,16 +53,38 @@ try {
 
   const cited = "- LINEAGE reads CUSTOMER-FILE (src/LINEAGE.cbl:21).";
   const footnote = enforceGroundedAnswerCitations("LINEAGE reads CUSTOMER-FILE [1].", context);
+  const wrappedCitation = enforceGroundedAnswerCitations(
+    "- LINEAGE reads CUSTOMER-FILE [1] [[src/LINEAGE.cbl:21]].",
+    context,
+  );
+  const fileCitation = enforceGroundedAnswerCitations(
+    "- LINEAGE reads CUSTOMER-FILE at file:src/LINEAGE.cbl:21.",
+    context,
+  );
   const uncited = enforceGroundedAnswerCitations("LINEAGE reads customer records and writes a report.", context);
   const partial = enforceGroundedAnswerCitations(
     ["LINEAGE reads CUSTOMER-FILE (src/LINEAGE.cbl:21).", "It also writes reports."].join("\n"),
     context,
   );
   const accepted = enforceGroundedAnswerCitations(cited, context);
+  const inventedCitation = enforceGroundedAnswerCitations(
+    "LINEAGE reads a secret file (src/INVENTED.cbl:999).",
+    context,
+  );
+  const longAnswer = enforceGroundedAnswerCitations(
+    [
+      "- First supported fact (src/LINEAGE.cbl:21).",
+      "- Second supported fact (src/LINEAGE.cbl:21).",
+      "- Third supported fact (src/LINEAGE.cbl:21).",
+      "- Fourth supported fact (src/LINEAGE.cbl:21).",
+    ].join("\n"),
+    context,
+    { maxClaims: 3 },
+  );
 
   // Small local models cite in prose ("at src/LINEAGE.cbl:21") rather than in
-  // parentheses; that must be accepted, and a single uncited framing line must
-  // not discard an otherwise-grounded answer.
+  // parentheses; that citation is accepted. Uncited framing is removed while
+  // the cited claims remain.
   const proseCitation = "LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21.";
   const proseAccepted = enforceGroundedAnswerCitations(proseCitation, context);
   const framingPlusCited = enforceGroundedAnswerCitations(
@@ -89,11 +111,42 @@ try {
     "does not treat a bare ratio as a citation": !hasExactInlineSourceCitation("The ratio was 1.18:1 overall."),
     "accepts fully cited answer": accepted.text === cited && accepted.guarded === false,
     "accepts prose-cited answer": proseAccepted.guarded === false && proseAccepted.text === proseCitation,
-    "accepts one framing line with a cited majority": framingPlusCited.guarded === false,
-    "rejects footnote citations": footnote.guarded === true && footnote.text.includes("footnote-style citations"),
+    "filters one framing line while preserving cited claims":
+      framingPlusCited.guarded === false &&
+      framingPlusCited.repaired === true &&
+      !framingPlusCited.text.includes("batch COBOL program") &&
+      framingPlusCited.text.includes("reads CUSTOMER-FILE") &&
+      framingPlusCited.text.includes("writes REPORT-RECORD"),
+    "rejects a bare numeric footnote without exact source":
+      footnote.guarded === true && footnote.text.includes("no exact source citations"),
+    "normalizes a wrapped exact citation while removing numeric footnotes":
+      wrappedCitation.guarded === false &&
+      wrappedCitation.repaired === true &&
+      wrappedCitation.text.includes("(src/LINEAGE.cbl:21)") &&
+      !wrappedCitation.text.includes("[1]") &&
+      !wrappedCitation.text.includes("[["),
+    "normalizes a file-prefixed exact citation":
+      fileCitation.guarded === false &&
+      fileCitation.repaired === true &&
+      fileCitation.text.includes("(src/LINEAGE.cbl:21)"),
     "rejects uncited model text": uncited.guarded === true && uncited.text.includes("no exact source citations"),
-    "rejects partially cited answer blocks": partial.guarded === true && partial.text.includes("uncited explanation lines"),
-    "rejects mostly-uncited answer": mostlyUncited.guarded === true && mostlyUncited.text.includes("uncited explanation lines"),
+    "filters a partially cited answer instead of discarding its cited claim":
+      partial.guarded === false &&
+      partial.repaired === true &&
+      partial.text.includes("reads CUSTOMER-FILE") &&
+      !partial.text.includes("writes reports"),
+    "filters a mostly-uncited answer and supplements graph evidence":
+      mostlyUncited.guarded === false &&
+      mostlyUncited.repaired === true &&
+      !mostlyUncited.text.includes("business calculations") &&
+      mostlyUncited.text.includes("Additional graph evidence"),
+    "rejects citations outside retrieved context":
+      inventedCitation.guarded === true && inventedCitation.text.includes("citations outside retrieved context"),
+    "limits a fully cited answer after validating every claim":
+      longAnswer.guarded === false &&
+      longAnswer.repaired === true &&
+      longAnswer.text.includes("Third supported fact") &&
+      !longAnswer.text.includes("Fourth supported fact"),
     "fallback includes exact source citation": /\(src\/LINEAGE\.cbl:21\)/.test(uncited.text),
     "fallback strips bracketed footnotes": !/\[\d+\]/.test(footnote.text),
   };

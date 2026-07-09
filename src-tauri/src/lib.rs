@@ -103,7 +103,7 @@ fn analyze_root<R: Runtime>(
     }
     let manifest = source_manifest(&root_path, &extensions)?;
     let cache_basis = format!("{}\n{}", scan.cache_fingerprint(), manifest);
-    let cache_path = graph_cache_path(&app, &root_path, &cache_basis)?;
+    let cache_path = graph_cache_path(app, &root_path, &cache_basis)?;
     if cache_path.exists() {
         if let Ok(cached) = fs::read_to_string(&cache_path) {
             if let Ok(graph) = serde_json::from_str(&cached) {
@@ -115,7 +115,7 @@ fn analyze_root<R: Runtime>(
 
     let cache_key = stable_hash(&format!("{}|{}", root_path.display(), cache_basis));
     let out = env::temp_dir().join(format!("cobolens-graph-{cache_key:016x}.json"));
-    let analyzer = analyzer_binary_path(&app)?;
+    let analyzer = analyzer_binary_path(app)?;
     let extension_arg = scan.extension_arg();
     let mut child = Command::new(analyzer)
         .args([
@@ -361,6 +361,7 @@ fn read_source_excerpt(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn write_export_files(
     output_dir: String,
     package_name: String,
@@ -393,10 +394,12 @@ fn write_export_files(
     fs::create_dir_all(&target_dir).map_err(|err| err.to_string())?;
 
     if include_markdown {
-        fs::write(target_dir.join(format!("{prefix}.md")), markdown).map_err(|err| err.to_string())?;
+        fs::write(target_dir.join(format!("{prefix}.md")), markdown)
+            .map_err(|err| err.to_string())?;
     }
     if include_mermaid {
-        fs::write(target_dir.join(format!("{prefix}.mmd")), mermaid).map_err(|err| err.to_string())?;
+        fs::write(target_dir.join(format!("{prefix}.mmd")), mermaid)
+            .map_err(|err| err.to_string())?;
     }
     if include_png {
         fs::write(target_dir.join(format!("{prefix}.png")), png).map_err(|err| err.to_string())?;
@@ -622,10 +625,7 @@ fn unique_export_dir(output_dir: &Path, package_name: &str) -> PathBuf {
 
     output_dir.join(format!(
         "{package_name}-{}",
-        UNIX_EPOCH
-            .elapsed()
-            .map(|time| time.as_secs())
-            .unwrap_or(0)
+        UNIX_EPOCH.elapsed().map(|time| time.as_secs()).unwrap_or(0)
     ))
 }
 
@@ -641,10 +641,10 @@ fn analyzer_binary_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf
         "cobolens-analyze"
     };
 
-    if let Ok(path) = app
-        .path()
-        .resolve(Path::new("binaries").join(exe_name), BaseDirectory::Resource)
-    {
+    if let Ok(path) = app.path().resolve(
+        Path::new("binaries").join(exe_name),
+        BaseDirectory::Resource,
+    ) {
         if path.exists() {
             return Ok(path);
         }
@@ -1031,7 +1031,12 @@ mod tests {
             "graph TD\n"
         );
         assert_eq!(
-            fs::read(output_dir.join("cobolens-lineage-export").join("cobolens-lineage.png")).unwrap(),
+            fs::read(
+                output_dir
+                    .join("cobolens-lineage-export")
+                    .join("cobolens-lineage.png")
+            )
+            .unwrap(),
             valid_png_bytes()
         );
 
@@ -1106,7 +1111,10 @@ mod tests {
         let target_dir = PathBuf::from(target);
 
         assert!(target_dir.ends_with("selected-export"));
-        assert_eq!(fs::read_to_string(target_dir.join("docs.md")).unwrap(), "# Docs\n");
+        assert_eq!(
+            fs::read_to_string(target_dir.join("docs.md")).unwrap(),
+            "# Docs\n"
+        );
         assert!(!target_dir.join("docs.mmd").exists());
         assert!(!target_dir.join("docs.png").exists());
 

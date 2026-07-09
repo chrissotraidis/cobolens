@@ -356,10 +356,13 @@ fn parse_file(
 
     match source_file.kind {
         FileKind::Cobol | FileKind::Copybook => {
-            let parse_warning = verify_tree_sitter_parse(&content).err().map(|warning| ParseWarning {
-                reason: format!("{}; lightweight scan completed", warning.reason),
-                line: warning.line,
-            });
+            let parse_warning =
+                verify_tree_sitter_parse(&content)
+                    .err()
+                    .map(|warning| ParseWarning {
+                        reason: format!("{}; lightweight scan completed", warning.reason),
+                        line: warning.line,
+                    });
             parse_cobol_file(source_file, &logical_lines, builder)?;
             Ok(FileAnalysis {
                 warning: parse_warning,
@@ -398,13 +401,22 @@ fn scan_dialect_signals(
                 SourceFormat::Auto => content.lines().any(looks_fixed),
             };
             signals.insert(if fixed { "fixed-format" } else { "free-format" }.to_string());
-            if logical_lines.iter().any(|line| has_token_window(line, "EXEC", "SQL")) {
+            if logical_lines
+                .iter()
+                .any(|line| has_token_window(line, "EXEC", "SQL"))
+            {
                 signals.insert("EXEC SQL".to_string());
             }
-            if logical_lines.iter().any(|line| has_token_window(line, "EXEC", "CICS")) {
+            if logical_lines
+                .iter()
+                .any(|line| has_token_window(line, "EXEC", "CICS"))
+            {
                 signals.insert("EXEC CICS".to_string());
             }
-            if logical_lines.iter().any(|line| line.trim_start().starts_with(">>")) {
+            if logical_lines
+                .iter()
+                .any(|line| line.trim_start().starts_with(">>"))
+            {
                 signals.insert("compiler directives".to_string());
             }
         }
@@ -452,12 +464,10 @@ fn verify_tree_sitter_parse(content: &str) -> Result<(), ParseWarning> {
             reason: format!("tree-sitter language setup failed: {err}"),
             line: None,
         })?;
-    let tree = parser
-        .parse(content, None)
-        .ok_or_else(|| ParseWarning {
-            reason: "tree-sitter parser returned no tree".to_string(),
-            line: None,
-        })?;
+    let tree = parser.parse(content, None).ok_or_else(|| ParseWarning {
+        reason: "tree-sitter parser returned no tree".to_string(),
+        line: None,
+    })?;
     if tree.root_node().has_error() {
         return Err(ParseWarning {
             reason: "tree-sitter parse contained errors".to_string(),

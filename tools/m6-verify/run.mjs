@@ -71,9 +71,34 @@ const checks = [
     args: ["tools/m6-verify/app-settings-smoke.mjs"],
   },
   {
+    name: "browser launch smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/browser-launch-smoke.mjs"],
+  },
+  {
     name: "verification contract smoke",
     command: process.execPath,
     args: ["tools/m6-verify/verification-contract-smoke.mjs"],
+  },
+  {
+    name: "Rust sidecar formatting",
+    command: "cargo",
+    args: ["fmt", "--manifest-path", "sidecar/cobolens-analyze/Cargo.toml", "--all", "--", "--check"],
+  },
+  {
+    name: "Rust shell formatting",
+    command: "cargo",
+    args: ["fmt", "--manifest-path", "src-tauri/Cargo.toml", "--all", "--", "--check"],
+  },
+  {
+    name: "Rust sidecar lint",
+    command: "cargo",
+    args: ["clippy", "--manifest-path", "sidecar/cobolens-analyze/Cargo.toml", "--all-targets", "--", "-D", "warnings"],
+  },
+  {
+    name: "Rust shell lint",
+    command: "cargo",
+    args: ["clippy", "--manifest-path", "src-tauri/Cargo.toml", "--all-targets", "--", "-D", "warnings"],
   },
   {
     name: "Rust analyzer debug build",
@@ -150,6 +175,11 @@ const checks = [
     name: "model readiness smoke",
     command: process.execPath,
     args: ["tools/m6-verify/model-readiness-smoke.mjs"],
+  },
+  {
+    name: "model readiness request smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/model-readiness-request-smoke.mjs"],
   },
   {
     name: "model prompt smoke",

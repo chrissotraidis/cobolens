@@ -94,6 +94,7 @@ Prerequisites for the desktop app and full verification suite:
 
 - Node.js/npm
 - Rust/Cargo from <https://rustup.rs/>
+- Rust `rustfmt` and `clippy` components (`rustup component add rustfmt clippy`)
 
 Install dependencies:
 
@@ -160,6 +161,13 @@ The default provider setting is Ollama, but Cobolens does not assume Ollama is i
 
 Cobolens talks to local Ollama through its chat API on `http://127.0.0.1:11434`, which keeps thinking-capable models' reasoning out of the cited answer text. Readiness checks probe the CLI, HTTP API, generation, and embeddings separately, so a missing embedding model is reported without blocking generation.
 
+Ask validates each claim against the retrieved source ranges. It keeps safe
+cited model text, removes unsupported claims, and adds graph evidence only where
+needed. Ollama gets one bounded citation-format retry before Cobolens uses the
+explicit cited graph fallback. The v1 readiness sweep selects an installed
+non-embedding model automatically; set `COBOLENS_READINESS_MODEL` to force a
+specific local reference model.
+
 Optional local Ollama setup:
 
 ```sh
@@ -186,6 +194,13 @@ Check the local model path (verifies the CLI, HTTP API, generation, and embeddin
 npm run ollama:check
 npm run ollama:summary-smoke
 npm run ollama:ask-smoke
+```
+
+The Ask smoke runs ten grounded questions plus streaming, repeat-request, and
+cancellation checks. Pass a model explicitly when comparing local models:
+
+```sh
+npm run ollama:ask-smoke -- qwen3.5:2b-nvfp4
 ```
 
 ## Build And Package On Linux
@@ -257,7 +272,8 @@ npm run m6:verify
 
 If this stops with `Missing required command: cargo`, install Rust/Cargo from
 <https://rustup.rs/> and rerun it. The GitHub health workflow does the same
-fresh-checkout path with Node.js, Rust, `npm ci`, and `npm run m6:verify`.
+fresh-checkout path with pinned Node.js 22, Rust formatting/lint components,
+`npm ci`, and `npm run m6:verify`.
 
 Run the broader v1 readiness sweep:
 
@@ -291,6 +307,8 @@ npm run m6:compare-candidates
 - source line smoke
 - source reader smoke
 - app settings smoke
+- stale model-readiness request smoke
+- browser startup retry and failure-diagnostic smoke
 - export docs smoke
 - graph Ask smoke
 - semantic retrieval smoke
@@ -299,6 +317,7 @@ npm run m6:compare-candidates
 - packaging contract smoke
 - model privacy and embedding privacy smokes
 - prompt and guard smokes
+- Rust formatting and Clippy lint checks
 - Rust sidecar tests
 - Tauri command tests
 - parser candidate comparison

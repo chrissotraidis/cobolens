@@ -73,11 +73,23 @@ try {
     excerpt,
     text: "LINEAGE reads customer records [1].",
   });
+  const wrappedCitation = guardUnitSummaryText({
+    graph,
+    node,
+    excerpt,
+    text: "LINEAGE reads CUSTOMER-FILE [1] [[src/LINEAGE.cbl:21]].",
+  });
 
   const checks = {
     "accepts cited summary": cited.guarded === false,
     "guards uncited summary": uncited.guarded === true && uncited.text.includes("model summary"),
-    "guards footnote summary": footnote.guarded === true && footnote.text.includes("footnote-style citations"),
+    "guards a bare numeric footnote without exact source":
+      footnote.guarded === true && footnote.text.includes("no exact source citations"),
+    "repairs a wrapped exact summary citation":
+      wrappedCitation.guarded === false &&
+      wrappedCitation.repaired === true &&
+      wrappedCitation.text.includes("(src/LINEAGE.cbl:21)") &&
+      !wrappedCitation.text.includes("[1]"),
     "summary fallback cites source range": /\(src\/LINEAGE\.cbl:1-47\)/.test(uncited.text),
     "summary fallback cites relationship": /\(src\/LINEAGE\.cbl:(11|13|21|26|37|40)\)/.test(uncited.text),
   };

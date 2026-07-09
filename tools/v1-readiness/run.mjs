@@ -4,16 +4,16 @@ import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { selectReadinessModel } from "../local-model/model-selection.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const benchmarkRoot = resolve(repoRoot, ".cache", "benchmarks", "COBOL-Legacy-Benchmark-Suite");
 const appImageRoot = resolve(repoRoot, "src-tauri", "target", "release", "bundle", "appimage");
-const defaultLocalModel = process.env.COBOLENS_READINESS_MODEL ?? "llama3.2:1b";
-
 const results = [];
 
 await required("V1 readiness report contract", process.execPath, ["tools/v1-readiness/report-contract-smoke.mjs"]);
 await required("V1 PRD coverage audit", process.execPath, ["tools/v1-readiness/prd-coverage-smoke.mjs"]);
+await required("V1 local model selection", process.execPath, ["tools/v1-readiness/model-selection-smoke.mjs"]);
 await required("M6 verification suite", process.execPath, ["tools/m6-verify/run.mjs"]);
 
 if (existsSync(benchmarkRoot)) {
@@ -31,10 +31,15 @@ if (existsSync(benchmarkRoot)) {
 }
 
 if (ollamaCommandAvailable()) {
-  await optional("local Ollama readiness", process.execPath, ["tools/local-model/ollama-smoke.mjs", defaultLocalModel]);
+  const localModel = selectReadinessModel({
+    explicitModel: process.env.COBOLENS_READINESS_MODEL,
+    listOutput: ollamaListOutput(),
+  });
+  console.log(`\nUsing local readiness model: ${localModel}`);
+  await optional("local Ollama readiness", process.execPath, ["tools/local-model/ollama-smoke.mjs", localModel]);
   if (existsSync(resolve(repoRoot, "public", "m6-bakeoff-graph.json"))) {
-    await optional("local Ollama grounded Summary smoke", process.execPath, ["tools/local-model/ollama-summary-smoke.mjs", defaultLocalModel]);
-    await optional("local Ollama grounded Ask smoke", process.execPath, ["tools/local-model/ollama-ask-smoke.mjs", defaultLocalModel]);
+    await optional("local Ollama grounded Summary smoke", process.execPath, ["tools/local-model/ollama-summary-smoke.mjs", localModel]);
+    await optional("local Ollama grounded Ask smoke", process.execPath, ["tools/local-model/ollama-ask-smoke.mjs", localModel]);
   } else {
     skipped("local Ollama grounded Summary smoke", "missing public/m6-bakeoff-graph.json; run npm run m6:fixture-graph");
     skipped("local Ollama grounded Ask smoke", "missing public/m6-bakeoff-graph.json; run npm run m6:fixture-graph");
@@ -128,6 +133,11 @@ function spawnGate(command, args) {
 
 function ollamaCommandAvailable() {
   return spawnSync("ollama", ["--version"], { encoding: "utf8" }).status === 0;
+}
+
+function ollamaListOutput() {
+  const result = spawnSync("ollama", ["list"], { encoding: "utf8" });
+  return result.status === 0 ? result.stdout : "";
 }
 
 async function hasPackagedAppImage() {

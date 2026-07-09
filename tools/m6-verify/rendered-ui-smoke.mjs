@@ -7,7 +7,7 @@ import net from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { launchBrowser } from "./browser-launch.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const distRoot = resolve(repoRoot, "dist");
@@ -24,9 +24,10 @@ async function main() {
   const cdpPort = await freePort();
   const userDataDir = await mkdtemp(join(tmpdir(), "cobolens-ui-smoke-profile-"));
   const server = await startStaticServer(distRoot, appPort);
-  const browser = await launchBrowser(cdpPort, userDataDir);
+  let browser;
 
   try {
+    browser = await launchBrowser(cdpPort, userDataDir);
     const appUrl = `http://127.0.0.1:${appPort}/`;
     const pageWs = await createBrowserPage(cdpPort, appUrl);
     cdp = await JsonWebSocket.connect(pageWs);
@@ -394,14 +395,20 @@ async function main() {
     }, null, 2));
   } finally {
     cdp?.close();
-    browser.kill();
-    await new Promise((resolveExit) => {
-      const timer = setTimeout(resolveExit, 1_000);
-      browser.once("exit", () => {
-        clearTimeout(timer);
-        resolveExit();
+    if (browser) {
+      await new Promise((resolveExit) => {
+        if (browser.exitCode !== null || browser.signalCode !== null) {
+          resolveExit();
+          return;
+        }
+        const timer = setTimeout(resolveExit, 1_000);
+        browser.once("exit", () => {
+          clearTimeout(timer);
+          resolveExit();
+        });
+        browser.kill();
       });
-    });
+    }
     await new Promise((resolveClose) => server.close(resolveClose));
     await rm(userDataDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => {});
   }
@@ -908,64 +915,6 @@ function contentType(filePath) {
     ".svg": "image/svg+xml",
   };
   return types[extname(filePath)] ?? "application/octet-stream";
-}
-
-async function launchBrowser(cdpPort, userDataDir) {
-  const browserPath = findBrowserPath();
-  if (!browserPath) {
-    throw new Error("Rendered UI smoke needs Chrome, Chromium, or Edge. Set CHROME_BIN to the browser executable.");
-  }
-  const child = spawn(browserPath, [
-    "--headless=new",
-    "--ignore-gpu-blocklist",
-    "--use-gl=swiftshader",
-    "--enable-unsafe-swiftshader",
-    "--disable-background-networking",
-    "--no-default-browser-check",
-    "--no-first-run",
-    "--no-sandbox",
-    `--remote-debugging-port=${cdpPort}`,
-    `--user-data-dir=${userDataDir}`,
-    "about:blank",
-  ], {
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-  child.on("exit", (code) => {
-    if (code !== null && code !== 0) stderr += `\nBrowser exited with ${code}`;
-  });
-  await waitFor(() => httpJson(`http://127.0.0.1:${cdpPort}/json/version`), "browser debugging port", 10_000).catch((error) => {
-    child.kill();
-    throw new Error(`${error.message}\n${stderr.slice(-1000)}`);
-  });
-  return child;
-}
-
-function findBrowserPath() {
-  const envPath = process.env.CHROME_BIN || process.env.CHROMIUM_BIN;
-  if (envPath && existsSync(envPath)) return envPath;
-  const candidates = process.platform === "darwin"
-    ? [
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-      ]
-    : process.platform === "win32"
-      ? [
-          join(process.env.PROGRAMFILES ?? "C:\\Program Files", "Google", "Chrome", "Application", "chrome.exe"),
-          join(process.env["PROGRAMFILES(X86)"] ?? "C:\\Program Files (x86)", "Microsoft", "Edge", "Application", "msedge.exe"),
-        ]
-      : [
-          "/usr/bin/google-chrome",
-          "/usr/bin/google-chrome-stable",
-          "/usr/bin/chromium",
-          "/usr/bin/chromium-browser",
-          "/usr/bin/microsoft-edge",
-        ];
-  return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }
 
 async function createBrowserPage(cdpPort, url) {

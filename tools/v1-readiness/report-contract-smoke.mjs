@@ -12,6 +12,10 @@ const checks = {
   "ready requires optional failures clean": source.includes("const optionalEvidenceClean = failedOptional.length === 0"),
   "ready requires optional skips complete": source.includes("const optionalEvidenceComplete = skippedOptional.length === 0"),
   "runner includes PRD coverage audit": source.includes('required("V1 PRD coverage audit"') && source.includes("prd-coverage-smoke.mjs"),
+  "runner verifies installed local model selection":
+    source.includes('required("V1 local model selection"') &&
+    source.includes("model-selection-smoke.mjs") &&
+    source.includes("selectReadinessModel"),
   "exit code follows required gates only": source.includes("process.exit(report.requiredPassed ? 0 : 1)"),
   "report exposes optional clean flag": source.includes("optionalEvidenceClean"),
   "report exposes optional complete flag": source.includes("optionalEvidenceComplete"),

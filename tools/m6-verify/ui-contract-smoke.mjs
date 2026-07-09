@@ -158,9 +158,10 @@ const checks = [
       ]),
   ],
   [
-    "Guarded Ask answers use the richer graph fallback",
+    "Citation guard preserves safe model claims and falls back only when necessary",
     includesAll(askGenerationSource, [
-      "answer.guarded",
+      "answer.guarded && !answer.repaired",
+      "fellBackToGraph",
       "graphAnswerFallback(",
       "graph,",
       "question,",
@@ -169,8 +170,10 @@ const checks = [
       '"citation"',
       "text: displayedAnswer.text",
       "citations: displayedAnswer.citations",
-      'source: answer.guarded ? "graph" : "model"',
-      "fallbackReason: answer.guarded ? `Citation guard:",
+      'source: fellBackToGraph ? "graph" : "model"',
+      "citationFiltered: Boolean(answer.repaired)",
+      "Citation guard removed uncited Local AI claims",
+      "fellBackToGraph",
     ]) &&
       includesAll(graphAnswerSource, [
         "Local AI draft failed citation checks, so Cobolens used the graph answer.",

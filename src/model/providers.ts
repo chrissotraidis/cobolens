@@ -14,11 +14,12 @@ export function createLanguageModel(settings: ModelSettings, apiKey?: string): L
   if (settings.provider === "ollama") {
     assertLocalOllamaUrl(settings.baseUrl);
     const ollama = createOllama({ baseURL: normalizeOllamaBaseUrl(settings.baseUrl) });
-    // Use the chat API (not the raw completion API) so the model template
-    // applies. The provider defaults think:false, so reasoning models answer
-    // directly instead of spending the whole token budget on hidden
-    // chain-of-thought and returning empty answer text.
-    return ollama(settings.model);
+    // Keep local answers repeatable and force reasoning-capable models to put
+    // their token budget into the visible answer rather than hidden thinking.
+    return ollama.chat(settings.model, {
+      think: false,
+      options: { seed: 0 },
+    });
   }
 
   if (!apiKey) {

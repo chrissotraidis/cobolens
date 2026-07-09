@@ -16,6 +16,7 @@ export type ChatAnswer = {
   citations: Citation[];
   source: "graph" | "model";
   guarded?: boolean;
+  citationFiltered?: boolean;
   fallbackReason?: string;
   semanticNote?: string;
 };
@@ -305,11 +306,11 @@ function sameChatAnswer(left: ChatAnswer, right: ChatAnswer) {
 }
 
 function answerRouteLabel(answer: ChatAnswer, providerLabel: string) {
-  if (answer.guarded || answer.fallbackReason) return "Graph fallback";
+  if (answer.guarded || (answer.source === "graph" && answer.fallbackReason)) return "Graph fallback";
   return answer.source === "model" ? `${providerLabel} answer` : "Graph answer";
 }
 
 function answerRouteClass(answer: ChatAnswer) {
-  if (answer.guarded || answer.fallbackReason) return "fallback";
+  if (answer.guarded || (answer.source === "graph" && answer.fallbackReason)) return "fallback";
   return answer.source === "model" ? "model" : "graph";
 }

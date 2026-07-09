@@ -1,6 +1,6 @@
 # Cobolens Tech Debt
 
-Last updated: 2026-07-08.
+Last updated: 2026-07-09.
 
 This is the honest running ledger of known debt: things that work well enough
 for the local v1 release candidate but are shortcuts, deferrals, or rough edges
@@ -11,6 +11,46 @@ matters, where it lives, and a suggested fix with rough effort.
 
 Debt is grouped by area and tagged **[small]** (hours), **[medium]** (a day or
 two), or **[large]** (a bounded but multi-day slice).
+
+## Release-confidence pass (2026-07-09)
+
+The local required suite passed, but the two most recent `main` health runs were
+not green: one caught a phone-layout assertion and the latest timed out waiting
+ten seconds for Chrome's debugging port. The release gate is now hardened in
+the current worktree:
+
+- the rendered browser smoke uses two bounded 30-second launch attempts, unique
+  attempt profiles, early process-exit detection, and diagnostics that preserve
+  the browser path, exit status, last port error, and stderr;
+- `browser-launch-smoke.mjs` simulates an early browser failure and verifies the
+  retry and final diagnostic without launching a real browser;
+- health and package workflows pin Node.js 22 instead of following `lts/*`;
+- CI installs `rustfmt` and `clippy`, and `m6:verify` runs formatting and
+  warning-denying lint checks for both Rust crates.
+
+Remote proof is deliberately still open. This item is complete only after the
+updated `main` workflow passes three consecutive clean runs; local success alone
+does not establish that proof gate.
+
+## Local AI reliability pass (2026-07-09)
+
+The configured-state and frequent-fallback issues are closed locally:
+
+- readiness responses are request-scoped, so an older provider/model check
+  cannot overwrite newer settings;
+- the v1 runner uses `COBOLENS_READINESS_MODEL` when set, otherwise the first
+  installed non-embedding Ollama model, with `llama3.2:1b` only as the no-model
+  fallback;
+- Ollama Ask explicitly disables thinking, uses a stable seed, supplies labeled
+  allowed evidence, normalizes harmless citation wrappers, filters claims
+  independently, and makes one bounded citation retry before graph fallback;
+- the live Qwen gate covers ten questions, streaming, repeated requests,
+  cancellation, and grounded summaries. The latest proof retained model content
+  for nine questions and used one explicit cited graph fallback.
+
+This does not close the source-aware semantic retrieval or desktop vector-store
+items below. Those remain separate because the current semantic chunks still
+describe graph facts rather than source behavior.
 
 ## START HERE — handoff for the next agent (2026-07-07)
 
@@ -41,7 +81,9 @@ and it is enforced-ish by the smokes.
    below).
 5. Local AI: `npm run ollama:check <model>` verifies the CLI/HTTP/generation/
    embeddings path. Reasoning ("thinking") models need `think:false` (already set
-   in the probe and provider) or they return empty text.
+   in the probe and provider) or they return empty text. Use
+   `COBOLENS_READINESS_MODEL=<model> npm run v1:readiness` to force a reference
+   model; otherwise the sweep chooses an installed non-embedding model.
 
 **Biggest open debt, ranked:**
 1. **`src/App.tsx` is still a just-under-400-line root file** [large] — the single
@@ -61,7 +103,8 @@ and it is enforced-ish by the smokes.
    summary graph copy/evidence, Ask focus routing, model runtime behavior,
    inspector progress copy, Ask history, layout state, source line state, source
    reader behavior, and app settings persistence now have focused behavior
-   smokes, so this remaining debt is mostly narrow source-string contracts.
+   smokes. Browser-process startup now has a focused behavior smoke too, so this
+   remaining debt is mostly narrow source-string contracts.
 3. **Desktop cannot distinguish Ollama missing from Ollama stopped** [small] —
    Settings now has a lightweight readiness stepper, but the app still only
    learns about Ollama through the HTTP API. Desktop can eventually add a tiny

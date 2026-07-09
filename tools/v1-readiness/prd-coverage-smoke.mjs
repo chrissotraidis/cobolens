@@ -14,8 +14,10 @@ const checks = {
     audit.includes(`| ${id} `),
   ),
   "audit distinguishes partial coverage": audit.includes("Partial/Should") && audit.includes("Signed Windows release installers are not yet claimed"),
-  "audit documents persistent local vector cache": audit.includes("persistent local vector cache") && audit.includes("local browser storage"),
-  "audit caveats signed Windows release packaging": audit.includes("Signed Windows release packaging remains unvalidated"),
+  "audit documents persistent local vector cache":
+    audit.includes("persistent local vector cache") && audit.includes("browser demo uses local storage"),
+  "audit caveats public package signing":
+    audit.includes("Public macOS notarization and Windows/Linux signing remain unconfigured"),
   "audit documents local Ollama risk": audit.includes("Local Ollama quality and speed"),
 };
 

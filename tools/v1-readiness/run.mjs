@@ -9,6 +9,7 @@ import { selectReadinessModel } from "../local-model/model-selection.mjs";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const benchmarkRoot = resolve(repoRoot, ".cache", "benchmarks", "COBOL-Legacy-Benchmark-Suite");
 const appImageRoot = resolve(repoRoot, "src-tauri", "target", "release", "bundle", "appimage");
+const macAppRoot = resolve(repoRoot, "src-tauri", "target", "release", "bundle", "macos");
 const results = [];
 
 await required("V1 readiness report contract", process.execPath, ["tools/v1-readiness/report-contract-smoke.mjs"]);
@@ -53,14 +54,22 @@ if (ollamaCommandAvailable()) {
   skipped("local Ollama source semantic smoke", "ollama command not found");
 }
 
-if (await hasPackagedAppImage()) {
+if (process.platform === "darwin") {
+  if (await hasPackagedMacApp()) {
+    await optional("packaged macOS GUI smoke", process.execPath, ["tools/desktop/macos-packaged-smoke.mjs"]);
+  } else {
+    skipped("packaged macOS GUI smoke", "missing Cobolens.app bundle; run npm run tauri -- build --bundles app --no-sign");
+  }
+} else if (process.platform === "linux" && await hasPackagedAppImage()) {
   if (process.env.DISPLAY || process.env.WAYLAND_DISPLAY) {
     await optional("packaged Linux GUI smoke", process.execPath, ["tools/desktop/packaged-gui-smoke.mjs"]);
   } else {
     skipped("packaged Linux GUI smoke", "missing DISPLAY or WAYLAND_DISPLAY");
   }
-} else {
+} else if (process.platform === "linux") {
   skipped("packaged Linux GUI smoke", "missing AppImage bundle; run npm run tauri build");
+} else {
+  skipped("packaged Windows GUI smoke", "no Windows packaged GUI smoke is implemented");
 }
 
 const failedRequired = results.filter((result) => result.required && result.status === "failed");
@@ -147,6 +156,15 @@ async function hasPackagedAppImage() {
   try {
     const entries = await readdir(appImageRoot, { withFileTypes: true });
     return entries.some((entry) => entry.isFile() && entry.name.endsWith(".AppImage"));
+  } catch {
+    return false;
+  }
+}
+
+async function hasPackagedMacApp() {
+  try {
+    const entries = await readdir(macAppRoot, { withFileTypes: true });
+    return entries.some((entry) => entry.isDirectory() && entry.name.endsWith(".app"));
   } catch {
     return false;
   }

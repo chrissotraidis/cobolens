@@ -15,7 +15,9 @@ prerequisites exist:
 - local Ollama for installed-model readiness, grounded Summary smoke, and the
   ten-question grounded Ask/streaming/repeat/cancellation smoke, plus live
   source-aware semantic retrieval;
-- built Linux AppImage plus a desktop display for packaged GUI smoke.
+- a built macOS app when running on macOS, or a built Linux AppImage plus a
+  desktop display when running on Linux, for the platform-specific packaged GUI
+  smoke.
 
 Optional gates report `passed`, `failed`, or `skipped` in the final JSON report.
 Only required-gate failure exits non-zero. The final `ready` field is stricter:

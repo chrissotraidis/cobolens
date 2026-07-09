@@ -19,6 +19,11 @@ const checks = {
   "runner includes live source-aware semantic retrieval":
     source.includes('optional("local Ollama source semantic smoke"') &&
     source.includes("ollama-semantic-smoke.mjs"),
+  "runner uses a platform-specific packaged GUI smoke":
+    source.includes('process.platform === "darwin"') &&
+    source.includes('optional("packaged macOS GUI smoke"') &&
+    source.includes('process.platform === "linux"') &&
+    source.includes('optional("packaged Linux GUI smoke"'),
   "exit code follows required gates only": source.includes("process.exit(report.requiredPassed ? 0 : 1)"),
   "report exposes optional clean flag": source.includes("optionalEvidenceClean"),
   "report exposes optional complete flag": source.includes("optionalEvidenceComplete"),

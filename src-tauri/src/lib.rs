@@ -12,6 +12,7 @@ use tauri::{path::BaseDirectory, Emitter, Manager, Runtime};
 
 const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_SOURCE_READER_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_SEMANTIC_INDEX_BYTES: usize = 64 * 1024 * 1024;
 const IGNORED_DIR_NAMES: &[&str] = &[
     ".git",
     ".hg",
@@ -458,6 +459,110 @@ fn app_settings_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, S
         .map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+fn read_semantic_index(app: tauri::AppHandle, key: String) -> Result<Value, String> {
+    read_semantic_index_for(&app, &key)
+}
+
+fn read_semantic_index_for<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    key: &str,
+) -> Result<Value, String> {
+    let path = semantic_index_path(app, key)?;
+    if !path.exists() {
+        return Ok(Value::Null);
+    }
+    let bytes = fs::read(&path).map_err(|err| err.to_string())?;
+    if bytes.len() > MAX_SEMANTIC_INDEX_BYTES {
+        return Err("semantic index exceeds the local cache size limit".to_string());
+    }
+    let index: Value = serde_json::from_slice(&bytes).map_err(|err| err.to_string())?;
+    validate_semantic_index(key, &index)?;
+    Ok(index)
+}
+
+#[tauri::command]
+fn write_semantic_index(app: tauri::AppHandle, key: String, index: Value) -> Result<(), String> {
+    write_semantic_index_for(&app, &key, index)
+}
+
+fn write_semantic_index_for<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    key: &str,
+    index: Value,
+) -> Result<(), String> {
+    validate_semantic_index(key, &index)?;
+    let json = serde_json::to_vec(&index).map_err(|err| err.to_string())?;
+    if json.len() > MAX_SEMANTIC_INDEX_BYTES {
+        return Err("semantic index exceeds the local cache size limit".to_string());
+    }
+    let path = semantic_index_path(app, key)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::write(path, json).map_err(|err| err.to_string())
+}
+
+fn semantic_index_path<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    key: &str,
+) -> Result<PathBuf, String> {
+    if !valid_semantic_index_key(key) {
+        return Err("invalid semantic index key".to_string());
+    }
+    app.path()
+        .resolve(
+            format!("semantic-indexes/{key}.json"),
+            BaseDirectory::AppData,
+        )
+        .map_err(|err| err.to_string())
+}
+
+fn valid_semantic_index_key(key: &str) -> bool {
+    key.starts_with("cobolens.semantic.v1.")
+        && key.len() <= 160
+        && key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
+}
+
+fn validate_semantic_index(key: &str, index: &Value) -> Result<(), String> {
+    let object = index
+        .as_object()
+        .ok_or_else(|| "semantic index must be an object".to_string())?;
+    if object
+        .keys()
+        .any(|field| !matches!(field.as_str(), "version" | "createdAt" | "key" | "vectors"))
+    {
+        return Err("semantic index contains unsupported fields".to_string());
+    }
+    if object.get("version").and_then(Value::as_u64) != Some(1)
+        || object.get("key").and_then(Value::as_str) != Some(key)
+        || !object.get("createdAt").is_some_and(Value::is_string)
+    {
+        return Err("semantic index metadata is invalid".to_string());
+    }
+    let vectors = object
+        .get("vectors")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "semantic index vectors are invalid".to_string())?;
+    if vectors.len() > 10_000
+        || vectors.iter().any(|vector| {
+            let Some(values) = vector.as_array() else {
+                return true;
+            };
+            values.is_empty()
+                || values.len() > 8_192
+                || values
+                    .iter()
+                    .any(|value| value.as_f64().is_none_or(|number| !number.is_finite()))
+        })
+    {
+        return Err("semantic index vectors are invalid".to_string());
+    }
+    Ok(())
+}
+
 fn contains_secret_like_field(value: &Value) -> bool {
     match value {
         Value::Object(object) => object.iter().any(|(key, child)| {
@@ -699,6 +804,8 @@ pub fn run() {
             write_export_files,
             load_app_settings,
             save_app_settings,
+            read_semantic_index,
+            write_semantic_index,
             save_provider_key,
             read_provider_key,
             provider_key_state,
@@ -993,6 +1100,49 @@ mod tests {
             "model": {"provider": "ollama", "model": "llama3.2"},
             "scan": {"encoding": "utf8"}
         })));
+    }
+
+    #[test]
+    fn semantic_index_round_trips_in_app_data_without_source_text() {
+        let app = tauri::test::mock_app();
+        let key = format!(
+            "cobolens.semantic.v1.test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let index = json!({
+            "version": 1,
+            "createdAt": "2026-07-09T00:00:00.000Z",
+            "key": key,
+            "vectors": [[0.1, 0.2], [0.3, 0.4]]
+        });
+
+        write_semantic_index_for(app.handle(), &key, index.clone()).unwrap();
+        let loaded = read_semantic_index_for(app.handle(), &key).unwrap();
+
+        assert_eq!(loaded, index);
+        assert!(!loaded.to_string().contains("sourceText"));
+        fs::remove_file(semantic_index_path(app.handle(), &key).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn semantic_index_rejects_unsafe_keys_and_extra_fields() {
+        let app = tauri::test::mock_app();
+        assert!(semantic_index_path(app.handle(), "../escape").is_err());
+        assert!(write_semantic_index_for(
+            app.handle(),
+            "cobolens.semantic.v1.bad",
+            json!({
+                "version": 1,
+                "createdAt": "now",
+                "key": "cobolens.semantic.v1.bad",
+                "vectors": [[0.1]],
+                "sourceText": "must not persist"
+            }),
+        )
+        .is_err());
     }
 
     #[test]

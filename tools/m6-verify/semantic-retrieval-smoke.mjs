@@ -45,6 +45,7 @@ try {
   const {
     buildSemanticChunkVectorIndex,
     buildSemanticChunks,
+    buildSemanticSourceChunks,
     createLocalStorageSemanticVectorStore,
     semanticGraphIndexKey,
     semanticSearchGraph,
@@ -54,6 +55,12 @@ try {
   const reportRecord = graph.nodes.find((node) => node.name === "REPORT-RECORD");
   const customer = graph.nodes.find((node) => node.name === "CUSTOMER");
   if (!reportRecord || !customer) throw new Error("Fixture nodes missing.");
+
+  const sourceChunks = await buildSemanticSourceChunks({
+    graph,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const combinedChunks = buildSemanticChunks(graph, sourceChunks);
 
   const matches = await semanticSearchGraph({
     graph,
@@ -70,12 +77,19 @@ try {
   });
   const storage = createMemoryStorage();
   const vectorStore = createLocalStorageSemanticVectorStore(storage);
-  const indexKey = semanticGraphIndexKey(graph, "ollama|http://127.0.0.1:11434/api|fixture-embed");
+  const indexKey = semanticGraphIndexKey(
+    graph,
+    "ollama|http://127.0.0.1:11434/api|fixture-embed",
+    160,
+    combinedChunks,
+  );
   const embedCallSizes = [];
   const warmResult = await buildSemanticChunkVectorIndex({
     graph,
     indexKey,
     vectorStore,
+    chunks: combinedChunks,
+    maxCandidateChunks: 160,
     embedTexts: async (texts) => {
       embedCallSizes.push(texts.length);
       return {
@@ -89,6 +103,8 @@ try {
     topK: 2,
     indexKey,
     vectorStore,
+    chunks: combinedChunks,
+    maxCandidateChunks: 160,
     requireCachedIndex: true,
     embedTexts: async (texts) => {
       embedCallSizes.push(texts.length);
@@ -103,6 +119,8 @@ try {
     topK: 2,
     indexKey,
     vectorStore,
+    chunks: combinedChunks,
+    maxCandidateChunks: 160,
     requireCachedIndex: true,
     embedTexts: async (texts) => {
       embedCallSizes.push(texts.length);
@@ -110,6 +128,17 @@ try {
         vectors: texts.map((text) => vectorForText(text)),
       };
     },
+  });
+  const sourceMatches = await semanticSearchGraph({
+    graph,
+    question: "Where is the customer rate calculated?",
+    topK: 2,
+    indexKey,
+    vectorStore,
+    chunks: combinedChunks,
+    maxCandidateChunks: 160,
+    requireCachedIndex: true,
+    embedTexts: async (texts) => ({ vectors: texts.map((text) => vectorForText(text)) }),
   });
 
   const context = await retrieveQuestionContext({
@@ -121,6 +150,10 @@ try {
         node: reportRecord,
         score: 0.97,
         text: "REPORT-RECORD is written by LINEAGE at src/LINEAGE.cbl:26.",
+        kind: "graph",
+        file: "copybook/REPORT.cpy",
+        startLine: 1,
+        endLine: 1,
       },
     ],
   });
@@ -135,15 +168,41 @@ try {
   });
 
   const chunks = buildSemanticChunks(graph);
+  const rateSourceChunk = sourceChunks.find((chunk) =>
+    chunk.file === "src/LINEAGE.cbl" && chunk.text.includes("SELECT RATE"),
+  );
+  const sourceContext = await retrieveQuestionContext({
+    graph,
+    question: "Where is the customer rate calculated?",
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+    semanticSearch: async () => sourceMatches.slice(0, 1),
+  });
   const checks = {
     "semantic chunks include graph relationship facts": chunks.some((chunk) => chunk.node.name === "REPORT-RECORD" && /writes REPORT-RECORD/.test(chunk.text)),
+    "semantic source chunks split at a paragraph boundary with exact ranges":
+      rateSourceChunk?.kind === "source" &&
+      rateSourceChunk.startLine === 25 &&
+      rateSourceChunk.endLine === 47,
+    "source and graph chunks are ranked together":
+      combinedChunks.some((chunk) => chunk.kind === "source") &&
+      combinedChunks.some((chunk) => chunk.kind === "graph"),
     "semantic search ranks vector-nearest node first": matches[0]?.node.name === "REPORT-RECORD",
+    "behavioral semantic search ranks the relevant source code first":
+      sourceMatches[0]?.kind === "source" &&
+      sourceMatches[0]?.file === "src/LINEAGE.cbl" &&
+      sourceMatches[0]?.text.includes("SELECT RATE"),
     "semantic warm builds chunk-only index before query": warmResult.chunkCount > 0 && embedCallSizes[0] === warmResult.chunkCount,
     "semantic index is persisted after first search": Boolean(storage.getItem(indexKey)) && cachedMatches[0]?.node.name === "REPORT-RECORD",
     "semantic index reuses stored chunk vectors": reusedMatches[0]?.node.name === "REPORT-RECORD" && embedCallSizes.at(-1) === 1,
     "semantic context includes matched node": context.focusNodes.some((node) => node.name === "REPORT-RECORD"),
     "semantic prompt includes vector match section": context.prompt.includes("Semantic vector matches:") && context.prompt.includes("REPORT-RECORD is written by LINEAGE"),
     "semantic citations include matched node source": context.citations.some((citation) => citation.file === "copybook/REPORT.cpy" && citation.nodeId === reportRecord.id),
+    "source semantic citations preserve the exact chunk range":
+      sourceContext.citations.some((citation) =>
+        citation.file === "src/LINEAGE.cbl" &&
+        citation.line === 25 &&
+        citation.endLine === 47,
+      ),
     "semantic retrieval degrades visibly when embeddings fail":
       fallbackContext.prompt.includes("Semantic vector matches:\n- Unavailable (embedding model unavailable)") &&
       fallbackContext.semanticError === "embedding model unavailable" &&
@@ -152,6 +211,18 @@ try {
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {
     console.error(`Semantic retrieval smoke failed: ${failed.join(", ")}`);
+    console.error(JSON.stringify({
+      warmResult,
+      queryVector: vectorForText("Which record is written to the report output?"),
+      reportChunk: combinedChunks.find((chunk) => chunk.kind === "graph" && chunk.node.name === "REPORT-RECORD"),
+      reportVector: JSON.parse(storage.getItem(indexKey) ?? "null")?.vectors?.[
+        combinedChunks.findIndex((chunk) => chunk.kind === "graph" && chunk.node.name === "REPORT-RECORD")
+      ],
+      cachedMatches: cachedMatches.map((match) => ({ name: match.node.name, kind: match.kind, score: match.score })),
+      reusedMatches: reusedMatches.map((match) => ({ name: match.node.name, kind: match.kind, score: match.score })),
+      sourceMatches: sourceMatches.map((match) => ({ name: match.node.name, kind: match.kind, score: match.score, range: `${match.file}:${match.startLine}-${match.endLine}` })),
+      embedCallSizes,
+    }, null, 2));
     process.exit(1);
   }
 
@@ -161,10 +232,12 @@ try {
 }
 
 function vectorForText(text) {
-  if (/Which record is written/i.test(text)) return [1, 0, 0];
-  if (/^REPORT-RECORD is/i.test(text)) return [0.98, 0.02, 0];
-  if (/CUSTOMER/i.test(text)) return [0, 1, 0];
-  return [0, 0, 1];
+  if (/Where is the customer rate calculated/i.test(text)) return [0, 0, 0, 1];
+  if (/^Source for LINEAGE at src\/LINEAGE\.cbl:25-47:/i.test(text) && /SELECT RATE/i.test(text)) return [0, 0, 0.02, 0.98];
+  if (/Which record is written/i.test(text)) return [1, 0, 0, 0];
+  if (/^REPORT-RECORD is/i.test(text)) return [0.98, 0.02, 0, 0];
+  if (/CUSTOMER/i.test(text)) return [0, 1, 0, 0];
+  return [0, 0, 1, 0];
 }
 
 function createMemoryStorage() {

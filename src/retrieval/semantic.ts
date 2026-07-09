@@ -1,4 +1,4 @@
-import type { GraphDocument, GraphNode } from "../lib/graph";
+import type { GraphDocument, GraphNode, SourceExcerpt } from "../lib/graph";
 import { edgeLabel } from "../lib/graph";
 
 export type VectorEmbedding = {
@@ -8,12 +8,20 @@ export type VectorEmbedding = {
 export type SemanticChunk = {
   node: GraphNode;
   text: string;
+  kind: "graph" | "source";
+  file: string;
+  startLine: number;
+  endLine: number;
 };
 
 export type SemanticMatch = {
   node: GraphNode;
   score: number;
   text: string;
+  kind: "graph" | "source";
+  file: string;
+  startLine: number;
+  endLine: number;
 };
 
 export type StoredSemanticVectorIndex = {
@@ -33,15 +41,17 @@ export async function buildSemanticChunkVectorIndex({
   embedTexts,
   indexKey,
   vectorStore,
+  chunks: suppliedChunks,
   maxCandidateChunks = 80,
 }: {
   graph: GraphDocument;
   embedTexts: (texts: string[]) => Promise<VectorEmbedding>;
   indexKey: string;
   vectorStore: SemanticVectorStore;
+  chunks?: SemanticChunk[];
   maxCandidateChunks?: number;
 }) {
-  const chunks = buildSemanticChunks(graph).slice(0, maxCandidateChunks);
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
   if (!chunks.length) return { indexKey, chunkCount: 0, cached: false };
 
   const cachedChunkVectors = await readCachedChunkVectors(vectorStore, indexKey, chunks.length);
@@ -59,14 +69,16 @@ export async function hasSemanticChunkVectorIndex({
   graph,
   indexKey,
   vectorStore,
+  chunks: suppliedChunks,
   maxCandidateChunks = 80,
 }: {
   graph: GraphDocument;
   indexKey: string;
   vectorStore: SemanticVectorStore;
+  chunks?: SemanticChunk[];
   maxCandidateChunks?: number;
 }) {
-  const chunkCount = buildSemanticChunks(graph).slice(0, maxCandidateChunks).length;
+  const chunkCount = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks).length;
   if (!chunkCount) return false;
   return Boolean(await readCachedChunkVectors(vectorStore, indexKey, chunkCount));
 }
@@ -77,6 +89,7 @@ export async function semanticSearchGraph({
   embedTexts,
   indexKey,
   vectorStore,
+  chunks: suppliedChunks,
   maxCandidateChunks = 80,
   topK = 4,
   requireCachedIndex = false,
@@ -86,11 +99,12 @@ export async function semanticSearchGraph({
   embedTexts: (texts: string[]) => Promise<VectorEmbedding>;
   indexKey?: string;
   vectorStore?: SemanticVectorStore;
+  chunks?: SemanticChunk[];
   maxCandidateChunks?: number;
   topK?: number;
   requireCachedIndex?: boolean;
 }): Promise<SemanticMatch[]> {
-  const chunks = buildSemanticChunks(graph).slice(0, maxCandidateChunks);
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
   if (!question.trim() || !chunks.length) return [];
 
   const cachedChunkVectors = indexKey && vectorStore ? await readCachedChunkVectors(vectorStore, indexKey, chunks.length) : null;
@@ -107,6 +121,10 @@ export async function semanticSearchGraph({
     .map((chunk, index) => ({
       node: chunk.node,
       text: chunk.text,
+      kind: chunk.kind,
+      file: chunk.file,
+      startLine: chunk.startLine,
+      endLine: chunk.endLine,
       score: cosineSimilarity(queryVector, chunkVectors[index]),
     }))
     .filter((match) => Number.isFinite(match.score))
@@ -114,11 +132,17 @@ export async function semanticSearchGraph({
     .slice(0, topK);
 }
 
-export function semanticGraphIndexKey(graph: GraphDocument, modelKey: string, maxCandidateChunks = 80) {
-  const chunks = buildSemanticChunks(graph).slice(0, maxCandidateChunks);
+export function semanticGraphIndexKey(
+  graph: GraphDocument,
+  modelKey: string,
+  maxCandidateChunks = 80,
+  suppliedChunks?: SemanticChunk[],
+) {
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
   const fingerprint = stableHash(
     JSON.stringify({
       schemaVersion: graph.schemaVersion,
+      scannedAt: graph.meta.scannedAt,
       dialectGuess: graph.meta.dialectGuess,
       fileCount: graph.meta.fileCount,
       parsedFileCount: graph.meta.parsedFileCount,
@@ -132,7 +156,13 @@ export function semanticGraphIndexKey(graph: GraphDocument, modelKey: string, ma
         external: node.external,
       })),
       edges: graph.edges,
-      chunks: chunks.map((chunk) => chunk.text),
+      chunks: chunks.map((chunk) => ({
+        kind: chunk.kind,
+        file: chunk.file,
+        startLine: chunk.startLine,
+        endLine: chunk.endLine,
+        text: chunk.text,
+      })),
     }),
   );
   return `cobolens.semantic.v1.${stableHash(modelKey)}.${fingerprint}`;
@@ -151,9 +181,9 @@ export function createLocalStorageSemanticVectorStore(storage: Pick<Storage, "ge
   };
 }
 
-export function buildSemanticChunks(graph: GraphDocument): SemanticChunk[] {
+export function buildSemanticChunks(graph: GraphDocument, sourceChunks: SemanticChunk[] = []): SemanticChunk[] {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  return graph.nodes
+  const graphChunks = graph.nodes
     .filter((node) => node.file && !node.external)
     .sort((left, right) => semanticNodePriority(left) - semanticNodePriority(right) || left.name.localeCompare(right.name))
     .map((node) => {
@@ -169,12 +199,48 @@ export function buildSemanticChunks(graph: GraphDocument): SemanticChunk[] {
         : `${node.file}:${node.lines?.[0] ?? 1}`;
       return {
         node,
+        kind: "graph" as const,
+        file: node.file ?? "",
+        startLine: node.lines?.[0] ?? 1,
+        endLine: node.lines?.[1] ?? node.lines?.[0] ?? 1,
         text: [
           `${node.name} is a ${node.type} at ${location}.`,
           relationships.length ? `Relationships: ${relationships.join("; ")}.` : "Relationships: none recorded.",
         ].join(" "),
       };
     });
+  return interleaveChunks(sourceChunks, graphChunks);
+}
+
+export async function buildSemanticSourceChunks({
+  graph,
+  readExcerpt,
+  maxLinesPerChunk = 80,
+}: {
+  graph: GraphDocument;
+  readExcerpt: (node: GraphNode) => Promise<SourceExcerpt>;
+  maxLinesPerChunk?: number;
+}): Promise<SemanticChunk[]> {
+  const plans = sourceChunkPlans(graph, maxLinesPerChunk);
+  const excerpts = await Promise.allSettled(
+    plans.map((plan) => readExcerpt({ ...plan.node, lines: [plan.startLine, plan.endLine] })),
+  );
+  return excerpts.flatMap((result, index) => {
+    if (result.status !== "fulfilled") return [];
+    const plan = plans[index];
+    const excerpt = result.value;
+    return [{
+      node: plan.node,
+      kind: "source" as const,
+      file: excerpt.file,
+      startLine: excerpt.startLine,
+      endLine: excerpt.endLine,
+      text: [
+        `Source for ${plan.node.name} at ${formatRange(excerpt.file, excerpt.startLine, excerpt.endLine)}:`,
+        excerpt.text,
+      ].join("\n"),
+    }];
+  });
 }
 
 export function cosineSimilarity(left: number[], right: number[]) {
@@ -198,6 +264,65 @@ function semanticNodePriority(node: GraphNode) {
   if (node.type === "dataset") return 3;
   if (node.type === "jcl-job" || node.type === "jcl-step") return 4;
   return 5;
+}
+
+function sourceChunkPlans(graph: GraphDocument, maxLinesPerChunk: number) {
+  const nodesByFile = new Map<string, GraphNode[]>();
+  for (const node of graph.nodes) {
+    if (!node.file || node.external || !node.lines) continue;
+    const nodes = nodesByFile.get(node.file) ?? [];
+    nodes.push(node);
+    nodesByFile.set(node.file, nodes);
+  }
+
+  return [...nodesByFile.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .flatMap(([file, nodes]) => {
+      const primary = [...nodes].sort((left, right) =>
+        sourceUnitPriority(left) - sourceUnitPriority(right) ||
+        (right.lines?.[1] ?? 1) - (right.lines?.[0] ?? 1) - ((left.lines?.[1] ?? 1) - (left.lines?.[0] ?? 1)),
+      )[0];
+      if (!primary?.lines) return [];
+      const [fileStart, fileEnd] = primary.lines;
+      const paragraphStarts = nodes
+        .filter((node) => node.type === "paragraph" && node.lines)
+        .map((node) => node.lines?.[0] ?? fileStart)
+        .filter((line) => line > fileStart && line <= fileEnd);
+      const boundaries = [...new Set([fileStart, ...paragraphStarts, fileEnd + 1])].sort((left, right) => left - right);
+      const ranges = boundaries.slice(0, -1).flatMap((startLine, index) =>
+        splitRange(startLine, boundaries[index + 1] - 1, maxLinesPerChunk),
+      );
+      return ranges.map(({ startLine, endLine }) => ({ node: primary, file, startLine, endLine }));
+    });
+}
+
+function splitRange(startLine: number, endLine: number, maxLines: number) {
+  const ranges: Array<{ startLine: number; endLine: number }> = [];
+  const safeMax = Math.max(1, maxLines);
+  for (let start = startLine; start <= endLine; start += safeMax) {
+    ranges.push({ startLine: start, endLine: Math.min(endLine, start + safeMax - 1) });
+  }
+  return ranges;
+}
+
+function sourceUnitPriority(node: GraphNode) {
+  if (node.type === "program" || node.type === "copybook" || node.type === "jcl-job") return 0;
+  if (node.type === "paragraph" || node.type === "jcl-step") return 1;
+  return 2;
+}
+
+function interleaveChunks(sourceChunks: SemanticChunk[], graphChunks: SemanticChunk[]) {
+  const chunks: SemanticChunk[] = [];
+  const length = Math.max(sourceChunks.length, graphChunks.length);
+  for (let index = 0; index < length; index += 1) {
+    if (sourceChunks[index]) chunks.push(sourceChunks[index]);
+    if (graphChunks[index]) chunks.push(graphChunks[index]);
+  }
+  return chunks;
+}
+
+function formatRange(file: string, startLine: number, endLine: number) {
+  return endLine === startLine ? `${file}:${startLine}` : `${file}:${startLine}-${endLine}`;
 }
 
 async function readCachedChunkVectors(

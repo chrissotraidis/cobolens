@@ -14,6 +14,7 @@
     "ollama:check": "node tools/local-model/ollama-smoke.mjs",
     "ollama:summary-smoke": "node tools/local-model/ollama-summary-smoke.mjs",
     "ollama:ask-smoke": "node tools/local-model/ollama-ask-smoke.mjs",
+    "ollama:semantic-smoke": "node tools/local-model/ollama-semantic-smoke.mjs",
     "desktop:smoke": "node tools/desktop/tauri-attached-smoke.mjs",
     "desktop:packaged-smoke": "node tools/desktop/packaged-gui-smoke.mjs",
     "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",

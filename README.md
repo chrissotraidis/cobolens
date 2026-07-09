@@ -188,12 +188,18 @@ to improve non-graph Ask retrieval:
 ollama pull nomic-embed-text
 ```
 
+The index ranks exact-range source chunks together with graph descriptions.
+Desktop builds persist numeric vectors in AppData; the browser demo uses local
+storage. Source text is read locally for embedding but is not written into the
+vector cache.
+
 Check the local model path (verifies the CLI, HTTP API, generation, and embeddings separately):
 
 ```sh
 npm run ollama:check
 npm run ollama:summary-smoke
 npm run ollama:ask-smoke
+npm run ollama:semantic-smoke
 ```
 
 The Ask smoke runs ten grounded questions plus streaming, repeat-request, and
@@ -402,7 +408,7 @@ Deferred engineering debt (deeper detail in [docs/tech-debt.md](docs/tech-debt.m
 - Continue splitting the just-under-400-line `src/App.tsx` root wiring into feature components.
 - Keep moving grep-based UI/accessibility smokes toward driven-browser coverage.
 - Add desktop Ollama install-vs-running detection to the AI readiness stepper.
-- Move the desktop semantic vector index off webview storage.
+- Measure source-aware semantic recall and indexing latency on the real-corpus benchmark.
 
 Explicit non-goals for v1:
 

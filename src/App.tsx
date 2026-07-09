@@ -87,10 +87,6 @@ function App() {
     resetNodeTypeFilters,
     toggleGraphNodeList,
   } = useGraphViewState({ graph: project.graph, focusNodeId: project.focusNodeId });
-  const semanticIndex = useSemanticIndex({
-    graph: project.graph,
-    modelSettings,
-  });
   const {
     inspectorBodyRef,
     preserveInspectorTabForNextEdge,
@@ -155,6 +151,11 @@ function App() {
     sourceBase: project.sourceBase,
     browserSourceFiles: project.browserSourceFiles,
     encoding: scanSettings.encoding,
+  });
+  const semanticIndex = useSemanticIndex({
+    graph: project.graph,
+    modelSettings,
+    readExcerptForNode: sourceExcerptForNode,
   });
   const {
     summaries,

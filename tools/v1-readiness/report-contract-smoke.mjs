@@ -16,6 +16,9 @@ const checks = {
     source.includes('required("V1 local model selection"') &&
     source.includes("model-selection-smoke.mjs") &&
     source.includes("selectReadinessModel"),
+  "runner includes live source-aware semantic retrieval":
+    source.includes('optional("local Ollama source semantic smoke"') &&
+    source.includes("ollama-semantic-smoke.mjs"),
   "exit code follows required gates only": source.includes("process.exit(report.requiredPassed ? 0 : 1)"),
   "report exposes optional clean flag": source.includes("optionalEvidenceClean"),
   "report exposes optional complete flag": source.includes("optionalEvidenceComplete"),

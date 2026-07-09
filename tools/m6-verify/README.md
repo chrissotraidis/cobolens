@@ -35,7 +35,8 @@ This runner verifies the completed M6 surface:
   missing-Cargo remedy, and clean GitHub Actions path,
 - graph-grounded documentation export smoke,
 - graph-only Ask smoke for "What depends on CUSTOMER-ID?",
-- semantic retrieval smoke for vector-ranked Ask context and cached graph chunk vectors,
+- semantic retrieval smoke for exact-range source chunks ranked with graph
+  chunks and reusable local vectors,
 - UI contract smoke for the Ask/Inspector shell,
 - accessibility smoke for skip links, landmark targets, and named keyboard controls,
 - packaging contract smoke for the platform-specific Tauri sidecar resource

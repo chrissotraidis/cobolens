@@ -57,6 +57,21 @@ size cap. The rendered browser smoke proves all 47 lines of `LINEAGE.cbl` are
 present, including the final paragraph, and rechecks file switching, selected
 ranges, citation focus, responsive layout, and retained Chat context.
 
+## 2026-07-09 update: source-aware semantic retrieval
+
+Semantic retrieval now embeds exact source chunks alongside graph descriptions.
+Source chunks split at source-unit/paragraph boundaries, carry exact
+`file:start-end` ranges, and are interleaved with graph chunks before ranking so
+neither evidence type crowds out the other. Embedding failures remain visible
+and non-blocking.
+
+Desktop vectors are written under AppData through narrow Tauri read/write
+commands; only version metadata, the cache key, timestamp, and numeric vectors
+are accepted. Extra fields such as source text and unsafe keys are rejected.
+The browser demo continues to use `localStorage`. A live `nomic-embed-text`
+check indexed 30 combined chunks, retrieved the SQL rate logic at
+`src/LINEAGE.cbl:25-47`, and reused the chunk vectors after recreating the store.
+
 ## 2026-07-06 update: fresh-clone integrity
 
 A build-guide review pass fixed two clean-clone blockers and one Tauri test bug:
@@ -104,11 +119,10 @@ Not claimed yet:
   is validated locally, and GitHub Actions now runs unsigned Linux/Windows
   Tauri bundle builds with OS-specific unsigned bundle artifacts for QA.
   Signed Windows release installers are not yet claimed.
-- A persistent local vector cache now stores graph-derived semantic chunk
-  embeddings in the app's local browser storage, keyed by graph fingerprint and
-  embedding model settings. It does not store source excerpts or use an
-  external database. Cloud embeddings remain unimplemented and are rejected
-  until an explicit provider implementation exists.
+- A persistent local vector cache stores source-and-graph chunk embeddings,
+  keyed by graph/source scan fingerprint and embedding settings. Desktop uses
+  AppData; the browser demo uses local storage. The cache stores vectors, not
+  source excerpts. Cloud embeddings remain unimplemented and are rejected.
 - Accessibility evidence now includes source-level checks, browser-interaction
   checks, skip links, focusable landmark targets, and an automated
   accessibility smoke. It is still not a full screen-reader certification pass.
@@ -148,7 +162,7 @@ Not claimed yet:
 | FR-19 generated summaries | AI summary prompt/guard smokes, local summary smoke, and export provenance cover cited summaries and graph fallbacks. | Evidenced |
 | FR-20 Rosetta mode | Model prompts for AI summary and Ask pass the selected Rosetta language. | Evidenced |
 | FR-21 documentation export | Export docs smoke covers navigable Markdown, diagrams, source ranges, lineage, parse warnings, and summary provenance. | Evidenced |
-| FR-22 grounded Ask retrieval | Graph-guided context assembly, optional semantic vector matches, persistent local chunk-vector cache, graph Ask smoke, semantic retrieval smoke, and model prompt/guard smokes cover grounded Ask without whole-file dumping. | Evidenced |
+| FR-22 grounded Ask retrieval | Graph-guided context assembly, exact-range source chunks, graph chunks, persistent local vectors, live Ollama semantic retrieval, graph Ask, and prompt/guard smokes cover grounded Ask without whole-file dumping. | Evidenced |
 | FR-23 clickable citations | Citation buttons jump to source/graph while preserving Ask answer visibility; model guard requires exact inline citations. | Evidenced |
 | FR-24 bidirectional graph/chat links | Overview seeds Ask, Ask citations focus graph/code, and relationship citations preserve conversational context. | Evidenced/Should |
 | FR-25 no invented structure | Graph answer smoke, model prompts, answer guard, and cited graph fallback enforce graph-grounded answers. | Evidenced |
@@ -156,7 +170,7 @@ Not claimed yet:
 | FR-27 keychain secrets | Tauri tests reject secret-like app settings; cloud keys are read through OS keychain commands. | Evidenced |
 | FR-28 privacy indicator/local mode | Top-bar mode indicator, local Ollama URL guard, and model privacy smoke cover local/cloud mode invariants. | Evidenced |
 | FR-29 token/cost estimate | Settings shows local/cloud call count and bulk summary input estimate. | Evidenced/Should |
-| FR-30 embedding privacy | `src/model/embeddings.ts` gates local embeddings to localhost Ollama `/api/embed`, rejects remote/local-HTTPS/cloud routes, and is covered by embedding privacy smoke. A dedicated embedding model (default `nomic-embed-text`) is used, never the generation model as a silent fallback. Model-routed Ask persists graph-derived semantic chunk vectors in local browser storage and reuses them on later searches; when embeddings are unavailable, Ask shows a visible "semantic search unavailable" note. | Evidenced |
+| FR-30 embedding privacy | `src/model/embeddings.ts` gates embeddings to localhost Ollama `/api/embed` and rejects remote/local-HTTPS/cloud routes. A dedicated embedding model is used. Desktop AppData commands accept numeric vector indexes only and reject source-text fields; the browser demo uses local storage. Unavailable embeddings remain visibly non-blocking. | Evidenced |
 | FR-31 bundled sample | `mini-bank` sample is bundled and validated in sample smoke and packaged smoke. | Evidenced |
 | FR-32 guided first-run | Ingest and empty graph states now show the sample/folder path, make AI optional, and point users to Overview/Ask after the map is loaded. | Evidenced/Should |
 

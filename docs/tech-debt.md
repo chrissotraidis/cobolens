@@ -48,9 +48,9 @@ The configured-state and frequent-fallback issues are closed locally:
   cancellation, and grounded summaries. The latest proof retained model content
   for nine questions and used one explicit cited graph fallback.
 
-This does not close the source-aware semantic retrieval or desktop vector-store
-items below. Those remain separate because the current semantic chunks still
-describe graph facts rather than source behavior.
+The source-aware semantic retrieval and desktop AppData vector-store work is
+also complete in the current pass; the remaining Local AI item is desktop
+Ollama install-vs-running detection.
 
 ## START HERE — handoff for the next agent (2026-07-07)
 
@@ -432,26 +432,16 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 - **Fix:** Tune visible-token budgets against real local hardware and consider
   reading the model's thinking capability from tags.
 
-### Semantic index embeds graph facts, not source — **[medium]**
-- **What:** `buildSemanticChunks` embeds one metadata sentence per node
-  ("X is a program at file:line. Relationships: ..."). It never embeds source
-  code.
-- **Why it matters:** Semantic retrieval can only match on structural
-  descriptions, so "where is the interest calculated" won't find the arithmetic.
-- **Where:** `src/retrieval/semantic.ts`.
-- **Fix:** Add source-unit chunks (reuse `read_source_excerpt`, split long units
-  at paragraph boundaries, prefix with `file:start-end` so matches carry
-  citations). Part of Slice 5.
-
-### Desktop semantic vector index lives in webview storage — **[medium]**
-- **What:** The vector cache uses `localStorage` in both browser and desktop.
-- **Why it matters:** Desktop indexes are wiped when webview storage clears and
-  are quota-bound; a real project index wants a file on disk.
-- **Where:** `src/retrieval/semantic.ts`
-  (`createLocalStorageSemanticVectorStore`).
-- **Fix:** Two small Tauri commands (`read_vector_index`/`write_vector_index`)
-  writing a JSON file under AppData, keyed identically; keep localStorage for the
-  browser demo. Depends on the open question about index location.
+### Semantic index scale is bounded — **[medium]**
+- **What:** Source and graph chunks are interleaved and capped at 160 chunks per
+  index. Source ranges split at paragraph/source-unit boundaries and at 80-line
+  maximums. This is intentionally bounded for local embedding latency.
+- **Why it matters:** Very large codebases need measured chunk selection rather
+  than simply raising the cap and increasing cold-start time.
+- **Where:** `src/retrieval/semantic.ts`, `src/retrieval/useSemanticIndex.ts`.
+- **Fix:** Use the real-corpus benchmark to measure recall and indexing latency,
+  then add file/symbol preselection or incremental indexing only if evidence
+  shows the current cap misses material source.
 
 ### No Ollama CLI-vs-server detection — **[small]**
 - **What:** The app cannot distinguish "Ollama not installed" from "installed
@@ -595,5 +585,3 @@ For context, the build-guide fix pass closed these; they are no longer debt:
    how much demo-mode design and demo-asset-freshness tooling is worth building.
 2. Is macOS a v1 target? Governs how much of the QA matrix runs per-platform and
    whether the desktop-GUI gap matters for release claims.
-3. Where does the desktop vector index live — webview storage or an AppData
-   file? Blocks the vector-store item above.

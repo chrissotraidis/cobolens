@@ -72,6 +72,13 @@ export async function retrieveQuestionContext({
     )
     .filter(Boolean);
   const citations = dedupeCitations([
+    ...semanticMatches.map((match) => ({
+      file: match.file ?? match.node.file ?? "",
+      line: match.startLine ?? match.node.lines?.[0] ?? 1,
+      endLine: match.endLine ?? match.node.lines?.[1],
+      label: `${match.node.name} ${match.kind === "source" ? "source" : "graph"} semantic match`,
+      nodeId: match.node.id,
+    })),
     ...contextNodes.map((node) => ({
       file: node.file ?? "",
       line: node.lines?.[0] ?? 1,

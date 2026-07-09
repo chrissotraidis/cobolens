@@ -48,6 +48,7 @@ const messagePartsSource = await readFile(resolve(repoRoot, "src", "inspector", 
 const askFocusSource = await readFile(resolve(repoRoot, "src", "retrieval", "askFocus.ts"), "utf8");
 const graphAnswerSource = await readFile(resolve(repoRoot, "src", "retrieval", "graphAnswer.ts"), "utf8");
 const semanticIndexSource = await readFile(resolve(repoRoot, "src", "retrieval", "useSemanticIndex.ts"), "utf8");
+const semanticStoreSource = await readFile(resolve(repoRoot, "src", "retrieval", "semanticStore.ts"), "utf8");
 const appCss = await readFile(resolve(repoRoot, "src", "App.css"), "utf8");
 const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphView.tsx"), "utf8");
 
@@ -145,6 +146,7 @@ const checks = [
       "const SEMANTIC_INDEX_TIMEOUT_MS = 30_000",
       "const SEMANTIC_QUERY_TIMEOUT_MS = 8_000",
       "buildSemanticChunkVectorIndex",
+      "buildSemanticSourceChunks",
       "warmSemanticIndex",
       "state.status !== \"ready\"",
       "requireCachedIndex: true",
@@ -155,8 +157,15 @@ const checks = [
       ]) &&
       includesAll(appSource, [
         "useSemanticIndex({",
+        "readExcerptForNode: sourceExcerptForNode",
         "searchSemanticIndex: semanticIndex.searchSemanticIndex",
         "onWarmSemanticIndex: semanticIndex.warmSemanticIndex",
+      ]) &&
+      includesAll(semanticStoreSource, [
+        "if (canUseTauri())",
+        'invoke<StoredSemanticVectorIndex | null>("read_semantic_index"',
+        'invoke("write_semantic_index"',
+        "createLocalStorageSemanticVectorStore(window.localStorage)",
       ]),
   ],
   [

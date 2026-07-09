@@ -131,7 +131,7 @@ end to end (verified: graph → cited answer → jump to the proving source line
 
 Architecturally the app is read-only on purpose:
 - The Rust analyzer sidecar only *reads* and emits a `GraphDocument`.
-- Tauri exposes `read_source_snippet` / `read_source_excerpt` and a scoped
+- Tauri exposes size-capped `read_source_file` / bounded `read_source_excerpt` and a scoped
   `write_export_files` (docs only) — there is **no** command that writes back to
   source, and `safe_source_path` sandboxes reads to the opened root.
 - The model prompts and citation guard are built to *explain retrieved context*,
@@ -154,4 +154,4 @@ Until that exists and is signed off, keep Cobolens read-only and honest about it
 ## 5. Next work (tracked)
 - Desktop Ollama install-vs-running detection for the AI readiness stepper.
 - Optional collapsible rail on narrow widths (graph-first without scrolling past nav).
-- Full-file source browser (currently a windowed snippet) — see `docs/tech-debt.md`.
+- Source definition/reference navigation and highlighting — see `docs/tech-debt.md`.

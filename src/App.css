@@ -1657,6 +1657,10 @@ h2,
   background: #0b0d10;
 }
 
+.center-source-view[hidden] {
+  display: none;
+}
+
 .center-source-view .source-view {
   min-height: 100%;
   grid-template-rows: auto;
@@ -1905,6 +1909,13 @@ pre {
   min-width: max-content;
   padding: 1px 7px;
   border-radius: 5px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 24px;
+}
+
+.source-load-error {
+  color: #ffb4a2;
+  white-space: pre-wrap;
 }
 
 .source-line.is-selected-range {
@@ -3150,7 +3161,28 @@ pre {
 
 @media (max-width: 560px) {
   .topbar {
-    grid-template-columns: max-content minmax(0, 1fr) auto;
+    --topbar-control-font: 11.5px;
+
+    grid-template-columns: max-content minmax(48px, 1fr) minmax(0, max-content);
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .brand {
+    gap: 5px;
+  }
+
+  .brand-mark {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .topbar-actions button {
+    padding: 0 7px;
   }
 
   /* On a single-column phone the panel-collapse toggle is meaningless; drop it. */

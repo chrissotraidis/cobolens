@@ -33,12 +33,13 @@ const checks = {
     'id="dependency-graph"',
     'id="inspector-panel"',
   ]),
-  "skip targets are programmatically focusable landmarks": includesAll(uiSource, [
-    'aria-label="Navigator" tabIndex={-1}',
-    'aria-label="Workspace"',
-    'aria-label="Source code" tabIndex={-1}',
-    'aria-label="Inspector" tabIndex={-1}',
-  ]),
+  "skip targets are programmatically focusable landmarks":
+    includesAll(uiSource, [
+      'aria-label="Navigator" tabIndex={-1}',
+      'aria-label="Workspace"',
+      'aria-label="Inspector" tabIndex={-1}',
+    ]) &&
+    includesAll(workspaceSource, ['id="code-panel"', 'aria-label="Source code"', 'tabIndex={-1}']),
   "skip links are visually hidden until keyboard focus": includesAll(appCss, [
     ".skip-links",
     "pointer-events: none",

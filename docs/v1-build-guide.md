@@ -32,7 +32,7 @@ and the larger slices (6) remain forward-looking.
 - NEW-1 [FIXED] readiness probe failed thinking models — `num_predict: 24` was consumed by reasoning before any visible text (reproduced with `gemma4:12b-mlx`: `done_reason:"length"`, empty response). Raised to 160 in both probes.
 - NEW-2 [FIXED] Ask used the raw completion API — switched `providers.ts` to the chat API and raised local token budgets (ask 260->512, summary 260->384). Verified end to end: a real local model returned an accepted, inline-cited answer instead of the guard fallback.
 
-**Deliberately not done** (feature-scale, tracked as debt/slices): full-file source browser, source-chunk semantic indexing, and desktop Ollama install-vs-running detection. See `docs/tech-debt.md`.
+**Deliberately not done** (feature-scale, tracked as debt/slices): source-chunk semantic indexing, source definition/reference navigation, and desktop Ollama install-vs-running detection. See `docs/tech-debt.md`.
 
 Verification after the pass: `npm run build` pass; `npm run m6:verify` 23/23; `cargo test` 17/17; live browser checks plus a real Ollama matrix (server stopped, model missing -> recovery chips, embeddings missing -> visible note, full cited generation). The temporary Ollama server used for the generation check was stopped afterward.
 
@@ -52,7 +52,7 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 2. **The release gate itself fails on a fresh checkout.** `npm run m6:verify` — documented as the main verification suite (README.md:211-213) — dies at "Tauri shell tests" with `resource path 'binaries' doesn't exist`, for the same reason as above. The readiness audit cites this suite as evidence while it does not pass from a clean clone.
 3. **Local AI has no complete product flow.** There is no embedding-model concept: `embedTexts` defaults the embedding model to the *generation* model (src/model/embeddings.ts:29, called without a model at src/App.tsx:893-900). Semantic retrieval failures are silently swallowed (`.catch(() => [])`, src/retrieval/context.ts:35), so with Ollama down — the current state of this machine — "semantic" Ask degrades invisibly. `Check AI` with the server stopped says "Start Ollama or check the host" (src/model/readiness.ts:49) but never says `ollama serve`, never distinguishes not-installed from stopped, and never checks embeddings at all (tools/local-model/ollama-smoke.mjs tests generation only).
 4. **AI answers now stream, but source retrieval is still graph-only.** Ask and summaries now stream draft text through `streamText` with first-token timeout and guarded final output. The remaining Slice 5 work is source-chunk semantic indexing plus clearer retrieval status.
-5. **Source browsing is a 15-line snippet viewer.** `read_source_snippet` returns ±8 lines around a target (src-tauri/src/lib.rs:305-307; browser mirror src/App.tsx:3186-3187; verified live: 15 `.source-line` elements, no way to scroll beyond). There is no full-file view, no file-level tree (the "Codebase" browser lists graph units, not files), no syntax highlighting. This cannot support "the first hour with an unfamiliar system."
+5. **Source browsing was a fixed snippet viewer.** Closed on 2026-07-09: desktop and browser now return the complete file up to a 2 MB safety cap, preserve line integrity, center cited lines, and keep Source mounted while switching views. Definition/reference navigation and syntax highlighting remain follow-ups.
 6. **The layout leaks at every seam.** Verified live at 1100×800: left rail content is 1861px tall in an 852px pane (8 stacked blocks); search results, the "Dependenc… 11" tab, the composer draft, and graph node labels (`LINK RATEAPI`) all truncate or clip; export feedback renders at y≈1575 — off-screen at the bottom of the left rail (src/App.tsx:1325) while the Export button lives in the top-right.
 7. **"AI is optional" is contradicted by the UI.** The widest, most prominent button on the default Overview tab is "Set up AI first" (src/App.tsx:2104-2120), plus a second "Set up AI for summaries" at the bottom (src/App.tsx:2156). The graph-first story the PRD tells is not the visual hierarchy the app shows.
 8. **QA claims overstate the live experience.** The "UI contract smoke" and "accessibility smoke" are source-string greps over App.tsx/App.css (tools/m6-verify/ui-contract-smoke.mjs:6-9 reads files and checks `includes(...)`), not driven-browser tests. docs/v1-readiness-audit.md marks FRs "Evidenced" partly on that basis, and lists `npm run m6:verify` as an evidence command while it fails from a clean clone.
@@ -124,14 +124,14 @@ The core engine is real: the Rust sidecar produces a solid `GraphDocument`, grap
 - **Fix shape:** Done with a primary navigation zone and a secondary status/filter zone. The graph filters still live in the rail for now, but collapsed under the secondary group instead of competing with navigation.
 - **Verify:** Rendered/UI/accessibility smokes cover the closed status accordions and opening Legend & Filters.
 
-### BUG-8 — Source viewing is a fixed ±8-line snippet — **P1** — **[OPEN — Slice 3]**
+### BUG-8 — Source viewing is a fixed ±8-line snippet — **P1** — **[FIXED 2026-07-09]**
 - **Repro:** Select any node; try to read the whole file, or scroll past the snippet.
-- **Expected:** A real file reader: full file scroll, the cited line highlighted and centered, line numbers, at least basic COBOL keyword highlighting, and next/previous citation navigation.
-- **Actual:** Desktop `read_source_snippet` returns a bounded window around the target line; the browser mirror in `src/lib/sourceReader.ts` does the same. Verified live: snippet rendering ends at the returned window. Source is now the center workspace view, but it is still a snippet reader rather than a full-file browser.
-- **Files:** src-tauri/src/lib.rs (`read_source_snippet`), src/lib/sourceReader.ts (browser mirror), src/workspace/WorkspacePane.tsx (center Source surface), src/source/CodeSnippet.tsx (snippet rendering), src/App.css (code-panel sizing).
+- **Expected:** A real file reader: full file scroll, the cited line highlighted and centered, line numbers, and stable file/view switching.
+- **Actual:** Fixed. `read_source_file` and the browser mirror return every line up to a 2 MB safety cap. `SourceFileView` preserves columns and line numbers, centers the active citation, and stays mounted while Map is visible. Load and size-cap errors are visible.
+- **Files:** `src-tauri/src/lib.rs`, `src/lib/sourceReader.ts`, `src/source/useSourceFile.ts`, `src/source/SourceFileView.tsx`, `src/workspace/WorkspacePane.tsx`, `src/App.css`.
 - **Why it matters:** This is problem #5 in the user report and the README's own roadmap item #2. Understanding COBOL requires reading whole paragraphs and DATA DIVISION context, not 15-line keyholes.
-- **Fix shape:** Add a `read_source_file` Tauri command (windowed: return the full file up to a size cap, or paged ranges), render a virtualized full-file view in the code panel with the citation line highlighted; keep the snippet API for excerpt/AI use. File-level entries in the Codebase tree open the file at line 1.
-- **Verify:** New Tauri test for `read_source_file` bounds/encoding; manual: open `src/LINEAGE.cbl`, scroll whole file, citation still centers and highlights; large-file cap behavior on a >16MB file.
+- **Fix shape:** Done with a dedicated full-file command and reader; the separate bounded excerpt API remains for AI retrieval.
+- **Verify:** Rust tests cover traversal, full reads, CP037, and the size cap. The browser smoke proves all 47 LINEAGE lines render, the final paragraph is visible, file switching works, and citations still focus Source.
 
 ### BUG-9 — `Check AI` error states don't lead the user anywhere — **P1 (verified live)** — **[PARTIAL — stepper fixed; desktop CLI-detect open]**
 - **Repro:** Ollama CLI installed but server stopped (this machine's state). Settings → Check AI.
@@ -318,12 +318,12 @@ fix is in place but nothing in CI clones clean and re-runs the suite.
 - **Tests:** Update ui-contract-smoke expectations (it greps for class structures that will change — budget for this); screenshot pass at 960/1100/1440; accessibility smoke (skip links/landmarks must survive restructuring).
 - **Risks:** ui-contract-smoke is still partly coupled to source strings — the slice must update the smoke in the same PR or verify goes red. Rail restructure still touches the largest root component; consider extracting rail components first as a no-behavior-change refactor commit.
 
-### Slice 3 — Real source browser
+### Slice 3 — Real source browser — DONE 2026-07-09
 - **Goal:** Full-file reading with highlighted citations; file-based tree entries; Source promoted to a center-pane tab; the inspector "Source" tab removed.
-- **Files:** src-tauri/src/lib.rs (new `read_source_file` command + tests), src/workspace/WorkspacePane.tsx (`CodeSnippet` -> `FileView`), src/source/CodeSnippet.tsx, src/App.tsx (snippet state/effects), src/lib/sourceReader.ts, src/App.css, left-rail tree component.
+- **Files:** `src-tauri/src/lib.rs`, `src/workspace/WorkspacePane.tsx`, `src/source/SourceFileView.tsx`, `src/source/useSourceFile.ts`, `src/App.tsx`, `src/lib/sourceReader.ts`, `src/App.css`.
 - **Outcome:** Problem 5 closed: a user can actually read LINEAGE.cbl top to bottom, with cited lines marked.
 - **Tests:** Rust tests for bounds/encoding/size-cap; browser demo check that the source bundle serves full files (it already contains full text — m6-bakeoff-source.json is a file→text map); manual: citation from Ask centers the right line in the full file.
-- **Risks:** Very large files (up to the 16MB scan cap) need virtualization or a windowed fallback — cap the full-file view (e.g. 20k lines) with an explicit "showing first N lines" notice rather than freezing. Keep the ±8 snippet path for the AI excerpt reader untouched.
+- **Risks:** Files above 2 MB are rejected with an explicit error instead of freezing the webview. The bounded excerpt path for AI retrieval remains separate.
 
 ### Slice 4 — Local AI readiness stepper + embedding model — PARTIALLY DONE
 Landed in the 2026-07-06 pass: `embeddingModel` setting + Settings field,

@@ -37,10 +37,11 @@ export type GraphDocument = {
   edges: GraphEdge[];
 };
 
-export type SourceSnippet = {
+export type SourceFileContent = {
   file: string;
-  startLine: number;
   highlightLine: number;
+  lineCount: number;
+  byteCount: number;
   lines: Array<{
     number: number;
     text: string;

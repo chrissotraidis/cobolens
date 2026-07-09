@@ -1,8 +1,8 @@
 import { GraphView } from "../graph/GraphView";
-import type { GraphDocument, GraphEdge, GraphNode, SourceSnippet } from "../lib/graph";
+import type { GraphDocument, GraphEdge, GraphNode, SourceFileContent } from "../lib/graph";
 import { nodeColor } from "../lib/graph";
 import { nodeTypeLabel } from "../lib/graphLabels";
-import { CodeSnippet } from "../source/CodeSnippet";
+import { SourceFileView } from "../source/SourceFileView";
 import { sourceLineLabel } from "../source/sourceLineLabels";
 
 export type CenterView = "map" | "source";
@@ -31,8 +31,9 @@ export function WorkspacePane({
   expandedNodeIds,
   hiddenNodeTypes,
   sourceFiles,
-  snippet,
-  snippetLoading,
+  source,
+  sourceLoading,
+  sourceError,
   sourceFocus,
   focusExpanded,
   focusExpansion,
@@ -55,8 +56,9 @@ export function WorkspacePane({
   expandedNodeIds: Set<string>;
   hiddenNodeTypes: Set<string>;
   sourceFiles: SourceFileEntry[];
-  snippet: SourceSnippet | null;
-  snippetLoading: boolean;
+  source: SourceFileContent | null;
+  sourceLoading: boolean;
+  sourceError: string;
   sourceFocus: SourceFocus | null;
   focusExpanded: boolean;
   focusExpansion: FocusExpansion;
@@ -72,13 +74,13 @@ export function WorkspacePane({
 }) {
   const focusedCitation = Boolean(
     sourceFocus &&
-      snippet &&
-      sourceFocus.file === snippet.file &&
-      sourceFocus.line === snippet.highlightLine,
+      source &&
+      sourceFocus.file === source.file &&
+      sourceFocus.line === source.highlightLine,
   );
   const sourceLineText = focusedCitation
-    ? `line ${snippet?.highlightLine ?? sourceFocus?.line ?? selectedNode?.lines?.[0] ?? 1}`
-    : sourceLineLabel(selectedNode?.lines, snippet?.highlightLine ?? 1);
+    ? `line ${source?.highlightLine ?? sourceFocus?.line ?? selectedNode?.lines?.[0] ?? 1} / ${source?.lineCount ?? "?"}`
+    : `${sourceLineLabel(selectedNode?.lines, source?.highlightLine ?? 1)}${source ? ` / ${source.lineCount}` : ""}`;
 
   return (
     <section
@@ -188,13 +190,19 @@ export function WorkspacePane({
             showNodeList={showGraphNodeList}
           />
         </div>
-        {centerView === "source" ? (
-          <section id="code-panel" className="code-panel center-source-view" aria-label="Source code" tabIndex={-1}>
+        <section
+          id="code-panel"
+          className="code-panel center-source-view"
+          aria-label="Source code"
+          tabIndex={-1}
+          hidden={centerView !== "source"}
+        >
             {selectedNode?.file ? (
-              <CodeSnippet
+              <SourceFileView
                 node={selectedNode}
-                snippet={snippet}
-                loading={snippetLoading}
+                source={source}
+                loading={sourceLoading}
+                error={sourceError}
                 focusedCitation={focusedCitation}
               />
             ) : (
@@ -203,8 +211,7 @@ export function WorkspacePane({
                 <button type="button" onClick={() => onCenterViewChange("map")}>Back to map</button>
               </div>
             )}
-          </section>
-        ) : null}
+        </section>
       </div>
     </section>
   );

@@ -109,11 +109,10 @@ and it is enforced-ish by the smokes.
    Settings now has a lightweight readiness stepper, but the app still only
    learns about Ollama through the HTTP API. Desktop can eventually add a tiny
    CLI-detect command; keep browser behavior HTTP-only.
-4. **Source is a windowed snippet, not a real file reader** [medium] — `-12/+60`
-   lines (`src-tauri/src/lib.rs` `read_source_snippet`, browser mirror in
-   `src/lib/sourceReader.ts`). No virtualized whole-file view, no syntax highlighting, no
-   symbol-click / jump-to-definition. The Source file-switcher dropdown is a
-   stopgap; a real file tree/tabs would be better.
+4. **Source navigation is intentionally basic** [medium] — full-file reading is
+   complete, but syntax highlighting, symbol clicks, jump-to-definition, and
+   find-references are not implemented. Add those only after real-project source
+   and retrieval behavior are stable.
 **Layout gotchas already fixed (don't reintroduce):** an `overflow:hidden` pane in
 an `auto` grid track collapses to 0 (rail + right-pane bugs) — use definite row/
 column minimums; the inspector width is a CSS var `--right-w` clamped by
@@ -208,12 +207,12 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   shell, so switching inspector tabs cannot change outer pane proportions. Ask
   focus sync now uses `preserveExpansion: true`, keeping user-expanded graph
   context while still updating the selected symbol behind the answer.
-- Source reading: `CodeSnippet` now distinguishes the selected symbol range from
+- Source reading: `SourceFileView` distinguishes the selected symbol range from
   the exact focused/citation line. The source toolbar shows `lines start-end`
   for range selections, selected-range rows get a subtle rail, and focused
   citation rows use a distinct `C` marker. Source line labels and state helpers
-  now live in `src/source/sourceLineLabels.ts`, and source snippet loading now
-  lives in `src/source/useSourceSnippet.ts`.
+  now live in `src/source/sourceLineLabels.ts`, and full-file loading now lives
+  in `src/source/useSourceFile.ts`.
 - Left rail hierarchy: the rail now reads as Project/Search/Codebase first, with
   Legend & Filters, Inventory, Parse Health, and Graph Hints grouped under
   native collapsible `details` accordions in a secondary Status and filters
@@ -231,9 +230,9 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   `src/settings/SettingsHost.tsx`; the Settings dialog and AI/scan settings
   panels moved to `src/settings/SettingsDialog.tsx`; the navigator rail moved to
   `src/navigator/NavigatorRail.tsx`; navigator-side panels moved to
-  `src/navigator/NavigatorPanels.tsx`; the source snippet viewer moved to
-  `src/source/CodeSnippet.tsx`; source snippet loading moved to
-  `src/source/useSourceSnippet.ts`; model source-excerpt reading moved to
+  `src/navigator/NavigatorPanels.tsx`; the source reader moved to
+  `src/source/SourceFileView.tsx`; full-file loading moved to
+  `src/source/useSourceFile.ts`; model source-excerpt reading moved to
   `src/source/useSourceExcerptReader.ts`; dependency/relationship inspector panels
   moved to `src/inspector/DependencyPanels.tsx`; the top bar moved to
   `src/topbar/TopBar.tsx`; inspector tabs moved to
@@ -310,9 +309,9 @@ For context, the build-guide fix pass closed these; they are no longer debt:
   Settings host moved to `src/settings/SettingsHost.tsx`; Settings moved to
   `src/settings/SettingsDialog.tsx`; the navigator rail moved to
   `src/navigator/NavigatorRail.tsx`; navigator panels moved to
-  `src/navigator/NavigatorPanels.tsx`; the source snippet viewer moved to
-  `src/source/CodeSnippet.tsx`; source snippet loading moved to
-  `src/source/useSourceSnippet.ts`; model source-excerpt reading moved to
+  `src/navigator/NavigatorPanels.tsx`; the source reader moved to
+  `src/source/SourceFileView.tsx`; full-file loading moved to
+  `src/source/useSourceFile.ts`; model source-excerpt reading moved to
   `src/source/useSourceExcerptReader.ts`; dependency inspector panels moved to
   `src/inspector/DependencyPanels.tsx`; the top bar moved to
   `src/topbar/TopBar.tsx`; inspector tabs moved to
@@ -468,21 +467,17 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 
 ## Source browsing
 
-### Source view is a windowed snippet — **[large]**
-- **What:** `read_source_snippet` returns a generous but still bounded window
-  around the target line (`-12/+60` lines in the desktop command and browser
-  mirror). There is no full-file scroll, no syntax highlighting, no symbol clicks.
-- **Why it matters:** Understanding COBOL needs whole paragraphs and DATA
-  DIVISION context; a 15-line keyhole undercuts the citation-trust story.
-- **Where:** `src-tauri/src/lib.rs` (`read_source_snippet`),
-  `src/lib/sourceReader.ts` (browser fallback), `src/source/CodeSnippet.tsx`
-  (rendering), `src/source/useSourceSnippet.ts` (snippet loading),
-  `src/workspace/WorkspacePane.tsx` (center Source surface), and `src/App.tsx`
-  (source focus orchestration).
-- **Fix:** Slice 3 in the build guide: a `read_source_file` command (size-capped
-  / windowed), a virtualized full-file reader with the cited line highlighted,
-  file-level tree entries, and later symbol-click navigation. Keep the snippet
-  API for AI excerpts.
+### Source definition/reference navigation is not implemented — **[medium]**
+- **What:** Full-file reading, line integrity, file switching, and citation
+  centering are complete. Source remains a reader: identifiers are not clickable
+  and there is no definition/reference index or syntax highlighter.
+- **Why it matters:** The current trust loop is strong for citations, but deeper
+  exploration still requires graph/search navigation.
+- **Where:** `src/source/SourceFileView.tsx`, `src/source/citationFocus.ts`, and
+  the analyzer graph contract.
+- **Fix:** Add definition/reference navigation only after full-file behavior is
+  proven against real corpora; reuse graph node/range identities rather than
+  introducing a second parser in the webview.
 
 ## Layout and information architecture
 
@@ -575,8 +570,8 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 - **Remaining (small):** the "Skip to source" landmark was dropped (source is a
   toggle inside the workspace, reachable via the Source button) — a keyboard user
   tabs to the workspace then the Source control; a dedicated skip that toggles
-  source could be added. Source is still a windowed snippet (±12 / +60 lines),
-  not a true whole-file virtualized reader (see the Source browsing item below).
+  source could be added. Source now remains mounted across Map/Source switches
+  and reads complete files up to the explicit 2 MB safety cap.
 
 ### Responsive layout — reworked 2026-07-06 (mostly resolved)
 - **What changed:** The narrow-width layout was previously unusable — below

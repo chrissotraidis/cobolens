@@ -26,7 +26,8 @@ This runner verifies the completed M6 surface:
 - chat history smoke for recent-answer ordering, dedupe, and caps,
 - layout state smoke for persisted layout fallbacks and inspector width bounds,
 - source line smoke for range labels, citation markers, and accessible line states,
-- source reader smoke for browser snippets, excerpts, source bundle caching, and encoded path lookup,
+- source reader smoke for complete size-capped files, bounded AI excerpts,
+  source bundle caching, and encoded path lookup,
 - app settings smoke for saved model/scan normalization and browser persistence,
 - browser launch smoke for bounded startup retry and actionable process/port
   failure diagnostics,
@@ -46,7 +47,7 @@ This runner verifies the completed M6 surface:
 - Rust `cargo fmt --check` and `cargo clippy -- -D warnings` for both crates,
 - Rust sidecar `cargo test`,
 - Tauri shell `cargo test`, including command-level coverage for bundled sample
-  analysis, source snippets, graph-cache reuse/invalidation, and path traversal
+  analysis, full-file source reads, graph-cache reuse/invalidation, and path traversal
   rejection.
 
 It also runs JVM parser work as advisory checks:

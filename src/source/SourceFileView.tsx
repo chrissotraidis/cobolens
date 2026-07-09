@@ -1,22 +1,34 @@
-import type { GraphNode, SourceSnippet } from "../lib/graph";
+import { useEffect, useRef } from "react";
+import type { GraphNode, SourceFileContent } from "../lib/graph";
 import { padLine } from "../lib/sourceReader";
 import { sourceLineClassName, sourceLineLabel, sourceLineMarker, sourceLineStateLabel } from "./sourceLineLabels";
 
-export function CodeSnippet({
+export function SourceFileView({
   node,
-  snippet,
+  source,
   loading,
+  error,
   focusedCitation,
 }: {
   node: GraphNode;
-  snippet: SourceSnippet | null;
+  source: SourceFileContent | null;
   loading: boolean;
+  error: string;
   focusedCitation: boolean;
 }) {
+  const highlightedLineRef = useRef<HTMLSpanElement>(null);
   const selectedRange =
-    snippet && node.file === snippet.file && node.lines
+    source && node.file === source.file && node.lines
       ? { start: node.lines[0], end: node.lines[1] ?? node.lines[0] }
       : null;
+
+  useEffect(() => {
+    if (!source) return;
+    const frame = window.requestAnimationFrame(() => {
+      highlightedLineRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [source?.file, source?.highlightLine]);
 
   if (!node.file) {
     return (
@@ -29,24 +41,25 @@ export function CodeSnippet({
   return (
     <div className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}>
       <div className="source-header">
-        <span>{snippet?.file ?? node.file}</span>
-        <strong>{focusedCitation && snippet ? `citation line ${snippet.highlightLine}` : sourceLineLabel(node.lines, snippet?.highlightLine ?? 1)}</strong>
+        <span>{source?.file ?? node.file}</span>
+        <strong>{focusedCitation && source ? `citation line ${source.highlightLine}` : sourceLineLabel(node.lines, source?.highlightLine ?? 1)}</strong>
       </div>
-      {snippet && focusedCitation ? (
+      {source && focusedCitation ? (
         <div className="source-focus-note" role="status">
-          Focused citation: {snippet.file}:{snippet.highlightLine}
+          Focused citation: {source.file}:{source.highlightLine}
         </div>
       ) : null}
       <pre>
-        <code className={snippet ? "source-lines" : undefined}>
-          {snippet ? (
-            snippet.lines.map((line) => {
+        <code className={source ? "source-lines" : undefined}>
+          {source ? (
+            source.lines.map((line) => {
               const selectedRangeLine = Boolean(selectedRange && line.number >= selectedRange.start && line.number <= selectedRange.end);
-              const focusedLine = line.number === snippet.highlightLine;
+              const focusedLine = line.number === source.highlightLine;
               const citationLine = focusedCitation && focusedLine;
               return (
                 <span
                   key={line.number}
+                  ref={focusedLine ? highlightedLineRef : undefined}
                   className={sourceLineClassName(selectedRangeLine, focusedLine, citationLine)}
                   aria-label={`Line ${line.number}${sourceLineStateLabel(selectedRangeLine, focusedLine, citationLine)}: ${line.text || "blank"}`}
                 >
@@ -59,10 +72,12 @@ export function CodeSnippet({
                 </span>
               );
             })
+          ) : loading ? (
+            "Loading source file..."
+          ) : error ? (
+            <span className="source-load-error" role="alert">{error}</span>
           ) : (
-            loading
-              ? "Loading source snippet..."
-              : "Source snippet unavailable. Use Sample for the browser demo, or import the project in the desktop app."
+            "Source file unavailable. Use Sample for the browser demo, or import the project in the desktop app."
           )}
         </code>
       </pre>

@@ -27,7 +27,7 @@ As of 2026-07-01, Cobolens is a local v1 release candidate on the implemented M0
 | Desktop shell | Tauri v2 plus React/Vite is implemented. |
 | Analyzer | Rust sidecar is the v1 production analyzer. ProLeap and mapa remain validated candidates, not production dependencies. |
 | Graph UI | Focus-and-expand Sigma graph, source sync, filters, search, codebase browser, and visible node controls are implemented. |
-| Source and citations | Source panel, citation jumps, relationship details, and focused source highlighting are implemented. |
+| Source and citations | Size-capped full-file reading, file switching, citation jumps, relationship details, and focused source highlighting are implemented. |
 | Ask | Graph-backed Ask works without AI. Broader AI Ask is opt-in and requires Settings setup. |
 | Overview | Graph overview works without AI. AI summaries are guarded by citation checks and fall back to cited graph facts when needed. |
 | Settings | One top-bar Settings drawer contains AI provider setup (generation model, separate embedding model, host, Rosetta) and scan settings. |
@@ -305,7 +305,7 @@ npm run m6:compare-candidates
 - chat history smoke
 - layout state smoke
 - source line smoke
-- source reader smoke
+- size-capped full-file source reader smoke
 - app settings smoke
 - stale model-readiness request smoke
 - browser startup retry and failure-diagnostic smoke
@@ -390,7 +390,7 @@ Historical research is kept in `docs/00-*` through `docs/05-*`.
 Highest-value next work:
 
 1. Test against several real COBOL/JCL repositories and record parser gaps.
-2. Improve source browsing: full-file mode, symbol clicks, jump-to-definition, references.
+2. Improve source navigation with symbol clicks, jump-to-definition, and references.
 3. Make relationship explanations more obvious directly from the graph canvas.
 4. Finish hardening local AI setup: desktop install-vs-running detection and
    separate generation/embedding readiness checks.

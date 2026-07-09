@@ -11,6 +11,7 @@ use std::{
 use tauri::{path::BaseDirectory, Emitter, Manager, Runtime};
 
 const MAX_SOURCE_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_SOURCE_READER_BYTES: u64 = 2 * 1024 * 1024;
 const IGNORED_DIR_NAMES: &[&str] = &[
     ".git",
     ".hg",
@@ -292,21 +293,27 @@ fn sample_root<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String>
 }
 
 #[tauri::command]
-fn read_source_snippet(
+fn read_source_file(
     root: String,
     file: String,
     line: usize,
     encoding: Option<String>,
 ) -> Result<Value, String> {
     let path = safe_source_path(&root, &file)?;
+    let byte_count = fs::metadata(&path).map_err(|err| err.to_string())?.len();
+    if byte_count > MAX_SOURCE_READER_BYTES {
+        return Err(format!(
+            "source file is too large to open safely ({byte_count} bytes; limit is {MAX_SOURCE_READER_BYTES})"
+        ));
+    }
     let content = read_source_text(&path, encoding.as_deref().unwrap_or("utf8"))?;
-    let lines: Vec<&str> = content.lines().collect();
-    let target = line.max(1);
-    // Generous window so the center Source view reads like a file (scrollable),
-    // not a keyhole, while keeping the cited line near the top.
-    let start = target.saturating_sub(12).max(1);
-    let end = (target + 60).min(lines.len().max(1));
-    let snippet_lines: Vec<Value> = (start..=end)
+    let lines: Vec<&str> = if content.is_empty() {
+        vec![""]
+    } else {
+        content.lines().collect()
+    };
+    let target = line.clamp(1, lines.len());
+    let source_lines: Vec<Value> = (1..=lines.len())
         .map(|number| {
             json!({
                 "number": number,
@@ -317,9 +324,10 @@ fn read_source_snippet(
 
     Ok(json!({
         "file": file,
-        "startLine": start,
         "highlightLine": target,
-        "lines": snippet_lines,
+        "lineCount": lines.len(),
+        "byteCount": byte_count,
+        "lines": source_lines,
     }))
 }
 
@@ -686,7 +694,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_codebase,
             analyze_sample_codebase,
-            read_source_snippet,
+            read_source_file,
             read_source_excerpt,
             write_export_files,
             load_app_settings,
@@ -729,8 +737,8 @@ mod tests {
     }
 
     #[test]
-    fn source_snippet_rejects_paths_outside_root() {
-        let root = temp_test_dir("snippet-safe-root");
+    fn source_file_rejects_paths_outside_root() {
+        let root = temp_test_dir("source-file-safe-root");
         fs::create_dir_all(&root).unwrap();
         fs::write(
             root.join("PROGRAM.cbl"),
@@ -738,7 +746,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = read_source_snippet(
+        let result = read_source_file(
             root.to_string_lossy().to_string(),
             "../PROGRAM.cbl".to_string(),
             1,
@@ -750,27 +758,30 @@ mod tests {
     }
 
     #[test]
-    fn source_snippet_reads_selected_file_line() {
-        let app = tauri::test::mock_app();
-        let root = sample_root(app.handle()).unwrap();
-        let snippet = read_source_snippet(
+    fn source_file_reads_every_line_and_highlights_selected_line() {
+        let root = temp_test_dir("source-file-full-root");
+        fs::create_dir_all(&root).unwrap();
+        let content = (1..=100)
+            .map(|line| format!("LINE {line}"))
+            .collect::<Vec<String>>()
+            .join("\n");
+        fs::write(root.join("PROGRAM.cbl"), content).unwrap();
+
+        let source = read_source_file(
             root.to_string_lossy().to_string(),
-            "src/ACCTREAD.cbl".to_string(),
-            18,
+            "PROGRAM.cbl".to_string(),
+            80,
             None,
         )
         .unwrap();
 
-        assert_eq!(snippet["file"], "src/ACCTREAD.cbl");
-        assert_eq!(snippet["highlightLine"], 18);
-        assert!(snippet["lines"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|line| line["text"]
-                .as_str()
-                .unwrap_or_default()
-                .contains("READ CUSTOMER")));
+        assert_eq!(source["file"], "PROGRAM.cbl");
+        assert_eq!(source["highlightLine"], 80);
+        assert_eq!(source["lineCount"], 100);
+        assert_eq!(source["lines"].as_array().unwrap().len(), 100);
+        assert_eq!(source["lines"][0]["text"], "LINE 1");
+        assert_eq!(source["lines"][99]["text"], "LINE 100");
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -1144,8 +1155,8 @@ mod tests {
     }
 
     #[test]
-    fn source_snippet_reads_cp037_source_line() {
-        let root = temp_test_dir("snippet-cp037-root");
+    fn source_file_reads_cp037_source_line() {
+        let root = temp_test_dir("source-file-cp037-root");
         fs::create_dir_all(&root).unwrap();
         fs::write(
             root.join("PROGRAM.cbl"),
@@ -1155,7 +1166,7 @@ mod tests {
         )
         .unwrap();
 
-        let snippet = read_source_snippet(
+        let source = read_source_file(
             root.to_string_lossy().to_string(),
             "PROGRAM.cbl".to_string(),
             1,
@@ -1163,7 +1174,29 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(snippet["lines"][0]["text"], "ABC 123.");
+        assert_eq!(source["lines"][0]["text"], "ABC 123.");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn source_file_rejects_files_above_reader_limit() {
+        let root = temp_test_dir("source-file-size-root");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("PROGRAM.cbl"),
+            vec![b' '; (MAX_SOURCE_READER_BYTES + 1) as usize],
+        )
+        .unwrap();
+
+        let error = read_source_file(
+            root.to_string_lossy().to_string(),
+            "PROGRAM.cbl".to_string(),
+            1,
+            None,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("too large to open safely"));
         fs::remove_dir_all(root).unwrap();
     }
 

@@ -182,8 +182,11 @@ async function main() {
     await waitFor(() => evaluate("document.activeElement?.id === 'code-panel'"), "Overview View source focuses source panel");
     const overviewSource = await pageState();
     assert(overviewSource.workspaceText.includes("LINEAGE") || overviewSource.workspaceText.includes("CUSTOMER"), "Overview View source shows selected source text");
+    assertEqual(overviewSource.sourceLineNumberCount, 47, "Source renders the complete LINEAGE file rather than a window");
+    assert(overviewSource.workspaceText.includes("DONE-PARA"), "Source includes the end of the selected file");
     await click(".view-toggle button:nth-child(1)");
     await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(1)')?.className.includes('is-active')"), "Map toggle restores map after Overview View source");
+    assert(await evaluate("Boolean(document.querySelector('#code-panel[hidden]'))"), "Map keeps the Source reader mounted for context preservation");
     assertEqual(loaded.secondaryNavigatorDetails, 4, "left rail groups filters and status into four secondary accordions");
     assertEqual(loaded.closedSecondaryNavigatorDetails, 4, "secondary navigator accordions start collapsed");
     await clickNavigatorSummary("Inventory");
@@ -257,7 +260,7 @@ async function main() {
     await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "CUSTOMER source text after tree click");
     const customerSource = await pageState();
     assert(customerSource.workspaceText.includes("CUSTOMER-RECORD"), "CUSTOMER tree click opens source text");
-    assertEqual(customerSource.sourceLineChip, "lines 1-6", "source toolbar names the selected symbol range");
+    assertEqual(customerSource.sourceLineChip, "lines 1-6 / 6", "source toolbar names the selected symbol range and full-file length");
     assertEqual(customerSource.sourceInlineHeaderDisplay, "none", "center Source hides duplicate in-snippet header");
     assertEqual(customerSource.sourceLineTextWhiteSpace, "pre", "Source line text preserves COBOL columns");
     assert(["auto", "scroll"].includes(customerSource.sourcePreOverflowX), "Source code block can scroll horizontally");
@@ -268,7 +271,7 @@ async function main() {
     await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('REPORT-RECORD')"), "source picker opens REPORT copybook");
     const reportSource = await pageState();
     assertEqual(reportSource.sourceFileValue, "copybook/REPORT.cpy", "source file picker switches to REPORT");
-    assertEqual(reportSource.sourceLineChip, "lines 1-6", "source toolbar names the switched source range");
+    assertEqual(reportSource.sourceLineChip, "lines 1-6 / 6", "source toolbar names the switched source range and full-file length");
     assert(reportSource.workspaceText.includes("REPORT-AMOUNT"), "source picker loads the switched file text");
     await selectOption(".source-file-picker select", "copybook/CUSTOMER.cpy");
     await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "source picker returns to CUSTOMER copybook");
@@ -293,7 +296,7 @@ async function main() {
     await click('button[aria-label="Focus relationship target CUSTOMER"]');
     await waitFor(() => evaluate("document.querySelector('.source-file-picker select')?.value === 'copybook/CUSTOMER.cpy'"), "relationship target endpoint refocuses CUSTOMER");
     const relationshipTarget = await pageState();
-    assertEqual(relationshipTarget.sourceLineChip, "lines 1-6", "relationship target endpoint restores selected source range");
+    assertEqual(relationshipTarget.sourceLineChip, "lines 1-6 / 6", "relationship target endpoint restores selected source range and full-file length");
     await click('button[aria-label="Used by: show LINEAGE COPIES CUSTOMER at src/LINEAGE.cbl:11"]');
     await waitFor(() => evaluate("document.querySelector('.source-focus-note')?.innerText.includes('src/LINEAGE.cbl:11')"), "relationship source citation reopens after endpoint focus");
     await waitFor(() => evaluate("document.activeElement?.id === 'code-panel'"), "relationship source citation refocuses source panel");
@@ -732,7 +735,10 @@ async function verifyResponsiveLayout() {
   assertEqual(phone.sourceSwatchDisplay, "none", "phone Source toolbar hides the color swatch");
   assert(phone.sourceFilePickerVisible, "phone Source toolbar keeps file navigation visible");
   assert(phone.toolbarInsideViewport, "phone layout keeps the workspace toolbar inside the viewport");
-  assert(phone.topbarControlsInsideViewport, "phone layout keeps top-bar controls inside the viewport");
+  assert(
+    phone.topbarControlsInsideViewport,
+    `phone layout keeps top-bar controls inside the viewport (${JSON.stringify(phone.topbarControls)})`,
+  );
   assert(phone.noPageHorizontalOverflow, "phone layout avoids page-level horizontal overflow");
 
   await setViewport(1365, 900);
@@ -809,6 +815,7 @@ async function responsiveLayoutState() {
       majorPanelsUseViewportWidth: widestPanel - narrowestPanel <= 2 && narrowestPanel >= window.innerWidth - 24,
       toolbarInsideViewport: toolbarControls.every(insideViewport),
       topbarControlsInsideViewport: topbarControls.every(insideViewport),
+      topbarControls,
       noPageHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1,
       sourceLineWhiteSpace: getComputedStyle(document.querySelector('.source-line-text')).whiteSpace,
       inspectorToggleDisplay: getComputedStyle(document.querySelector('.topbar-actions .rail-toggle')).display,

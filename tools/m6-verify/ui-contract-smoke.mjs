@@ -26,7 +26,9 @@ const workspaceLayoutSource = await readFile(resolve(repoRoot, "src", "workspace
 const workspaceNavigationSource = await readFile(resolve(repoRoot, "src", "workspace", "useWorkspaceNavigation.ts"), "utf8");
 const modelRuntimeSource = await readFile(resolve(repoRoot, "src", "model", "modelRuntime.ts"), "utf8");
 const projectActionsSource = await readFile(resolve(repoRoot, "src", "scan", "useProjectActions.ts"), "utf8");
-const codeSnippetSource = await readFile(resolve(repoRoot, "src", "source", "CodeSnippet.tsx"), "utf8");
+const sourceFileViewSource = await readFile(resolve(repoRoot, "src", "source", "SourceFileView.tsx"), "utf8");
+const sourceFileHookSource = await readFile(resolve(repoRoot, "src", "source", "useSourceFile.ts"), "utf8");
+const sourceReaderSource = await readFile(resolve(repoRoot, "src", "lib", "sourceReader.ts"), "utf8");
 const sourceLineLabelsSource = await readFile(resolve(repoRoot, "src", "source", "sourceLineLabels.ts"), "utf8");
 const citationFocusSource = await readFile(resolve(repoRoot, "src", "source", "citationFocus.ts"), "utf8");
 const dependencyPanelsSource = await readFile(resolve(repoRoot, "src", "inspector", "DependencyPanels.tsx"), "utf8");
@@ -585,7 +587,7 @@ const checks = [
       'className="source-file-picker"',
       'className="source-line-chip"',
     ]) &&
-      includesAll(codeSnippetSource, [
+      includesAll(sourceFileViewSource, [
         'className="source-header"',
         'className="source-line-marker"',
         'className="source-line-number"',
@@ -722,14 +724,29 @@ const checks = [
       ]) &&
       !chatAnswerPanelSource.includes("<GroupedEvidence") &&
       !chatAnswerPanelSource.includes("Copy with citations") &&
-      includesAll(codeSnippetSource, [
+      includesAll(sourceFileViewSource, [
         'className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}',
         'className="source-focus-note"',
-        "Focused citation: {snippet.file}:{snippet.highlightLine}",
+        "Focused citation: {source.file}:{source.highlightLine}",
         "Focused citation line",
       ]) &&
       includesAll(sourceLineLabelsSource, ["function sourceLineMarker", 'if (citationLine) return "C"']) &&
       includesAll(appCss, [".source-view.has-focused-citation", ".source-focus-note", ".source-line.is-citation-line", ".sr-only"]),
+  ],
+  [
+    "Source is a size-capped full-file trust surface",
+    includesAll(sourceReaderSource, [
+      "export const MAX_SOURCE_READER_BYTES",
+      'invoke<SourceFileContent>("read_source_file"',
+      "lines: lines.map",
+    ]) &&
+      includesAll(sourceFileHookSource, ["export function useSourceFile", "highlightLine: Math.min"]) &&
+      includesAll(sourceFileViewSource, [
+        "source.lines.map",
+        "scrollIntoView({ block: \"center\", inline: \"nearest\" })",
+        "Loading source file...",
+      ]) &&
+      includesAll(workspaceSource, ['hidden={centerView !== "source"}', "source.lineCount"]),
   ],
   [
     "Selected relationship detail explains endpoints and can refocus either node",

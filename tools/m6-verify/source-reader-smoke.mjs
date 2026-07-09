@@ -51,18 +51,27 @@ try {
     ? resolve(tempRoot, "lib", "sourceReader.js")
     : resolve(tempRoot, "sourceReader.js");
   const {
+    MAX_SOURCE_READER_BYTES,
     padLine,
     readSourceExcerpt,
-    readSourceSnippet,
+    readSourceFile,
     sourceBaseForGraphUrl,
   } = require(readerPath);
 
   global.window = {};
   const longSource = Array.from({ length: 90 }, (_, index) => `line-${index + 1}`).join("\n");
-  const directSnippet = await readSourceSnippet("", "", { "src/LONG.cbl": longSource }, "src/LONG.cbl", 15, "utf8");
-  const earlySnippet = await readSourceSnippet("", "", { "src/LONG.cbl": longSource }, "src/LONG.cbl", 2, "utf8");
+  const directFile = await readSourceFile("", "", { "src/LONG.cbl": longSource }, "src/LONG.cbl", 75, "utf8");
+  const earlyFile = await readSourceFile("", "", { "src/LONG.cbl": longSource }, "src/LONG.cbl", -2, "utf8");
   const excerpt = await readSourceExcerpt("", "", { "src/LONG.cbl": longSource }, "src/LONG.cbl", -4, 4, 3, "utf8");
-  const missingError = await capturesError(() => readSourceSnippet("", "", {}, "src/MISSING.cbl", 1, "utf8"));
+  const missingError = await capturesError(() => readSourceFile("", "", {}, "src/MISSING.cbl", 1, "utf8"));
+  const oversizedError = await capturesError(() => readSourceFile(
+    "",
+    "",
+    { "src/HUGE.cbl": "x".repeat(MAX_SOURCE_READER_BYTES + 1) },
+    "src/HUGE.cbl",
+    1,
+    "utf8",
+  ));
 
   const fetchCalls = [];
   global.fetch = async (url) => {
@@ -86,10 +95,10 @@ try {
     return { ok: false };
   };
 
-  const bundleSnippet = await readSourceSnippet("", "/bundle.json", {}, "src/BUNDLE.cbl", 1, "utf8");
-  await readSourceSnippet("", "/bundle.json", {}, "src/BUNDLE.cbl", 2, "utf8");
-  const pathSnippet = await readSourceSnippet("", "/sources/", {}, "dir with space/A+B.cbl", 1, "utf8");
-  const bundleMiss = await capturesError(() => readSourceSnippet("", "/bundle.json", {}, "src/NOPE.cbl", 1, "utf8"));
+  const bundleFile = await readSourceFile("", "/bundle.json", {}, "src/BUNDLE.cbl", 1, "utf8");
+  await readSourceFile("", "/bundle.json", {}, "src/BUNDLE.cbl", 2, "utf8");
+  const pathFile = await readSourceFile("", "/sources/", {}, "dir with space/A+B.cbl", 1, "utf8");
+  const bundleMiss = await capturesError(() => readSourceFile("", "/bundle.json", {}, "src/NOPE.cbl", 1, "utf8"));
 
   const assertions = [
     [
@@ -99,14 +108,15 @@ try {
     ],
     ["line numbers are padded for model excerpts", padLine(7) === "    7" && padLine(12345) === "12345"],
     [
-      "browser snippets use a generous bounded source window",
-      directSnippet.startLine === 3 &&
-        directSnippet.highlightLine === 15 &&
-        directSnippet.lines.length === 73 &&
-        directSnippet.lines[0].text === "line-3" &&
-        directSnippet.lines.at(-1).text === "line-75",
+      "browser source reader returns the complete file",
+      directFile.highlightLine === 75 &&
+        directFile.lineCount === 90 &&
+        directFile.lines.length === 90 &&
+        directFile.lines[0].text === "line-1" &&
+        directFile.lines.at(-1).text === "line-90",
     ],
-    ["early browser snippets clamp to line one", earlySnippet.startLine === 1 && earlySnippet.lines[0].number === 1],
+    ["browser source focus clamps to line one", earlyFile.highlightLine === 1 && earlyFile.lines[0].number === 1],
+    ["browser source reader rejects files above its safety cap", oversizedError.includes("too large to open safely")],
     [
       "browser excerpts clamp, cap, and mark truncation",
       excerpt.startLine === 1 &&
@@ -117,11 +127,11 @@ try {
     ["missing browser source reports an actionable error", missingError.includes("Use Sample or import the project")],
     [
       "source bundle fetch is cached by bundle URL",
-      bundleSnippet.lines[0].text === "bundle-1" && fetchCalls.filter((url) => url === "/bundle.json").length === 1,
+      bundleFile.lines[0].text === "bundle-1" && fetchCalls.filter((url) => url === "/bundle.json").length === 1,
     ],
     [
       "source path fetch encodes each path segment",
-      pathSnippet.lines[0].text === "path-1" && fetchCalls.includes("/sources/dir%20with%20space/A%2BB.cbl"),
+      pathFile.lines[0].text === "path-1" && fetchCalls.includes("/sources/dir%20with%20space/A%2BB.cbl"),
     ],
     ["missing bundled source names the unavailable file", bundleMiss.includes("src/NOPE.cbl")],
   ];
@@ -135,7 +145,7 @@ try {
     JSON.stringify(
       {
         checked: assertions.length,
-        snippetWindow: `${directSnippet.startLine}-${directSnippet.lines.at(-1).number}`,
+        fullFileLines: directFile.lineCount,
         fetches: fetchCalls.length,
       },
       null,

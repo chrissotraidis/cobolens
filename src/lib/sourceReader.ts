@@ -1,21 +1,23 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SourceExcerpt, SourceSnippet } from "./graph";
+import type { SourceExcerpt, SourceFileContent } from "./graph";
 import { canUseTauri } from "./tauri";
 
 export function sourceBaseForGraphUrl(graphUrl: string) {
   return graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source.json" : "";
 }
 
-export async function readSourceSnippet(
+export const MAX_SOURCE_READER_BYTES = 2 * 1024 * 1024;
+
+export async function readSourceFile(
   root: string,
   sourceBase: string,
   browserSourceFiles: Record<string, string>,
   file: string,
   line: number,
   encoding: string,
-): Promise<SourceSnippet> {
+): Promise<SourceFileContent> {
   if (root && canUseTauri()) {
-    return invoke<SourceSnippet>("read_source_snippet", {
+    return invoke<SourceFileContent>("read_source_file", {
       root,
       file,
       line,
@@ -28,17 +30,18 @@ export async function readSourceSnippet(
     throw new Error("Source is unavailable for this graph. Use Sample or import the project in the desktop app.");
   }
 
-  const lines = text.split(/\r?\n/);
-  // Generous window so the center Source view reads like a file (scrollable),
-  // not a keyhole, while keeping the cited line near the top.
-  const startLine = Math.max(1, line - 12);
-  const endLine = Math.min(lines.length, line + 60);
+  const byteCount = new TextEncoder().encode(text).byteLength;
+  if (byteCount > MAX_SOURCE_READER_BYTES) {
+    throw new Error(`Source file is too large to open safely (${byteCount} bytes; limit is ${MAX_SOURCE_READER_BYTES}).`);
+  }
+  const lines = splitSourceLines(text);
   return {
     file,
-    startLine,
-    highlightLine: line,
-    lines: lines.slice(startLine - 1, endLine).map((sourceLine, index) => ({
-      number: startLine + index,
+    highlightLine: Math.min(lines.length, Math.max(1, line)),
+    lineCount: lines.length,
+    byteCount,
+    lines: lines.map((sourceLine, index) => ({
+      number: index + 1,
       text: sourceLine,
     })),
   };
@@ -70,7 +73,7 @@ export async function readSourceExcerpt(
     throw new Error("Source is unavailable for this graph. Use Sample or import the project in the desktop app.");
   }
 
-  const lines = text.split(/\r?\n/);
+  const lines = splitSourceLines(text);
   const safeStart = Math.max(1, startLine);
   const safeEnd = Math.min(lines.length, Math.max(safeStart, endLine));
   const cappedEnd = Math.min(safeEnd, safeStart + maxLines - 1);
@@ -133,4 +136,11 @@ function fetchSourceBundle(sourceBase: string) {
 
 export function padLine(line: number) {
   return line.toString().padStart(5, " ");
+}
+
+function splitSourceLines(text: string) {
+  if (!text) return [""];
+  const lines = text.split(/\r?\n/);
+  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+  return lines;
 }

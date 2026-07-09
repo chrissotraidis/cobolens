@@ -43,6 +43,20 @@ cancellation settled in 5 ms. The grounded Summary smoke also passed. These are
 local reference-model results, not a claim that every Ollama model has equivalent
 quality.
 
+## 2026-07-09 update: full-file Source trust surface
+
+The fixed source window has been replaced by a dedicated `read_source_file`
+desktop command and equivalent browser reader. Both return complete files up to
+a 2 MB safety cap while the existing bounded excerpt API remains isolated for AI
+retrieval. The reader preserves exact line numbers and horizontal code layout,
+centers highlighted citations, exposes load/size errors, and remains mounted
+across Map/Source switches.
+
+Rust tests cover traversal rejection, complete reads, CP037 decoding, and the
+size cap. The rendered browser smoke proves all 47 lines of `LINEAGE.cbl` are
+present, including the final paragraph, and rechecks file switching, selected
+ranges, citation focus, responsive layout, and retained Chat context.
+
 ## 2026-07-06 update: fresh-clone integrity
 
 A build-guide review pass fixed two clean-clone blockers and one Tauri test bug:

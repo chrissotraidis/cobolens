@@ -17,7 +17,7 @@ import { useAppSettingsState } from "./settings/useAppSettingsState";
 import { useWorkspaceLayout } from "./workspace/useWorkspaceLayout";
 import { useWorkspaceNavigation } from "./workspace/useWorkspaceNavigation";
 import { useSourceExcerptReader } from "./source/useSourceExcerptReader";
-import { useSourceSnippet } from "./source/useSourceSnippet";
+import { useSourceFile } from "./source/useSourceFile";
 import { useSemanticIndex } from "./retrieval/useSemanticIndex";
 import "./App.css";
 
@@ -141,13 +141,14 @@ function App() {
     setSelectedEdge: project.setSelectedEdge,
     setSourceFocus: project.setSourceFocus,
   });
-  const { snippet, snippetLoading } = useSourceSnippet({
+  const { source, sourceLoading, sourceError } = useSourceFile({
     root: project.root,
     sourceBase: project.sourceBase,
     browserSourceFiles: project.browserSourceFiles,
     selectedNode,
     sourceFocus: project.sourceFocus,
     encoding: scanSettings.encoding,
+    revision: project.graph?.meta.scannedAt ?? "",
   });
   const { sourceExcerptForNode } = useSourceExcerptReader({
     root: project.root,
@@ -351,8 +352,9 @@ function App() {
           expandedNodeIds,
           hiddenNodeTypes,
           sourceFiles,
-          snippet,
-          snippetLoading,
+          source,
+          sourceLoading,
+          sourceError,
           sourceFocus: project.sourceFocus,
           focusExpanded,
           focusExpansion,

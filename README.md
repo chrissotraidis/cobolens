@@ -20,7 +20,7 @@ Cobolens is built for that first hour with an unfamiliar system.
 
 ## Current Status
 
-As of 2026-07-01, Cobolens is a local v1 release candidate on the implemented M0-M6 scope.
+As of 2026-07-09, Cobolens is a local v1 release candidate on the implemented M0-M6 scope.
 
 | Area | Status |
 | --- | --- |
@@ -32,7 +32,7 @@ As of 2026-07-01, Cobolens is a local v1 release candidate on the implemented M0
 | Overview | Graph overview works without AI. AI summaries are guarded by citation checks and fall back to cited graph facts when needed. |
 | Settings | One top-bar Settings drawer contains AI provider setup (generation model, separate embedding model, host, Rosetta) and scan settings. |
 | Export | Markdown, Mermaid, and PNG documentation export is implemented. |
-| Packaging | Linux packaging is locally validated. GitHub Actions builds unsigned Linux and Windows bundles for QA. Signed public installers are not claimed yet. |
+| Packaging | Linux packaging and local macOS launch are validated. GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA. Signed public installers are not claimed yet. |
 
 ## Product Tour
 
@@ -246,14 +246,25 @@ npm run tauri:before-build
 ```
 
 That compiles the frontend and the Rust analyzer sidecar, then packages app resources.
-These are unsigned QA/release-candidate bundles. Signed public installers are not
-claimed until platform signing is validated.
+The Tauri desktop app is the v1 product. The browser build is a QA and demo surface;
+it cannot prove folder access, keychain storage, desktop caching, or packaged-shell
+behavior. macOS is the primary desktop validation target, with Linux and Windows
+kept as unsigned cross-platform QA targets.
+
+These are unsigned QA/release-candidate bundles. Unsigned artifacts are not public release installers.
+Signed public installers are not claimed until Apple notarization and platform
+signing are configured and validated.
 
 Expected Linux outputs:
 
 - `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
 - `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
 - `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
+
+Expected macOS outputs:
+
+- `src-tauri/target/release/bundle/macos/Cobolens.app`
+- `src-tauri/target/release/bundle/dmg/Cobolens_0.1.0_*.dmg`
 
 The packaged resource layout includes:
 
@@ -293,9 +304,13 @@ Useful focused checks:
 npm run build
 npm run desktop:smoke
 npm run desktop:packaged-smoke
+npm run desktop:macos-packaged-smoke
 npm run validate:benchmark:local
 npm run m6:compare-candidates
 ```
+
+Dependency advisories are checked in `.github/workflows/audit.yml` with
+`npm audit --audit-level=high` and RustSec against both Cargo lockfiles.
 
 `npm run m6:verify` covers:
 

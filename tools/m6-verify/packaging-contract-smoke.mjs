@@ -42,9 +42,10 @@ const checks = {
   "Linux packaged smokes inspect the new resource path":
     packagingReadiness.includes('"binaries", "cobolens-analyze"') &&
     packagedGuiSmoke.includes('"binaries", "cobolens-analyze"'),
-  "GitHub packaging workflow validates Linux and Windows":
+  "GitHub packaging workflow validates Linux, Windows, and macOS":
     workflow.includes("ubuntu-22.04") &&
     workflow.includes("windows-latest") &&
+    workflow.includes("macos-14") &&
     workflow.includes("tauri-apps/tauri-action@v1") &&
     workflow.includes("npm ci") &&
     workflow.includes("tools/m6-verify/packaging-contract-smoke.mjs"),
@@ -53,10 +54,12 @@ const checks = {
     workflow.includes("cobolens-${{ matrix.platform }}-unsigned") &&
     workflow.includes("if-no-files-found: error") &&
     workflow.includes("src-tauri/target/release/bundle/appimage/*.AppImage") &&
-    workflow.includes("src-tauri/target/release/bundle/nsis/*.exe"),
+    workflow.includes("src-tauri/target/release/bundle/nsis/*.exe") &&
+    workflow.includes("src-tauri/target/release/bundle/dmg/*.dmg"),
   "README keeps packaging claims unsigned until signing is validated":
-    readme.includes("GitHub Actions builds unsigned Linux and Windows bundles for QA") &&
+    readme.includes("GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA") &&
     readme.includes("These are unsigned QA/release-candidate bundles") &&
+    readme.includes("Unsigned artifacts are not public release installers") &&
     readme.includes("Signed public installers are not claimed"),
 };
 

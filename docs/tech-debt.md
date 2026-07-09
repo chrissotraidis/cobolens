@@ -409,15 +409,16 @@ For context, the build-guide fix pass closed these; they are no longer debt:
 - **Fix:** Move fragile assertions toward runtime checks or stable `data-testid`s
   as the App.tsx split creates clearer component boundaries.
 
-### Desktop GUI unverified on macOS — **[small]**
-- **What:** Verification of the desktop shell is via `cargo test` and
-  packaged-Linux smokes. The actual macOS window has not been launched in this
-  checkout.
-- **Why it matters:** macOS is the active dev platform but is not a claimed
-  release target; the gap should be explicit, not assumed-covered.
-- **Where:** `tools/desktop/*`, `docs/v1-readiness-audit.md`.
-- **Fix:** Decide whether macOS is a v1 target (open question below); if so, add
-  a desktop smoke that launches and screenshots the packaged app.
+### Public package signing remains unconfigured — **[small]**
+- **What:** The packaged macOS app now has an automated resource and launch
+  smoke locally and in packaging CI. Linux and Windows remain unsigned QA
+  builds. Apple notarization and public installer signing are not configured.
+- **Why it matters:** Unsigned artifacts are useful release-candidate evidence,
+  but they should not be presented as public installers.
+- **Where:** `tools/desktop/macos-packaged-smoke.mjs`,
+  `.github/workflows/package.yml`, `docs/desktop-release-hardening.md`.
+- **Fix:** Add platform credentials and notarization only when a public release
+  channel is selected; do not store signing secrets in the repository.
 
 ## Local AI
 

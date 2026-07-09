@@ -134,6 +134,7 @@ Not claimed yet:
 - `npm run validate:benchmark:local` when the benchmark checkout exists under
   `.cache/benchmarks/COBOL-Legacy-Benchmark-Suite`
 - `npm run desktop:packaged-smoke` after a Linux AppImage build
+- `npm run desktop:macos-packaged-smoke` after a macOS app build
 - In-app browser checks recorded in `docs/m6-ui-qa.md`
 - `tools/m6-verify/accessibility-smoke.mjs` for keyboard/landmark coverage
 
@@ -182,11 +183,12 @@ Not claimed yet:
   citation-clean.
 - The production analyzer remains the lightweight Rust sidecar. ProLeap and
   mapa are validated candidates, but not production dependencies.
-- Signed Windows release packaging remains unvalidated in this checkout.
+- Public macOS notarization and Windows/Linux signing remain unconfigured;
+  generated bundles are explicitly unsigned QA artifacts.
 - The "UI contract" and "accessibility" smokes are static source/CSS assertions,
   not driven-browser tests: they check that specific markup and style rules
   exist, not that the running app behaves. Treat rows evidenced only by those
   smokes as contract-level, not runtime-level, coverage. A driven-browser smoke
   for the core loop is tracked in [tech-debt.md](tech-debt.md).
-- The desktop GUI has not been launched on macOS in this checkout; desktop
-  verification is via `cargo test` and packaged-Linux smokes only.
+- The packaged macOS GUI, bundled analyzer, and bundled sample pass the local
+  macOS package smoke. Packaging CI repeats this on its macOS runner.

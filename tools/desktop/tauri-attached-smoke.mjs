@@ -66,6 +66,7 @@ function maybeMarkLaunched() {
   if (!combined.includes("Running `target/") && !combined.includes("Running target/")) return;
 
   launched = true;
+  clearTimeout(launchTimer);
   report.checks["desktop shell process launched"] = true;
   setTimeout(() => pass(), holdMs);
 }

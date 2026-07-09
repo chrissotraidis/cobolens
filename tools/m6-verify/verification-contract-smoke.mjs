@@ -63,8 +63,8 @@ const checks = {
     verifyReadme.includes("https://rustup.rs/") &&
     verifyReadme.includes("rustup component add rustfmt clippy"),
   "health workflow is a clean checkout with Node, Rust, npm ci, and m6 verify":
-    healthWorkflow.includes("actions/checkout@v4") &&
-    healthWorkflow.includes("actions/setup-node@v4") &&
+    healthWorkflow.includes("actions/checkout@v5") &&
+    healthWorkflow.includes("actions/setup-node@v5") &&
     healthWorkflow.includes("dtolnay/rust-toolchain@stable") &&
     healthWorkflow.includes("npm ci") &&
     healthWorkflow.includes("npm run m6:verify"),

@@ -25,8 +25,9 @@ const checks = {
     askGenerationSource.includes("onFirstToken: noteFirstToken") &&
     askGenerationSource.includes("onTextDelta: (draft) => {") &&
     !askGenerationSource.includes('runTimedModelCall("Ask"'),
-  "Chat panel renders streamed Ask as draft text": chatPanelSource.includes('className="answer-turn is-streaming"') &&
-    chatPanelSource.includes("Draft answer") &&
+  "Chat panel renders streamed Ask in the plain chat surface": chatPanelSource.includes('className="chat-answer-bubble"') &&
+    chatPanelSource.includes('className="chat-answer-text"') &&
+    chatPanelSource.includes('className="chat-stream-stages"') &&
     aiProgressSource.includes("Final citations are checked before the answer is trusted."),
   "local Ask budget is smaller than cloud budget":
     chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 512") &&

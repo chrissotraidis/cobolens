@@ -43,6 +43,7 @@ try {
   const require = createRequire(resolve(tempRoot, "smoke.cjs"));
   const { retrieveQuestionContext } = require(resolve(tempRoot, "retrieval", "context.js"));
   const {
+    buildSemanticChunkVectorIndex,
     buildSemanticChunks,
     createLocalStorageSemanticVectorStore,
     semanticGraphIndexKey,
@@ -71,12 +72,24 @@ try {
   const vectorStore = createLocalStorageSemanticVectorStore(storage);
   const indexKey = semanticGraphIndexKey(graph, "ollama|http://127.0.0.1:11434/api|fixture-embed");
   const embedCallSizes = [];
+  const warmResult = await buildSemanticChunkVectorIndex({
+    graph,
+    indexKey,
+    vectorStore,
+    embedTexts: async (texts) => {
+      embedCallSizes.push(texts.length);
+      return {
+        vectors: texts.map((text) => vectorForText(text)),
+      };
+    },
+  });
   const cachedMatches = await semanticSearchGraph({
     graph,
     question: "Which record is written to the report output?",
     topK: 2,
     indexKey,
     vectorStore,
+    requireCachedIndex: true,
     embedTexts: async (texts) => {
       embedCallSizes.push(texts.length);
       return {
@@ -90,6 +103,7 @@ try {
     topK: 2,
     indexKey,
     vectorStore,
+    requireCachedIndex: true,
     embedTexts: async (texts) => {
       embedCallSizes.push(texts.length);
       return {
@@ -124,6 +138,7 @@ try {
   const checks = {
     "semantic chunks include graph relationship facts": chunks.some((chunk) => chunk.node.name === "REPORT-RECORD" && /writes REPORT-RECORD/.test(chunk.text)),
     "semantic search ranks vector-nearest node first": matches[0]?.node.name === "REPORT-RECORD",
+    "semantic warm builds chunk-only index before query": warmResult.chunkCount > 0 && embedCallSizes[0] === warmResult.chunkCount,
     "semantic index is persisted after first search": Boolean(storage.getItem(indexKey)) && cachedMatches[0]?.node.name === "REPORT-RECORD",
     "semantic index reuses stored chunk vectors": reusedMatches[0]?.node.name === "REPORT-RECORD" && embedCallSizes.at(-1) === 1,
     "semantic context includes matched node": context.focusNodes.some((node) => node.name === "REPORT-RECORD"),

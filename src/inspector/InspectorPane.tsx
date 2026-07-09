@@ -1,12 +1,12 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import { nodeColor } from "../lib/graph";
-import { nodeTypeLabel } from "../lib/graphLabels";
 import { dependencyCounts } from "../lib/graphSelectors";
 import type { ModelSettings } from "../model/config";
 import type { Citation } from "../retrieval/context";
+import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import type { ModelReadiness } from "../settings/SettingsDialog";
-import { ChatAnswerPanel, type ChatAnswer, type ChatStatus } from "./ChatAnswerPanel";
+import { ChatAnswerPanel, type ChatAnswer, type ChatMode, type ChatStatus } from "./ChatAnswerPanel";
 import { LineageImpactPanel, RelationshipDetails } from "./DependencyPanels";
 import { InspectorTabs, type InspectorTab } from "./InspectorTabs";
 import { SummaryDock, type SummaryState } from "./SummaryDock";
@@ -25,6 +25,7 @@ export function InspectorPane({
   chatError,
   modelSettings,
   modelReadiness,
+  semanticIndex,
   chatQuestion,
   summaryUnitCount,
   bulkSummaryStatus,
@@ -36,10 +37,6 @@ export function InspectorPane({
   onQuestionChange,
   onAsk,
   onCancelAsk,
-  onAskPreset,
-  onRestoreAnswer,
-  onClearHistory,
-  onOpenCitation,
   onGenerateSelected,
   onGenerateAll,
   onCancelSummary,
@@ -63,6 +60,7 @@ export function InspectorPane({
   chatError: string;
   modelSettings: ModelSettings;
   modelReadiness: ModelReadiness;
+  semanticIndex: SemanticIndexState;
   chatQuestion: string;
   summaryUnitCount: number;
   bulkSummaryStatus: string;
@@ -72,12 +70,8 @@ export function InspectorPane({
   onTabChange: (tab: InspectorTab) => void;
   onOpenSettings: () => void;
   onQuestionChange: (question: string) => void;
-  onAsk: () => void;
+  onAsk: (mode?: ChatMode) => void;
   onCancelAsk: () => void;
-  onAskPreset: (question: string) => void;
-  onRestoreAnswer: (answer: ChatAnswer) => void;
-  onClearHistory: () => void;
-  onOpenCitation: (citation: Citation) => void;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
   onCancelSummary: () => void;
@@ -109,7 +103,6 @@ export function InspectorPane({
                 <span className="swatch" style={{ background: nodeColor(selectedNode.type) }} aria-hidden="true" />
                 {selectedNode.name}
               </span>
-              <small>{nodeTypeLabel(selectedNode.type)}</small>
             </>
           ) : (
             <>
@@ -145,18 +138,14 @@ export function InspectorPane({
                   node={selectedNode}
                   settings={modelSettings}
                   modelReadiness={modelReadiness}
+                  semanticIndex={semanticIndex}
                   question={chatQuestion}
-                  focusLinkCount={dependencyCount}
                   aiConfigured={aiConfigured}
                   canAsk={Boolean(graph)}
                   onOpenSettings={onOpenSettings}
                   onQuestionChange={onQuestionChange}
                   onAsk={onAsk}
                   onCancel={onCancelAsk}
-                  onAskPreset={onAskPreset}
-                  onRestoreAnswer={onRestoreAnswer}
-                  onClearHistory={onClearHistory}
-                  onOpenCitation={onOpenCitation}
                 />
               ) : null}
               {activeTab === "summary" ? (
@@ -165,6 +154,7 @@ export function InspectorPane({
                   graph={graph}
                   state={summaryState}
                   settings={modelSettings}
+                  modelReadiness={modelReadiness}
                   summaryUnitCount={summaryUnitCount}
                   bulkStatus={bulkSummaryStatus}
                   aiConfigured={aiConfigured}

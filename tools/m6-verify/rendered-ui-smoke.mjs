@@ -85,7 +85,7 @@ async function main() {
     assertEqual(settingsOpen.settingsDialogFocused, "true", "settings dialog receives focus when opened");
     assertEqual(
       settingsOpen.settingsReadinessLabels,
-      "Install / serve|Generation model|Embedding model|Test",
+      "Ollama server|Generation model|Embedding model|Semantic index|Test",
       "settings exposes the local AI readiness steps",
     );
     assertEqual(settingsOpen.settingsUsageLabel, "AI usage and token estimate", "settings keeps AI usage labeled");
@@ -164,7 +164,7 @@ async function main() {
     );
     await clickButtonStartingWith(".summary-action-buttons button", "Ask follow-up");
     await waitFor(() => evaluate("document.querySelector('.inspector-tabs button[aria-selected=\"true\"] span')?.textContent?.trim() === 'Chat'"), "Overview Ask follow-up opens Chat");
-    await waitFor(() => evaluate("document.activeElement?.matches('.chat-composer input')"), "Overview Ask follow-up focuses Chat composer");
+    await waitFor(() => evaluate("document.activeElement?.matches('.chat-composer textarea')"), "Overview Ask follow-up focuses Chat composer");
     const followUp = await pageState();
     assert(!followUp.shellClass.includes("is-ask-focused"), "Ask tab does not add focused styling to the workspace shell");
     assert(followUp.rightPaneClass.includes("is-ask-focused"), "Ask tab styling is scoped to the inspector pane");
@@ -310,36 +310,25 @@ async function main() {
 
     await click('button[aria-label="Focus CUSTOMER, Copybook"]');
     await click('button[aria-label="Chat"]');
-    await fill(".chat-composer input", "What uses CUSTOMER?");
-    await click(".chat-composer button");
-    await waitFor(() => evaluate("Boolean(document.querySelector('.evidence-more-toggle'))"), "compact evidence control");
+    await fill(".chat-composer textarea", "What uses CUSTOMER?");
+    await click(".chat-send-button");
+    await waitFor(() => evaluate("document.querySelector('.chat-answer-bubble')?.innerText.includes('CUSTOMER')"), "plain chat answer");
     const chat = await pageState();
     assertEqual(chat.chatComposerVisible, "true", "Ask composer remains visible after an answer");
-    assertEqual(chat.chatComposerBeforeAnswer, "true", "Ask composer stays before the answer response");
+    assertEqual(chat.chatComposerAfterAnswer, "true", "Ask composer stays at the bottom after the answer");
     assertEqual(chat.chatComposerInputDisabled, "false", "Ask composer input is ready for another question");
-    assert(chat.chatFocusText.includes("CUSTOMER"), "Ask focus strip keeps the current symbol context visible");
-    assertEqual(chat.visibleEvidenceRows, 4, "chat evidence is compact by default");
-    assert(chat.evidenceMoreText.startsWith("Show "), "chat evidence exposes a show-more control");
-    await click(".evidence-more-toggle");
-    await waitFor(() => evaluate("document.querySelectorAll('.evidence-block .citation-list button').length > 4"), "evidence expands");
-    const expandedEvidence = await pageState();
-    assert(expandedEvidence.visibleEvidenceRows > 4, "expanded evidence shows additional cited rows");
-    assertEqual(expandedEvidence.evidenceMoreText, "Show fewer evidence rows", "expanded evidence exposes a collapse control");
-    await click(".evidence-more-toggle");
-    await waitFor(() => evaluate("document.querySelectorAll('.evidence-block .citation-list button').length === 4"), "evidence collapses");
-    const collapsedEvidence = await pageState();
-    assertEqual(collapsedEvidence.visibleEvidenceRows, 4, "collapsed evidence returns to compact rows");
-
-    await click('button[aria-label="Open citation BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3"]');
-    await waitFor(() => evaluate("document.querySelector('.source-focus-note')?.innerText.includes('jcl/DAILYLN.jcl:3')"), "evidence opens focused source");
-    const citedSource = await pageState();
-    assertEqual(citedSource.activeInspectorTab, "Chat", "evidence-to-source keeps Chat visible");
-    assertEqual(citedSource.chatComposerVisible, "true", "evidence-to-source keeps the Ask composer available");
-    assertEqual(citedSource.chatComposerBeforeAnswer, "true", "evidence-to-source keeps Ask composer before the answer");
-    assertEqual(citedSource.activeElementId, "code-panel", "evidence-to-source focuses the source reader");
-    assert(citedSource.answerResponseText.includes("What uses CUSTOMER?"), "evidence-to-source keeps the question visible");
-    assert(citedSource.answerResponseText.includes("BANK.CUSTOMER.MASTER"), "evidence-to-source keeps cited answer context visible");
-    assertEqual(citedSource.focusedCitationMarker, "C", "focused citation line uses a distinct source marker");
+    assert(chat.answerResponseText.includes("What uses CUSTOMER?"), "plain chat keeps the question visible");
+    assert(chat.answerResponseText.includes("CUSTOMER"), "plain chat keeps the answer visible");
+    assertEqual(chat.visibleEvidenceRows, 0, "Chat answer does not render evidence rows");
+    assertEqual(chat.evidenceMoreText, "", "Chat answer does not render evidence controls");
+    await fill(".chat-composer textarea", "What is this copybook?");
+    await click(".chat-send-button");
+    await waitFor(() => evaluate("document.querySelectorAll('.chat-turn').length >= 2"), "second chat turn appears");
+    const secondChat = await pageState();
+    assert(secondChat.answerResponseText.includes("What uses CUSTOMER?"), "second Ask keeps the previous question visible");
+    assert(secondChat.answerResponseText.includes("What is this copybook?"), "second Ask adds the new question");
+    assertEqual(secondChat.chatComposerVisible, "true", "Ask composer remains visible after multiple turns");
+    assertEqual(secondChat.chatComposerAfterAnswer, "true", "Ask composer stays below multiple turns");
 
     await loadAskExpansionSmokeGraph();
     await click(".view-toggle button:nth-child(1)");
@@ -362,9 +351,9 @@ async function main() {
       "synthetic graph expansion reveals additional nodes",
     );
     await click('button[aria-label="Chat"]');
-    await fill(".chat-composer input", "What uses HUB?");
-    await click(".chat-composer button");
-    await waitFor(() => evaluate("document.querySelector('.answer-response')?.innerText.includes('I matched HUB')"), "synthetic graph Ask answer");
+    await fill(".chat-composer textarea", "What uses HUB?");
+    await click(".chat-send-button");
+    await waitFor(() => evaluate("document.querySelector('.chat-answer-bubble')?.innerText.includes('Matched HUB')"), "synthetic graph Ask answer");
     await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.trim() === 'Collapse'"), "graph Ask preserves expanded context");
 
     console.log(JSON.stringify({
@@ -396,9 +385,8 @@ async function main() {
         "relationship endpoint refocuses source target": true,
         "symbol search keyboard flow is honest": true,
         "Ask composer stays available while reading answers": true,
-        "chat evidence expands and collapses": true,
-        "graph question evidence focuses source reader while keeping Chat visible": true,
-        "focused citation marker is visible": true,
+        "Ask preserves previous Q&A turns": true,
+        "Chat stays plain without evidence chrome": true,
         "graph expansion reveals hidden visible-node controls": true,
         "graph toolbar hides Expand when complete": true,
         "graph Ask preserves expanded context": true,
@@ -455,8 +443,8 @@ async function pageState() {
     const centerPanel = document.querySelector('.center-pane');
     const inspectorPanel = document.querySelector('.right-pane');
     const chatComposer = document.querySelector('.chat-composer');
-    const chatComposerInput = document.querySelector('.chat-composer input');
-    const answerResponse = document.querySelector('.answer-response');
+    const chatComposerInput = document.querySelector('.chat-composer textarea');
+    const answerResponse = document.querySelector('.chat-answer-bubble');
     const navigatorToggle = document.querySelector('.brand .rail-toggle');
     const inspectorToggle = document.querySelector('.topbar-actions .rail-toggle');
     return {
@@ -529,11 +517,11 @@ async function pageState() {
       activeInspectorTab: document.querySelector('.inspector-tabs button[aria-selected="true"] span')?.textContent?.trim() ?? '',
       chatComposerVisible: String(Boolean(chatComposer && getComputedStyle(chatComposer).display !== 'none' && chatComposer.getBoundingClientRect().height > 0)),
       chatComposerBeforeAnswer: String(Boolean(chatComposer && answerResponse && chatComposer.getBoundingClientRect().top < answerResponse.getBoundingClientRect().top)),
+      chatComposerAfterAnswer: String(Boolean(chatComposer && answerResponse && chatComposer.getBoundingClientRect().top > answerResponse.getBoundingClientRect().top)),
       chatComposerInputDisabled: String(chatComposerInput?.disabled ?? false),
-      chatFocusText: document.querySelector('.ask-focus-strip')?.innerText ?? '',
-      chatQuestionValue: document.querySelector('.chat-composer input')?.value ?? '',
-      chatComposerFocused: String(document.activeElement?.matches('.chat-composer input') ?? false),
-      answerResponseText: document.querySelector('.answer-response')?.innerText ?? '',
+      chatQuestionValue: document.querySelector('.chat-composer textarea')?.value ?? '',
+      chatComposerFocused: String(document.activeElement?.matches('.chat-composer textarea') ?? false),
+      answerResponseText: Array.from(document.querySelectorAll('.chat-turn')).map((turn) => turn.innerText ?? '').join('\\n'),
       hasOverlay: document.body.innerText.includes('Internal server error') || document.body.innerText.includes('plugin:vite')
     };
   })()`);
@@ -606,7 +594,8 @@ async function fill(selector, value) {
     const element = document.querySelector(${JSON.stringify(selector)});
     if (!element) throw new Error('Missing input: ${selector}');
     element.focus();
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
     setter?.call(element, ${JSON.stringify(value)});
     element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${JSON.stringify(value)} }));
     element.dispatchEvent(new Event('change', { bubbles: true }));

@@ -42,10 +42,8 @@ export function useWorkspaceNavigation({
     setSelectedEdge(null);
     setSourceFocus(null);
     if (!options.preserveExpansion) clearGraphExpansion();
-    // The conversation persists across selections (the chat log and answers stay
-    // put, and the inspector tab is left where the user had it). Standard focus
-    // resets graph expansion; Ask-driven sync preserves it so answers do not
-    // discard context the user explicitly opened.
+    // Standard focus changes should make Chat feel fresh for the new selection.
+    // Ask-driven sync preserves the just-created answer and graph context.
     if (!options.preserveChat) onStandardFocusReset();
   }
 

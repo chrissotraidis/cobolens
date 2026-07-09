@@ -67,7 +67,7 @@ const checks = {
   ]),
   "Ask and citation controls remain named": includesAll(uiSource, [
     'aria-label="Ask about the codebase"',
-    'aria-label="Suggested questions"',
+    'aria-label="Answer route"',
     "aria-label={`Open citation ${citation.label} at ${citationSite(citation)}`}",
     'aria-live="polite"',
   ]),

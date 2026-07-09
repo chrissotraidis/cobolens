@@ -28,12 +28,14 @@ export async function retrieveQuestionContext({
   preferredNode,
   readExcerpt,
   semanticSearch,
+  includeSourceExcerpts = true,
 }: {
   graph: GraphDocument;
   question: string;
   preferredNode?: GraphNode | null;
   readExcerpt: (node: GraphNode) => Promise<SourceExcerpt>;
   semanticSearch?: (question: string) => Promise<SemanticMatch[]>;
+  includeSourceExcerpts?: boolean;
 }): Promise<RetrievedContext> {
   const rankedNodes = rankNodes(graph, question);
   let semanticError = "";
@@ -61,7 +63,9 @@ export async function retrieveQuestionContext({
     .filter((node) => node.file && !node.external)
     .slice(0, 8);
 
-  const excerpts = await Promise.allSettled(contextNodes.map((node) => readExcerpt(node)));
+  const excerpts = includeSourceExcerpts
+    ? await Promise.allSettled(contextNodes.map((node) => readExcerpt(node)))
+    : [];
   const sourceExcerpts = excerpts
     .map((result, index) =>
       result.status === "fulfilled" ? formatSourceExcerpt(contextNodes[index], result.value) : "",

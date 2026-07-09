@@ -6,6 +6,7 @@ import type { Citation } from "../retrieval/context";
 import { aiProgressDetail, useElapsedSeconds } from "./aiProgress";
 import { EvidenceList, MessageText, ProgressNote } from "./MessageParts";
 import { nodeGraphOverview, summaryEvidenceCitations } from "./summaryGraph";
+import type { ModelReadiness } from "../settings/SettingsDialog";
 
 export type SummaryStatus = "idle" | "running" | "ready" | "error";
 export type SummaryState = {
@@ -20,6 +21,7 @@ export function SummaryDock({
   graph,
   state,
   settings,
+  modelReadiness,
   summaryUnitCount,
   bulkStatus,
   aiConfigured,
@@ -36,6 +38,7 @@ export function SummaryDock({
   graph: GraphDocument | null;
   state?: SummaryState;
   settings: ModelSettings;
+  modelReadiness: ModelReadiness;
   summaryUnitCount: number;
   bulkStatus: string;
   aiConfigured: boolean;
@@ -52,28 +55,39 @@ export function SummaryDock({
   const evidence = useMemo(() => (node && graph ? summaryEvidenceCitations(node, graph) : []), [graph, node]);
   const generating = state?.status === "running";
   const hasStoredSummary = state?.status === "ready" && Boolean(state.summary);
-  const aiSummaryLabel = generating ? "Stop" : state?.summary ? "Refresh AI summary" : "Generate AI summary";
+  const providerLabel = PROVIDER_LABELS[settings.provider];
+  const aiCanRun = aiConfigured;
+  const aiReady = aiConfigured && modelReadiness.status === "ready";
+  const aiChecking = modelReadiness.status === "checking";
+  const aiSummaryLabel = generating ? `Stop ${providerLabel}` : state?.summary ? `Regenerate with ${providerLabel}` : `Generate with ${providerLabel}`;
+  const aiStatusText = aiReady
+    ? `${providerLabel} ready`
+    : aiChecking
+      ? `Checking ${providerLabel}`
+      : modelReadiness.status === "error"
+        ? `${providerLabel} offline`
+        : aiConfigured
+          ? `${providerLabel} will check on run`
+          : `${providerLabel} not set up`;
+  const showFallbackNotice = state?.status === "ready" && state.summary?.guarded && state.summary.provider !== "graph";
 
   return (
     <section className="summary-card">
       <div className="summary-actions">
-        <div>
+        <div className="summary-action-header">
           <strong>Overview</strong>
-          <span>
-            {node ? `${node.name} - graph facts, source evidence, and optional AI` : "No codebase item selected"}
-          </span>
+          <span>{node ? "Graph facts first. Use Chat for follow-up questions." : "Select a codebase item to inspect it."}</span>
         </div>
         <div className="summary-action-buttons">
-          {hasStoredSummary ? (
-            <button
-              type="button"
-              onClick={onExplainNode}
-              disabled={!node}
-              title={node ? "Return Summary to the cited graph overview" : "Select a symbol to summarize it"}
-            >
-              Use graph overview
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className={hasStoredSummary ? "" : "summary-primary-action"}
+            onClick={onExplainNode}
+            disabled={!node}
+            title={node ? "Show the deterministic graph overview" : "Select a symbol to summarize it"}
+          >
+            Graph overview
+          </button>
           <button
             type="button"
             onClick={onViewSource}
@@ -90,40 +104,38 @@ export function SummaryDock({
           >
             Ask follow-up
           </button>
-          {aiConfigured || generating ? (
-            <button
-              className="summary-wide-action"
-              type="button"
-              onClick={generating ? onCancelSummary : onGenerateSelected}
-              disabled={!generating && !node?.file}
-              title={
-                generating
-                  ? "Stop the running summary request"
-                  : !node?.file
-                    ? "Select a symbol with source to summarize"
-                    : "Generate an AI summary for this item"
-              }
-            >
-              {aiSummaryLabel}
-            </button>
-          ) : null}
         </div>
-      </div>
-      {!aiConfigured && !generating ? (
-        <button type="button" className="link-action" onClick={onOpenSettings}>
-          Optional: set up local Ollama or a cloud key for AI summaries
-        </button>
-      ) : null}
-      <div className="summary-guard-note" role="status">
-        Graph answers work without AI. AI runs only when you choose an AI action.
+        <div className="summary-ai-row">
+          <button
+            className="summary-ai-action"
+            type="button"
+            onClick={generating ? onCancelSummary : aiCanRun ? onGenerateSelected : onOpenSettings}
+            disabled={aiChecking || (!generating && aiCanRun && !node?.file)}
+            title={
+              generating
+                ? "Stop the running local AI request"
+                : !aiCanRun
+                  ? "Open Settings to configure AI"
+                : !node?.file
+                  ? "Select a symbol with source to summarize"
+                  : modelReadiness.status === "ready"
+                    ? `Generate a ${providerLabel} summary for this item`
+                    : `Check ${providerLabel}, then generate a summary for this item`
+            }
+          >
+            {aiCanRun || generating ? aiSummaryLabel : `Set up ${providerLabel}`}
+          </button>
+          <span className={`summary-ai-status ${modelReadiness.status}`} title={modelReadiness.message || aiStatusText}>
+            {aiStatusText}
+          </span>
+        </div>
       </div>
       <div className="summary-output">
         {state?.status === "ready" && state.summary ? (
           <>
-            {state.summary.guarded ? (
+            {showFallbackNotice ? (
               <div className="summary-guard-note" role="status">
-                Showing a cited graph overview:{" "}
-                {state.summary.guardReason ?? `${PROVIDER_LABELS[settings.provider]} missed citation rules`}.
+                Local AI fallback: {state.summary.guardReason ?? `${providerLabel} missed citation rules`}.
               </div>
             ) : null}
             <MessageText text={state.summary.text} />
@@ -155,12 +167,15 @@ export function SummaryDock({
         )}
       </div>
       <div className="summary-meta">
-        {aiConfigured ? (
-          <button type="button" onClick={onGenerateAll} disabled={!summaryUnitCount || generating}>
-            Summarize all with AI
-          </button>
-        ) : null}
-        <span>{bulkStatus || `${summaryUnitCount} source units`}</span>
+        <button
+          type="button"
+          onClick={aiCanRun ? onGenerateAll : onOpenSettings}
+          disabled={!summaryUnitCount || generating || aiChecking}
+          title={aiCanRun ? `Check ${providerLabel}, then summarize all source units` : `Set up ${providerLabel} before summarizing all`}
+        >
+          {aiCanRun ? `Summarize all with ${providerLabel}` : `Set up ${providerLabel} for all summaries`}
+        </button>
+        <span>{bulkStatus || `${summaryUnitCount} source unit${summaryUnitCount === 1 ? "" : "s"}`}</span>
       </div>
     </section>
   );

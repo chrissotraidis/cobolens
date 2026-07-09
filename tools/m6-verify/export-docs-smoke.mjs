@@ -64,7 +64,7 @@ try {
           nodeId: "prog:LINEAGE",
           provider: "ollama",
           model: "llama3.2:1b",
-          text: "LINEAGE is a graph-backed fallback summary.\n\nModel note: model summary had no exact source citations",
+          text: "LINEAGE is a graph-backed fallback summary.",
           guarded: true,
           guardReason: "model summary had no exact source citations",
         },

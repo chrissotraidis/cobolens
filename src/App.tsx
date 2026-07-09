@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { AppShell } from "./AppShell";
 import { useDocumentationExport } from "./export/useDocumentationExport";
 import { canUseTauri } from "./lib/tauri";
@@ -10,12 +11,14 @@ import { useSymbolSearch } from "./navigator/useSymbolSearch";
 import { useAskGeneration } from "./inspector/useAskGeneration";
 import { useChatState } from "./inspector/useChatState";
 import { useInspectorRouting, useInspectorTabState } from "./inspector/useInspectorRouting";
+import type { InspectorTab } from "./inspector/InspectorTabs";
 import { useSummaryGeneration } from "./inspector/useSummaryGeneration";
 import { useAppSettingsState } from "./settings/useAppSettingsState";
 import { useWorkspaceLayout } from "./workspace/useWorkspaceLayout";
 import { useWorkspaceNavigation } from "./workspace/useWorkspaceNavigation";
 import { useSourceExcerptReader } from "./source/useSourceExcerptReader";
 import { useSourceSnippet } from "./source/useSourceSnippet";
+import { useSemanticIndex } from "./retrieval/useSemanticIndex";
 import "./App.css";
 
 function App() {
@@ -33,8 +36,6 @@ function App() {
     chatError,
     setChatError,
     rememberChatAnswer,
-    restoreChatAnswer,
-    clearChatHistory,
     resetChatDraftForNavigation,
     resetChatForHome,
     resetChatForProjectLoad,
@@ -86,6 +87,10 @@ function App() {
     resetNodeTypeFilters,
     toggleGraphNodeList,
   } = useGraphViewState({ graph: project.graph, focusNodeId: project.focusNodeId });
+  const semanticIndex = useSemanticIndex({
+    graph: project.graph,
+    modelSettings,
+  });
   const {
     inspectorBodyRef,
     preserveInspectorTabForNextEdge,
@@ -101,7 +106,6 @@ function App() {
   const {
     nodeById,
     focusedNode,
-    focusedNodeTypeLabel,
     selectedNode,
     counts,
     codebaseGroups,
@@ -124,7 +128,6 @@ function App() {
     showSourcePanel,
     openRelationshipEdge,
     jumpToCitation,
-    openAskCitation,
   } = useWorkspaceNavigation({
     graph: project.graph,
     nodeById,
@@ -176,7 +179,6 @@ function App() {
   const {
     askCurrentQuestion,
     askAboutSelectedNode,
-    askPresetQuestion,
     cancelAsk,
   } = useAskGeneration({
     graph: project.graph,
@@ -192,13 +194,21 @@ function App() {
     prepareModelCall,
     onModelCallComplete: noteModelCallComplete,
     onSyncFocusNode: syncAskFocusNode,
-    onExplainSelectedNode: explainSelectedNode,
     onTabChange: setInspectorTab,
+    semanticIndex: semanticIndex.state,
+    searchSemanticIndex: semanticIndex.searchSemanticIndex,
   });
   const {
     exportStatus,
+    exportDialogOpen,
+    exportOptions,
+    exportPackageName,
+    exportDocsRunning,
     showExportStatus,
     clearExportStatus,
+    setExportOptions,
+    openExportDialog,
+    closeExportDialog,
     exportDocs,
   } = useDocumentationExport({
     graph: project.graph,
@@ -235,6 +245,18 @@ function App() {
     graph: project.graph,
     onOpenSource: readNodeSource,
   });
+
+  const handleInspectorTabChange = useCallback(
+    (tab: InspectorTab) => {
+      setInspectorTab(tab);
+    },
+    [setInspectorTab],
+  );
+  const handleCheckAi = useCallback(async () => {
+    await checkModelReadiness();
+    await semanticIndex.warmSemanticIndex();
+  }, [checkModelReadiness, semanticIndex]);
+
   return (
     <AppShell
       topBar={{
@@ -243,8 +265,6 @@ function App() {
         status: project.status,
         desktopAvailable,
         graphLoaded: Boolean(project.graph),
-        focusedNode,
-        focusedNodeTypeLabel,
         modelSettings,
         query,
         scanSettings,
@@ -257,8 +277,18 @@ function App() {
         onBrowserImport: importBrowserProject,
         onOpenSample: openSample,
         onToggleInspector: toggleInspectorCollapsed,
-        onExport: exportDocs,
+        onExport: openExportDialog,
         onOpenSettings: openSettings,
+      }}
+      exportDialog={{
+        open: exportDialogOpen,
+        packageName: exportPackageName,
+        options: exportOptions,
+        desktopAvailable,
+        exporting: exportDocsRunning,
+        onOptionsChange: setExportOptions,
+        onCancel: closeExportDialog,
+        onConfirm: exportDocs,
       }}
       exportToast={exportStatus ? { status: exportStatus, onDismiss: clearExportStatus } : null}
       settings={{
@@ -276,9 +306,11 @@ function App() {
         onKeyDraftChange: setKeyDraft,
         onSaveKey: saveKey,
         onClearKey: clearKey,
-        onCheckModel: checkModelReadiness,
+        onCheckModel: handleCheckAi,
+        onWarmSemanticIndex: semanticIndex.warmSemanticIndex,
         onRefreshModels: refreshInstalledModels,
         modelReadiness,
+        semanticIndex: semanticIndex.state,
         modelCallCount,
         bulkTokenEstimate,
         onClose: closeSettings,
@@ -348,21 +380,18 @@ function App() {
           chatError,
           modelSettings,
           modelReadiness,
+          semanticIndex: semanticIndex.state,
           chatQuestion,
           summaryUnitCount: summaryNodes.length,
           bulkSummaryStatus,
           aiConfigured,
           onStartResize: startInspectorResize,
           onResetWidth: resetInspectorWidth,
-          onTabChange: setInspectorTab,
+          onTabChange: handleInspectorTabChange,
           onOpenSettings: openSettings,
           onQuestionChange: setChatQuestion,
           onAsk: askCurrentQuestion,
           onCancelAsk: cancelAsk,
-          onAskPreset: askPresetQuestion,
-          onRestoreAnswer: restoreChatAnswer,
-          onClearHistory: clearChatHistory,
-          onOpenCitation: openAskCitation,
           onGenerateSelected: generateSelectedSummary,
           onGenerateAll: generateAllSummaries,
           onCancelSummary: cancelSummary,

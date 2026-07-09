@@ -1,5 +1,4 @@
 import type { ChangeEvent, KeyboardEvent, RefObject } from "react";
-import type { GraphNode } from "../lib/graph";
 import type { ScanSettings } from "../lib/appSettings";
 import { type ModelSettings, PROVIDER_LABELS } from "../model/config";
 
@@ -16,8 +15,6 @@ export function TopBar({
   status,
   desktopAvailable,
   graphLoaded,
-  focusedNode,
-  focusedNodeTypeLabel,
   modelSettings,
   query,
   scanSettings,
@@ -38,8 +35,6 @@ export function TopBar({
   status: TopBarStatus;
   desktopAvailable: boolean;
   graphLoaded: boolean;
-  focusedNode: GraphNode | null;
-  focusedNodeTypeLabel: string;
   modelSettings: ModelSettings;
   query: string;
   scanSettings: ScanSettings;
@@ -106,11 +101,6 @@ export function TopBar({
             />
           </svg>
         </button>
-        {focusedNode ? (
-          <span className="current-crumb" aria-current="page" title={`${focusedNode.name} - ${focusedNodeTypeLabel}`}>
-            {focusedNode.name}
-          </span>
-        ) : null}
       </nav>
 
       <div className="topbar-actions" aria-label="Workspace actions">
@@ -150,7 +140,7 @@ export function TopBar({
             <rect x="11.3" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
           </svg>
         </button>
-        <button type="button" onClick={onExport} disabled={!graphLoaded} title="Export Markdown, Mermaid, and PNG docs">
+        <button type="button" onClick={onExport} disabled={!graphLoaded} title="Choose export package options">
           Export
         </button>
         <button type="button" onClick={onOpenSettings} aria-label="Open settings">

@@ -116,7 +116,7 @@ try {
     ],
     [
       "selected graph answer includes orientation, compact related nodes, and evidence highlights",
-      selectedAnswer.text.includes("I answered from the graph") &&
+      selectedAnswer.text.includes("LINEAGE at a glance:") &&
         selectedAnswer.text.includes("Used by or reached from: STEP010") &&
         selectedAnswer.text.includes("CUSTOMER_TABLE +2 more") &&
         selectedAnswer.text.includes("Evidence highlights:") &&
@@ -134,7 +134,7 @@ try {
         fallback.model === "llama3.2" &&
         fallback.guarded === true &&
         fallback.guardReason === "missing citations" &&
-        fallback.text.includes("Model note: missing citations") &&
+        !fallback.text.includes("Model note:") &&
         !fallback.text.includes("stale uncited model text"),
     ],
   ];

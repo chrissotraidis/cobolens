@@ -87,8 +87,6 @@ export function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): 
 
   return {
     text: [
-      `I answered from the graph: I matched the selected ${node.name} at ${location}.`,
-      "",
       `${node.name} at a glance:`,
       ...brief.map((line) => `- ${line}`),
       ...(relationshipLines.length ? ["", "Evidence highlights:", ...relationshipLines.slice(0, 4)] : []),
@@ -116,7 +114,7 @@ export function graphBackedSummaryFallback(
 ): UnitSummary {
   return {
     ...summary,
-    text: [nodeGraphOverview(node, graph), "", `Model note: ${reason}`].join("\n"),
+    text: nodeGraphOverview(node, graph),
     guarded: true,
     guardReason: reason,
   };

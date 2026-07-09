@@ -9,7 +9,13 @@ const graphSelectorsSource = await readFile(resolve(repoRoot, "src", "lib", "gra
 const graphDerivedDataSource = await readFile(resolve(repoRoot, "src", "graph", "useGraphDerivedData.ts"), "utf8");
 const graphViewStateSource = await readFile(resolve(repoRoot, "src", "graph", "useGraphViewState.ts"), "utf8");
 const topBarSource = await readFile(resolve(repoRoot, "src", "topbar", "TopBar.tsx"), "utf8");
+const appShellSource = await readFile(resolve(repoRoot, "src", "AppShell.tsx"), "utf8");
+const exportDialogSource = await readFile(resolve(repoRoot, "src", "export", "ExportDialog.tsx"), "utf8");
+const exportHookSource = await readFile(resolve(repoRoot, "src", "export", "useDocumentationExport.ts"), "utf8");
+const exportRunnerSource = await readFile(resolve(repoRoot, "src", "export", "runDocumentationExport.ts"), "utf8");
+const exportDocsSource = await readFile(resolve(repoRoot, "src", "export", "docs.ts"), "utf8");
 const settingsSource = await readFile(resolve(repoRoot, "src", "settings", "SettingsDialog.tsx"), "utf8");
+const appSettingsStateSource = await readFile(resolve(repoRoot, "src", "settings", "useAppSettingsState.ts"), "utf8");
 const modelReadinessSource = await readFile(resolve(repoRoot, "src", "settings", "useModelReadiness.ts"), "utf8");
 const navigatorRailSource = await readFile(resolve(repoRoot, "src", "navigator", "NavigatorRail.tsx"), "utf8");
 const navigatorSource = await readFile(resolve(repoRoot, "src", "navigator", "NavigatorPanels.tsx"), "utf8");
@@ -38,64 +44,118 @@ const summaryGraphSource = await readFile(resolve(repoRoot, "src", "inspector", 
 const aiProgressSource = await readFile(resolve(repoRoot, "src", "inspector", "aiProgress.ts"), "utf8");
 const messagePartsSource = await readFile(resolve(repoRoot, "src", "inspector", "MessageParts.tsx"), "utf8");
 const askFocusSource = await readFile(resolve(repoRoot, "src", "retrieval", "askFocus.ts"), "utf8");
+const graphAnswerSource = await readFile(resolve(repoRoot, "src", "retrieval", "graphAnswer.ts"), "utf8");
+const semanticIndexSource = await readFile(resolve(repoRoot, "src", "retrieval", "useSemanticIndex.ts"), "utf8");
 const appCss = await readFile(resolve(repoRoot, "src", "App.css"), "utf8");
 const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphView.tsx"), "utf8");
 
 const checks = [
   [
-    "Ask composer appears before response and suggestions",
+    "Ask thread owns the answer space and the composer stays at the bottom",
     appearsInOrder(chatAnswerPanelSource, [
-      'className="answer-header"',
+      'className="chat-thread"',
       'className="chat-composer"',
-      'className="answer-response"',
-      'className="question-chips"',
     ]),
   ],
   [
-    "Chat response contains progress, error, answer, and empty states",
+    "Chat thread contains progress, error, answer, and compact empty states",
     includesAll(chatAnswerPanelSource, [
-      'className="answer-response"',
+      'className="chat-thread"',
       'status === "running"',
       'status === "error"',
-      "answer ?",
-      "Grounded, cited answers about your codebase",
+      "<ChatTurn",
+      'className="chat-empty-state"',
+      "Type a question below when you want to inspect this selection.",
     ]),
   ],
   [
-    "Chat answer subtitle follows the displayed answer, not stale draft text",
+    "Chat answers render as plain messages instead of graph report panels",
     includesAll(chatAnswerPanelSource, [
-      "const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question))",
-      "answer?.fallbackReason",
-      "Answered from the dependency graph",
-      "grounded in your code",
-    ]) && !chatAnswerPanelSource.includes("Graph-grounded fallback; model answer unavailable"),
+      'className="chat-user-message"',
+      'className="chat-answer-bubble"',
+      'className="chat-answer-text"',
+      "MessageText text={answer.text}",
+    ]) &&
+      !chatAnswerPanelSource.includes('<details className="chat-answer-summary"') &&
+      !chatAnswerPanelSource.includes("<GroupedEvidence") &&
+      !chatAnswerPanelSource.includes("Copy with citations"),
   ],
   [
-    "Program Ask suggestions include concrete read/write graph questions",
-    includesAll(chatAnswerPanelSource, [
-      '"Give me a codebase overview."',
-      "selectedNodeOverviewQuestion(node)",
-      "`What files does ${name} read?`",
-      "`What does ${name} write?`",
-    ]),
+    "Chat empty state does not preload suggested graph answers",
+    !chatAnswerPanelSource.includes("QuestionStarterGroups") &&
+      !chatAnswerPanelSource.includes("Best next questions") &&
+      !chatAnswerPanelSource.includes("suggestedQuestionGroups") &&
+      !chatAnswerPanelSource.includes("Trace what ${name} reads and writes.") &&
+      !chatAnswerPanelSource.includes("onAskPreset"),
   ],
   [
-    "Ask suggestions expose a graph-only codebase overview first",
+    "Ask route controls expose graph and Local AI modes clearly",
     includesAll(chatAnswerPanelSource, [
-      'const overviewQuestion = "Give me a codebase overview."',
-      "return [overviewQuestion, selectedOverview, `What depends on ${name}?`",
-      "return [overviewQuestion, selectedOverview, `Where does ${name} flow?`",
-      "`Explain ${node.name} in plain English.`",
-      "{visibleStarterQuestions.map((question) => {",
-      "PROVIDER_LABELS[settings.provider]",
+      '(["auto", "graph", "ai"] as ChatMode[])',
+      'const isLocalAiRoute = route === "ai"',
+      '{isRoutedToLocalAi ? <i className="chat-mode-status-dot" aria-hidden="true" /> : null}',
+      '{isLocalAiRoute ? "Local AI" : route[0].toUpperCase() + route.slice(1)}',
+      "routeNeedsModel(questionText, mode)",
+      "isRoutedToLocalAi",
+      "chat-mode-status-dot",
     ]) &&
       includesAll(askGenerationSource, [
       "shouldSyncAskFocus(question)",
-      "if (!isGraphQuestion(question))",
+      'mode: ChatMode = "auto"',
+      'const useGraphRoute = mode === "graph" || (mode === "auto" && isGraphQuestion(question))',
     ]) &&
       includesAll(askFocusSource, ["function shouldSyncAskFocus", "codebase\\s+overview"]) &&
-      !chatAnswerPanelSource.includes("const explainQuestion =") &&
-      includesAll(appCss, [".question-chips button small", "text-transform: uppercase"]),
+      includesAll(appCss, [".chat-mode-control", ".chat-mode-status-dot"]),
+  ],
+  [
+    "Chat and Settings explain how graph, Local AI, and semantic answers work",
+    includesAll(chatAnswerPanelSource, [
+      "function AnswerModeDisclosure",
+      "How answers work",
+      "Graph uses the parsed dependency graph and source lines. No AI.",
+      "Semantic retrieval uses local embeddings when the index is ready.",
+    ]) &&
+      includesAll(settingsSource, [
+        "settings-answer-mode",
+        "How answers work",
+        "Graph uses the parsed dependency graph and source lines. No AI.",
+        "Semantic retrieval uses local embeddings when the index is ready.",
+      ]) &&
+      includesAll(appCss, [".answer-mode-help", ".settings-answer-mode"]),
+  ],
+  [
+    "Ask blocks vague prompts before model calls",
+    includesAll(askGenerationSource, [
+      "const COMPLETE_QUESTION_MESSAGE",
+      "function inputQualityMessage",
+      "const qualityMessage = inputQualityMessage(question)",
+      "setChatStatus(\"error\")",
+      "Ask a complete question",
+    ]) &&
+      includesAll(chatAnswerPanelSource, [
+        "const errorLabel = isStoppedError(error) ? \"Stopped\" : \"Check question\"",
+        "{errorLabel}",
+      ]),
+  ],
+  [
+    "Semantic retrieval warms a local chunk index before Ask uses it",
+    includesAll(semanticIndexSource, [
+      "const SEMANTIC_INDEX_TIMEOUT_MS = 30_000",
+      "const SEMANTIC_QUERY_TIMEOUT_MS = 8_000",
+      "buildSemanticChunkVectorIndex",
+      "warmSemanticIndex",
+      "state.status !== \"ready\"",
+      "requireCachedIndex: true",
+    ]) &&
+      includesAll(askGenerationSource, [
+        "semanticIndex.status !== \"ready\" ? undefined : searchSemanticIndex",
+        "Semantic retrieval is warming; this answer used graph and keyword retrieval.",
+      ]) &&
+      includesAll(appSource, [
+        "useSemanticIndex({",
+        "searchSemanticIndex: semanticIndex.searchSemanticIndex",
+        "onWarmSemanticIndex: semanticIndex.warmSemanticIndex",
+      ]),
   ],
   [
     "Guarded Ask answers use the richer graph fallback",
@@ -106,44 +166,83 @@ const checks = [
       "question,",
       "answerContext,",
       "model answer had ${answer.guardReason ?? \"citation issues\"}",
+      '"citation"',
       "text: displayedAnswer.text",
       "citations: displayedAnswer.citations",
       'source: answer.guarded ? "graph" : "model"',
+      "fallbackReason: answer.guarded ? `Citation guard:",
+    ]) &&
+      includesAll(graphAnswerSource, [
+        "Local AI draft failed citation checks, so Cobolens used the graph answer.",
+        "function localAiFallbackIntro",
+      ]) &&
+      includesAll(chatAnswerPanelSource, [
+        'className="answer-details"',
+        "<summary>Details</summary>",
     ]),
   ],
   [
-    "Ask response has a visible framed style",
-    includesAll(appCss, [".answer-response", "min-height: 84px", "background: rgba(17, 21, 26, 0.68)"]),
+    "Ask response has a visible chat-message style without evidence chrome",
+    includesAll(appCss, [
+      ".chat-user-message",
+      ".chat-answer-bubble",
+      "background: rgba(17, 21, 26, 0.72)",
+    ]) &&
+      !appCss.includes(".chat-answer-summary") &&
+      !appCss.includes("Show evidence") &&
+      !appCss.includes(".chat-evidence-groups"),
   ],
   [
     "Ask and summary messages render structured text blocks",
-    includesAll(messagePartsSource, ["function MessageText", "function textBlocks", 'block.type === "list"']) &&
-      includesAll(appCss, [".message-text", ".message-text ul"]),
+    includesAll(messagePartsSource, [
+      "function MessageText",
+      "function textBlocks",
+      'block.type === "list"',
+      "function InlineMessageText",
+      "function inlineSegments",
+      'segment.type === "strong"',
+      'segment.type === "em"',
+      'segment.type === "code"',
+      "function cleanInlineText",
+    ]) &&
+      includesAll(appCss, [".message-text", ".message-text ul", ".message-text strong", ".message-text em", ".message-text code"]),
   ],
   [
-    "Ask keeps a bounded recent-answer trail with citations",
+    "Ask keeps bounded history visible as a normal chat thread",
     includesAll(chatStateSource, [
       "const [chatHistory, setChatHistory] = useState<ChatAnswer[]>([])",
       "function rememberChatAnswer(answer: ChatAnswer)",
       "rememberRecentChatAnswer(current, answer)",
-      "function restoreChatAnswer(answer: ChatAnswer)",
+      "chatHistory,",
+      "setChatAnswer(null)",
     ]) &&
       includesAll(chatHistorySource, ["CHAT_HISTORY_LIMIT = 6", "function rememberRecentChatAnswer"]) &&
+      includesAll(inspectorPaneSource, ["chatHistory: ChatAnswer[]", "history={chatHistory}"]) &&
       includesAll(chatAnswerPanelSource, [
-      "fallbackReason?: string",
-      'aria-label="Recent Ask answers"',
-      "<summary>",
-      "item.citations.length",
-    ]) && includesAll(appCss, [".answer-history", ".answer-history summary", ".answer-history-list button"]),
+        "history: ChatAnswer[]",
+        "const visibleAnswers",
+        "sameChatAnswer",
+        "visibleAnswers.map",
+        "thread.scrollTop = thread.scrollHeight",
+      ]) &&
+      includesAll(appSource, [
+        "handleInspectorTabChange",
+        "chatHistory,",
+        "onTabChange: handleInspectorTabChange",
+      ]) &&
+      !appSource.includes('if (tab === "ask") clearVisibleChat();') &&
+      !chatAnswerPanelSource.includes("answer-history-actions") &&
+      !appCss.includes(".answer-history-actions") &&
+      !chatAnswerPanelSource.includes("chat-focus-divider"),
   ],
   [
-    "Ask answers read as a labeled question and answer exchange",
+    "Ask answers read as a simple question and answer exchange",
     includesAll(chatAnswerPanelSource, [
-      'className="answer-turn"',
-      "<span>Question</span>",
-      "<span>Answer</span>",
+      'className="chat-user-message"',
+      'className="chat-answer-text"',
+      'className="chat-answer-bubble"',
       "MessageText text={answer.text}",
-    ]) && includesAll(appCss, [".answer-turn", ".answer-turn > span", ".answer-turn > strong"]),
+    ]) && includesAll(appCss, [".chat-user-message", ".chat-answer-bubble"]),
   ],
   [
     "Overview can show a cited graph explanation for the selected node",
@@ -163,24 +262,27 @@ const checks = [
     ]) &&
       includesAll(summaryGraphSource, [
       "function selectedNodeGraphAnswer",
-      "I matched the selected",
+      "${node.name} at a glance:",
     ]) &&
       includesAll(summaryDockSource, [
-      "Return Summary to the cited graph overview",
-      "Use graph overview",
+      "Show the deterministic graph overview",
+      "Graph overview",
       "Ask follow-up",
+      "modelReadiness.status",
+      "Set up ${providerLabel}",
+      "Summarize all with ${providerLabel}",
       "plain-English follow-up for this symbol",
     ]) &&
       includesAll(appSource, [
       "onExplainNode: explainSelectedNode",
       "onAskFollowUp: askAboutSelectedNode",
-    ]) && includesAll(appCss, [".summary-action-buttons", "grid-template-columns: repeat(2, minmax(0, 1fr))", ".summary-wide-action"]),
+    ]) && includesAll(appCss, [".summary-action-buttons", ".summary-ai-row", ".summary-ai-status", ".summary-primary-action"]),
   ],
   [
     "Guarded AI summaries are clearly labeled as graph fallbacks",
     includesAll(summaryDockSource, [
-      "state.summary.guarded",
-      "Showing a cited graph overview:",
+      "showFallbackNotice",
+      "Local AI fallback:",
       'className="summary-guard-note"',
       'role="status"',
     ]) &&
@@ -188,9 +290,7 @@ const checks = [
       "graphBackedSummaryFallback",
       "model summary had ${summary.guardReason ?? \"citation issues\"}",
     ]) &&
-      includesAll(summaryGraphSource, [
-      "Model note: ${reason}",
-    ]) && includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.08)"]),
+      includesAll(appCss, [".summary-guard-note", "rgba(229, 199, 95, 0.06)"]),
   ],
   [
     "AI summaries stream as guarded drafts before storing final text",
@@ -230,31 +330,31 @@ const checks = [
       ]),
   ],
   [
-    "Chat clearly distinguishes graph shortcuts from AI-backed questions",
+    "Chat clearly distinguishes graph mode from Local AI questions",
     includesAll(chatAnswerPanelSource, [
-      "const activeRouteLabel = workingWithModel",
-      "AI mode",
-      "Graph mode",
+      "export type ChatMode",
+      "const [mode, setMode] = useState<ChatMode>(\"auto\")",
+      "routeNeedsModel(questionText, mode)",
+      "const autoIdle",
       "Instant, cited answer from the dependency graph — no AI needed.",
       "on only the retrieved, cited code slice.",
-      'className={`chat-mode-chip ${workingWithModel ? "model" : "graph"}`}',
-      'className={`ai-status ${modelReadiness.status}`}',
-      "aria-label={aiStatusTooltip}",
-      "Press Send",
-      "Press Send for an instant, cited answer from the dependency graph.",
-      "Ask anything about this codebase",
-      "const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question)",
-      'const starterQuestionsLabel = answer ? "Ask another question" : "Try asking"',
-      "{visibleStarterQuestions.map((question) => {",
-      "const graphQuestion = isGraphQuestion(question)",
-      "Answer instantly from the graph",
-      "Draft ${PROVIDER_LABELS[settings.provider]} question",
-      "aria-label={`${chipAction}: ${question}`}",
-      'className="answer-turn is-streaming"',
-      "Draft answer",
-      "EvidenceList citations={answer.citations}",
-      'aria-label="Current chat focus"',
-      "focusLinkCount",
+      "Cobolens will check it when you send.",
+      "localAiRouteTitle",
+      "isRoutedToLocalAi",
+      "chat-mode-status-dot",
+      'isRoutedToLocalAi ? `is-routed ai-${modelReadiness.status}` : ""',
+      "answerRouteLabel",
+      "answerRouteClass",
+      "Graph answer",
+      'className="chat-mode-control"',
+      "<textarea",
+      "rows={3}",
+      'className="chat-stream-stages"',
+      "Finding graph context",
+      "Retrieving cited source",
+      "Checking citations",
+      "Writing answer",
+      "Local AI",
     ]) &&
       includesAll(aiProgressSource, [
         "Waiting for first local model text",
@@ -263,14 +363,20 @@ const checks = [
         "try ${RECOMMENDED_SMALL_OLLAMA_MODEL}",
       ]) &&
       includesAll(askGenerationSource, [
-        "if (!isGraphQuestion(question))",
+        "useGraphRoute",
+        "semanticSearch: useGraphRoute",
         'setChatStatus("idle")',
         "if (isStoppedModelCall(fallbackReason))",
         'setChatError(fallbackReason)',
         'setChatStatus("error")',
-        "runStreamingModelCall(\"Ask\"",
-        "onFirstToken: noteFirstToken",
-        "onTextDelta: (draft) => {",
+      "runStreamingModelCall(\"Ask\"",
+      "onFirstToken: noteFirstToken",
+      "onTextDelta: (draft) => {",
+    ]) &&
+      includesAll(appSettingsStateSource, [
+        "const hasLocalAiConfig",
+        'modelReadiness.status !== "error"',
+        "isCloudProvider(modelSettings.provider)",
       ]) &&
       includesAll(messagePartsSource, [
         "EVIDENCE_PREVIEW_LIMIT",
@@ -282,12 +388,15 @@ const checks = [
         "if (context)",
       ]) &&
       includesAll(appCss, [
-        ".chat-mode-chip",
-        ".chat-mode-chip.graph",
-        ".chat-mode-chip.model",
-        ".ai-status.ready .ai-status-dot",
-        ".ask-focus-strip",
-        ".answer-turn.is-streaming",
+        ".chat-mode-status-dot",
+        ".chat-mode-control button.ai-ready .chat-mode-status-dot",
+        ".chat-mode-control button.ai-checking .chat-mode-status-dot",
+        ".chat-mode-control button.ai-error .chat-mode-status-dot",
+        ".chat-user-message",
+        ".chat-stream-stages",
+        ".chat-mode-control",
+        ".chat-send-button",
+        "height: 28px",
       ]),
   ],
   [
@@ -299,6 +408,44 @@ const checks = [
       "Graph answers need no model",
       "send cited context to",
     ]) && includesAll(appCss, [".ai-usage", ".ai-usage p"]),
+  ],
+  [
+    "Export opens a package dialog with selectable artifacts",
+    includesAll(topBarSource, ["Choose export package options", "onExport"]) &&
+      includesAll(appShellSource, ["ExportDialog", "<ExportDialog {...exportDialog} />"]) &&
+      includesAll(exportDialogSource, [
+        "Export package",
+        "Choose export artifacts",
+        "Markdown documentation",
+        "Mermaid diagram",
+        "PNG diagram",
+        "Browser preview cannot create folders",
+        "Export ${selectedCount",
+      ]) &&
+      includesAll(exportHookSource, [
+        "exportDialogOpen",
+        "DEFAULT_DOCUMENTATION_EXPORT_OPTIONS",
+        "documentationExportPackageName",
+        "selectedDocumentationExportCount",
+        "openExportDialog",
+      ]),
+  ],
+  [
+    "Export runner writes selected artifacts into a clean desktop package folder",
+    includesAll(exportDocsSource, [
+      "DocumentationExportOptions",
+      "documentationExportPackageName",
+      "selectedDocumentationExportLabels",
+      "selectedDocumentationExportCount",
+    ]) &&
+      includesAll(exportRunnerSource, [
+        "packageName: documentationExportPackageName(docs)",
+        "includeMarkdown: options.markdown",
+        "includeMermaid: options.mermaid",
+        "includePng: options.png",
+        "Desktop export creates a clean folder",
+        "Choose at least one export artifact.",
+      ]),
   ],
   [
     "Check AI verifies local generation without slowing every model call preflight",
@@ -317,13 +464,14 @@ const checks = [
       "installedModels: readiness.installedModels",
       'from "../model/readiness"',
     ]) &&
-      includesAll(settingsSource, [
+    includesAll(settingsSource, [
         "Refresh models",
+        "Test semantic",
         "RECOMMENDED_SMALL_OLLAMA_MODEL",
         "For a smaller local test model, run:",
         "isSameOllamaModel(model, settings.model)",
       ]) &&
-      includesAll(appCss, [".model-install-hint", ".button-row.two"]),
+      includesAll(appCss, [".model-install-hint", ".button-row.three"]),
   ],
   [
     "Settings presents AI setup as a lightweight readiness stepper",
@@ -332,13 +480,15 @@ const checks = [
       "function aiReadinessSteps",
       'className="readiness-stepper"',
       'aria-label="AI setup readiness"',
-      "Install / serve",
+      "Ollama server",
       "Generation model",
       "Embedding model",
+      "Semantic index",
       "Run Check AI before relying on model-backed Ask or summaries.",
       "ollama serve",
       "ollama pull ${configuredModel}",
       "ollama pull ${embeddingModel}",
+      "semanticStepStatus",
       "API key",
       "Save a key before cloud Ask or summaries.",
       "localGenerationTestStatus",
@@ -477,17 +627,19 @@ const checks = [
         'className="chat-composer"',
         'aria-label="Ask a question"',
         "autoFocus",
-        'className="answer-response"',
+        "<textarea",
+        "chat-send-button",
+        'className="chat-thread"',
         'aria-live="polite"',
-        'className="ask-focus-strip"',
       ]) &&
-      appearsInOrder(chatAnswerPanelSource, ['<div className="chat-composer"', '<div className="answer-response"']) &&
+      appearsInOrder(chatAnswerPanelSource, ['<div className="chat-thread"', '<div className="chat-composer"']) &&
       includesAll(appCss, [
         ".right-pane.is-ask-focused",
         ".chat-composer",
-        ".answer-response",
-        ".right-pane.is-ask-focused .answer-card",
-        ".right-pane.is-ask-focused .ask-focus-strip small",
+        "bottom: 0",
+        ".chat-thread",
+        ".chat-workspace",
+        ".right-pane.is-ask-focused .summary-stack",
       ]),
   ],
   [
@@ -544,26 +696,29 @@ const checks = [
     ]),
   ],
   [
-    "Ask evidence citations keep the answer visible while focusing code",
-    // The rendered browser smoke proves evidence clicks focus Source while
-    // preserving Chat, the composer, the answer text, and the citation marker.
+    "Overview and relationship evidence citations focus code without Chat evidence chrome",
+    // Chat is a plain conversation surface; source evidence is handled by
+    // Overview and Dependencies, where citation clicks focus Source.
     includesAll(workspaceNavigationSource, [
-      "function openAskCitation(citation: Citation)",
-      "jumpToCitation(citation, false, true)",
       "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
-      "if (preserveInspectorTab) preserveInspectorTabForNextEdge();",
       'setCenterView("source")',
     ]) &&
+      includesAll(summaryDockSource, [
+        "<EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />",
+      ]) &&
+      includesAll(messagePartsSource, [
+        "function EvidenceList",
+        "function CitationList",
+        "Open citation ${citation.label}",
+      ]) &&
       includesAll(inspectorRoutingSource, [
         "const preserveInspectorForEdgeRef = useRef(false)",
         "if (preserveInspectorForEdgeRef.current)",
         "preserveInspectorForEdgeRef.current = false",
         "const preserveInspectorTabForNextEdge = useCallback(() => {",
       ]) &&
-      includesAll(chatAnswerPanelSource, [
-        "onOpenCitation: (citation: Citation) => void",
-        "<EvidenceList citations={answer.citations} onOpenCitation={onOpenCitation} />",
-      ]) &&
+      !chatAnswerPanelSource.includes("<GroupedEvidence") &&
+      !chatAnswerPanelSource.includes("Copy with citations") &&
       includesAll(codeSnippetSource, [
         'className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}',
         'className="source-focus-note"',
@@ -609,6 +764,7 @@ const checks = [
       'className="home-crumb"',
       'className="project-import-input"',
     ]) &&
+      !topBarSource.includes('className="current-crumb"') &&
       includesAll(projectActionsSource, [
       "browserImportInputRef.current?.click()",
       "analyzeBrowserProject",

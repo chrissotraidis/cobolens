@@ -82,7 +82,8 @@ function groundedCitationFallback(context: CitationGuardContext, reason: string,
   const evidence = context.citations.slice(0, 8).map((citation) => `- ${citation.label} (${formatSite(citation)}).`);
 
   return [
-    `I could not use the ${artifactLabel} because it had ${reason}. Here is a cited answer from the graph instead.`,
+    `Local AI draft failed citation checks, so Cobolens used the graph answer.`,
+    `Details: ${artifactLabel} had ${reason}.`,
     "",
     "What the graph can show:",
     ...(focus.length ? focus : ["- No source-backed matched symbol was available in the retrieved context."]),

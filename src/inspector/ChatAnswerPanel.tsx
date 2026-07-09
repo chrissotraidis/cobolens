@@ -1,13 +1,15 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GraphNode } from "../lib/graph";
 import { PROVIDER_LABELS, type ModelSettings } from "../model/config";
 import type { Citation } from "../retrieval/context";
 import { isGraphQuestion } from "../retrieval/graphAnswer";
+import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import type { ModelReadiness } from "../settings/SettingsDialog";
 import { aiProgressDetail, useElapsedSeconds } from "./aiProgress";
-import { EvidenceList, MessageText, ProgressNote } from "./MessageParts";
+import { MessageText, ProgressNote } from "./MessageParts";
 
 export type ChatStatus = "idle" | "running" | "ready" | "error";
+export type ChatMode = "auto" | "graph" | "ai";
 export type ChatAnswer = {
   question: string;
   text: string;
@@ -26,18 +28,14 @@ export function ChatAnswerPanel({
   node,
   settings,
   modelReadiness,
+  semanticIndex,
   question,
-  focusLinkCount,
   aiConfigured,
   canAsk,
   onOpenSettings,
   onQuestionChange,
   onAsk,
   onCancel,
-  onAskPreset,
-  onRestoreAnswer,
-  onClearHistory,
-  onOpenCitation,
 }: {
   status: ChatStatus;
   answer: ChatAnswer | null;
@@ -46,67 +44,32 @@ export function ChatAnswerPanel({
   node: GraphNode | null;
   settings: ModelSettings;
   modelReadiness: ModelReadiness;
+  semanticIndex: SemanticIndexState;
   question: string;
-  focusLinkCount: number;
   aiConfigured: boolean;
   canAsk: boolean;
   onOpenSettings: () => void;
   onQuestionChange: (question: string) => void;
-  onAsk: () => void;
+  onAsk: (mode?: ChatMode) => void;
   onCancel: () => void;
-  onAskPreset: (question: string) => void;
-  onRestoreAnswer: (answer: ChatAnswer) => void;
-  onClearHistory: () => void;
-  onOpenCitation: (citation: Citation) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const starterQuestions = suggestedGraphQuestions(node);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<ChatMode>("auto");
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
-  const workingWithModel = Boolean(questionText && !isGraphQuestion(questionText));
-  const answerWasModelQuestion = Boolean(answer && !isGraphQuestion(answer.question));
-  const activeRouteLabel = workingWithModel ? "AI mode" : "Graph mode";
-  const activeRouteDetail = workingWithModel
-    ? aiConfigured
-      ? `Uses ${PROVIDER_LABELS[settings.provider]} on only the retrieved, cited code slice.`
-      : "Needs local AI. Structural questions still answer without it."
-    : "Instant, cited answer from the dependency graph — no AI needed.";
-  const answerSubtitle =
-    status === "running"
-      ? workingWithModel
-        ? `${PROVIDER_LABELS[settings.provider]} is reading your code…`
-        : "Reading the dependency graph…"
-      : answer?.guarded
-        ? `Answered from the graph — ${PROVIDER_LABELS[settings.provider]}'s reply wasn't citation-clean`
-        : answer?.fallbackReason
-          ? "Answered from the graph"
-          : answer?.source === "model"
-            ? `Answered by ${PROVIDER_LABELS[settings.provider]}, grounded in your code`
-            : answer?.source === "graph"
-              ? answerWasModelQuestion
-                ? "Answered from the graph"
-                : "Answered from the dependency graph"
-              : workingWithModel
-                ? aiConfigured
-                  ? `Ready — ${PROVIDER_LABELS[settings.provider]} will answer from your code`
-                  : "Set up local AI for open-ended questions; structural questions work now"
-                : "Grounded, cited answers about your codebase";
+  const autoIdle = mode === "auto" && !questionText;
+  const workingWithModel = routeNeedsModel(questionText, mode);
+  const activeRouteDetail = autoIdle
+    ? "Auto chooses graph for structural questions and Local AI for open-ended ones."
+    : workingWithModel
+      ? aiConfigured
+        ? `Uses ${PROVIDER_LABELS[settings.provider]} on only the retrieved, cited code slice.`
+        : `${PROVIDER_LABELS[settings.provider]} is not ready. Structural questions still answer without it.`
+      : "Instant, cited answer from the dependency graph — no AI needed.";
   const progressLabel = workingWithModel ? `${PROVIDER_LABELS[settings.provider]} is thinking` : "Reading the graph";
   const askButtonLabel = status === "running" ? "Stop" : workingWithModel && !aiConfigured ? "Set up AI" : "Send";
-  const previousAnswers = history.filter((item) => item !== answer).slice(0, 5);
-  const visibleStarterQuestions = starterQuestions.filter((starterQuestion) => starterQuestion !== answer?.question);
-  const starterQuestionsLabel = answer ? "Ask another question" : "Try asking";
   const providerLabel = PROVIDER_LABELS[settings.provider];
-  const aiStatusText =
-    modelReadiness.status === "ready"
-      ? "Live"
-      : modelReadiness.status === "checking"
-        ? "Checking…"
-        : modelReadiness.status === "error"
-          ? "Offline"
-          : aiConfigured
-            ? "Ready"
-            : "Set up AI";
   const aiStatusTooltip =
     modelReadiness.status === "ready"
       ? modelReadiness.message || `${providerLabel} is live`
@@ -115,15 +78,15 @@ export function ChatAnswerPanel({
         : modelReadiness.status === "error"
           ? modelReadiness.message || `${providerLabel} is not reachable`
           : aiConfigured
-            ? `${providerLabel} is configured — run Check AI in Settings to verify`
+            ? `${providerLabel} is configured. Cobolens will check it when you send.`
             : "Set up local AI in Settings to chat with open-ended questions";
   const emptyResponseText = questionText
     ? workingWithModel
       ? aiConfigured
-        ? `Press Send — ${PROVIDER_LABELS[settings.provider]} will answer from the retrieved, cited code.`
-        : "Set up local AI for open-ended questions. Structural questions work without it."
-      : "Press Send for an instant, cited answer from the dependency graph."
-    : "Ask anything about this codebase — data flow, dependencies, files, or behavior. Every answer is grounded in your code and cited.";
+        ? `Send to ${PROVIDER_LABELS[settings.provider]} with only retrieved, cited code.`
+        : `${PROVIDER_LABELS[settings.provider]} is not ready. Check Settings, or switch to Graph for structural answers.`
+      : "Ready for an instant answer from the dependency graph."
+    : "Type a question below when you want to inspect this selection.";
   const submitAsk = () => {
     if (status === "running") {
       onCancel();
@@ -133,65 +96,39 @@ export function ChatAnswerPanel({
       onOpenSettings();
       return;
     }
-    onAsk();
+    onAsk(mode);
   };
+  const resizeComposer = () => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(Math.max(composer.scrollHeight, 76), 150)}px`;
+  };
+  const localAiRouteTitle = workingWithModel
+    ? `${activeRouteDetail} ${aiStatusTooltip}`
+    : "Use Local AI for this question.";
+  const errorLabel = isStoppedError(error) ? "Stopped" : "Check question";
+  const visibleAnswers = [...history].reverse();
+  const pendingAnswer = answer && !visibleAnswers.some((item) => sameChatAnswer(item, answer)) ? answer : null;
+  const hasConversation = Boolean(visibleAnswers.length || pendingAnswer || status === "running" || status === "error");
+
+  useEffect(() => {
+    resizeComposer();
+  }, [question]);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTop = thread.scrollHeight;
+  }, [visibleAnswers.length, pendingAnswer?.text, status]);
 
   return (
-    <section className="answer-card">
-      <div className="answer-header">
-        <div>
-          <strong>Chat</strong>
-          <span>{answerSubtitle}</span>
-        </div>
-      </div>
-      <div className="ask-focus-strip" aria-label="Current chat focus">
-        <span>Talking about</span>
-        <strong>{node?.name ?? "Codebase"}</strong>
-        <small>{node ? `${node.type} - ${focusLinkCount} graph link${focusLinkCount === 1 ? "" : "s"}` : "All indexed symbols"}</small>
-      </div>
-      <div className="chat-composer" aria-label="Ask a question">
-        <input
-          type="text"
-          autoFocus
-          ref={inputRef}
-          aria-label="Ask about the codebase"
-          placeholder="Ask about data flow, dependencies, files, or business logic..."
-          value={question}
-          onChange={(event) => onQuestionChange(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") submitAsk();
-          }}
-          disabled={!canAsk || status === "running"}
-        />
-        <button
-          type="button"
-          onClick={submitAsk}
-          disabled={!canAsk || (status !== "running" && !question.trim())}
-        >
-          {askButtonLabel}
-        </button>
-      </div>
-      <div className="chat-status-row" aria-live="polite">
-        <span
-          className={`chat-mode-chip ${workingWithModel ? "model" : "graph"}`}
-          title={activeRouteDetail}
-          aria-label={`${activeRouteLabel}. ${activeRouteDetail}`}
-        >
-          {activeRouteLabel}
-        </span>
-        {workingWithModel ? (
-          <span
-            className={`ai-status ${modelReadiness.status}`}
-            title={aiStatusTooltip}
-            aria-label={aiStatusTooltip}
-            role={modelReadiness.status === "error" ? "alert" : "status"}
-          >
-            <i className="ai-status-dot" aria-hidden="true" />
-            {aiStatusText}
-          </span>
-        ) : null}
-      </div>
-      <div className="answer-response" aria-live="polite">
+    <section className="answer-card chat-workspace">
+      <div className="chat-thread" ref={threadRef} aria-live="polite">
+        {!hasConversation ? <AnswerModeDisclosure providerLabel={providerLabel} semanticIndex={semanticIndex} /> : null}
+        {visibleAnswers.map((item, index) => (
+          <ChatTurn key={`${item.question}:${item.text}:${index}`} answer={item} providerLabel={providerLabel} />
+        ))}
         {status === "running" ? (
           <>
             <ProgressNote
@@ -199,125 +136,180 @@ export function ChatAnswerPanel({
               detail={aiProgressDetail(settings, elapsedSeconds, Boolean(answer?.text && answer.source === "model"))}
               elapsedSeconds={elapsedSeconds}
             />
-            {answer?.source === "model" && answer.text ? (
-              <div className="answer-turn is-streaming">
-                <span>Draft answer</span>
-                <MessageText text={answer.text} />
-              </div>
-            ) : null}
+            <StreamingStages workingWithModel={workingWithModel} providerLabel={providerLabel} hasDraft={Boolean(answer?.text)} />
           </>
         ) : status === "error" ? (
-          <p className="error-text">{error}</p>
-        ) : answer ? (
-          <>
-            <div className="answer-turn">
-              <span>Question</span>
-              <strong>{answer.question}</strong>
+          <div className="chat-turn is-error">
+            <div className="chat-user-message">{questionText || "Ask"}</div>
+            <div className="chat-answer-bubble">
+              <span className="chat-route-label stopped">{errorLabel}</span>
+              <p className="error-text">{error}</p>
             </div>
-            <div className="answer-turn">
-              <span>Answer</span>
-              <MessageText text={answer.text} />
-            </div>
-            {answer.semanticNote ? (
-              <div className="answer-semantic-note" role="status">
-                {answer.semanticNote}
-              </div>
-            ) : null}
-            <EvidenceList citations={answer.citations} onOpenCitation={onOpenCitation} />
-          </>
-        ) : (
-          <p>{emptyResponseText}</p>
-        )}
+          </div>
+        ) : null}
+        {pendingAnswer ? (
+          <ChatTurn answer={pendingAnswer} providerLabel={providerLabel} />
+        ) : null}
+        {!hasConversation ? (
+          <div className="chat-empty-state">
+            <strong>{node ? `Ask about ${node.name}` : "Ask about this codebase"}</strong>
+            <span>{emptyResponseText}</span>
+          </div>
+        ) : null}
       </div>
-      {visibleStarterQuestions.length ? (
-        <div className="question-shortcuts">
-          <span>{starterQuestionsLabel}</span>
-          <div className="question-chips" aria-label="Suggested questions">
-            {visibleStarterQuestions.map((question) => {
-              const graphQuestion = isGraphQuestion(question);
-              const chipAction = graphQuestion
-                ? "Answer instantly from the graph"
-                : `Draft ${PROVIDER_LABELS[settings.provider]} question`;
-              return (
-                <button
-                  key={question}
-                  type="button"
-                  onClick={() => {
-                    onAskPreset(question);
-                    if (!graphQuestion) {
-                      window.requestAnimationFrame(() => inputRef.current?.focus());
-                    }
-                  }}
-                  disabled={status === "running"}
-                  title={`${chipAction}: ${question}`}
-                  aria-label={`${chipAction}: ${question}`}
-                >
-                  <span>{question}</span>
-                  <small>{graphQuestion ? "Graph" : PROVIDER_LABELS[settings.provider]}</small>
-                </button>
-              );
-            })}
+      <div className="chat-composer" aria-label="Ask a question">
+        <div className="chat-composer-box">
+          <textarea
+            autoFocus
+            ref={composerRef}
+            rows={3}
+            aria-label="Ask about the codebase"
+            placeholder="Ask about data flow, dependencies, files, behavior, or what to inspect next..."
+            value={question}
+            onChange={(event) => {
+              onQuestionChange(event.currentTarget.value);
+              resizeComposer();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                submitAsk();
+              }
+            }}
+            disabled={!canAsk || status === "running"}
+          />
+          <div className="chat-composer-footer">
+            <div className="chat-mode-control" aria-label="Answer route">
+              {(["auto", "graph", "ai"] as ChatMode[]).map((route) => {
+                const isLocalAiRoute = route === "ai";
+                const isRoutedToLocalAi = isLocalAiRoute && workingWithModel;
+                const className = [
+                  mode === route ? "is-active" : "",
+                  isLocalAiRoute ? "chat-route-ai" : "",
+                  isRoutedToLocalAi ? `is-routed ai-${modelReadiness.status}` : "",
+                ].filter(Boolean).join(" ");
+                return (
+                  <button
+                    key={route}
+                    type="button"
+                    className={className}
+                    onClick={() => setMode(route)}
+                    disabled={status === "running"}
+                    aria-pressed={mode === route}
+                    title={isLocalAiRoute ? localAiRouteTitle : undefined}
+                    aria-label={isLocalAiRoute && isRoutedToLocalAi ? `Local AI. ${localAiRouteTitle}` : undefined}
+                  >
+                    {isRoutedToLocalAi ? <i className="chat-mode-status-dot" aria-hidden="true" /> : null}
+                    <span>{isLocalAiRoute ? "Local AI" : route[0].toUpperCase() + route.slice(1)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="chat-send-button"
+              onClick={submitAsk}
+              disabled={!canAsk || (status !== "running" && !question.trim())}
+            >
+              {askButtonLabel}
+            </button>
           </div>
         </div>
-      ) : null}
-      {previousAnswers.length ? (
-        <details className="answer-history" aria-label="Recent Ask answers">
-          <summary>
-            <span>Recent answers</span>
-            <small>{previousAnswers.length}</small>
-          </summary>
-          <button type="button" onClick={onClearHistory} disabled={status === "running"}>
-            Clear
-          </button>
-          <div className="answer-history-list">
-            {previousAnswers.map((item, index) => (
-              <button
-                key={`${item.question}:${index}`}
-                type="button"
-                onClick={() => onRestoreAnswer(item)}
-                disabled={status === "running"}
-                title={item.question}
-              >
-                <span>{item.question}</span>
-                <small>
-                  {item.guarded || item.fallbackReason ? "Cited graph answer" : item.source === "model" ? PROVIDER_LABELS[settings.provider] : "Graph"} - {item.citations.length} citation
-                  {item.citations.length === 1 ? "" : "s"}
-                </small>
-              </button>
-            ))}
-          </div>
-        </details>
-      ) : null}
+      </div>
     </section>
   );
 }
 
-function suggestedGraphQuestions(node: GraphNode | null) {
-  const overviewQuestion = "Give me a codebase overview.";
-  if (!node) return [overviewQuestion];
-  const name = node.name;
-  const selectedOverview = selectedNodeOverviewQuestion(node);
-  if (node.type === "program") {
-    return [overviewQuestion, selectedOverview, `What depends on ${name}?`, `What does ${name} call?`, `What files does ${name} read?`, `What does ${name} write?`];
-  }
-  if (node.type === "data-item") {
-    return [overviewQuestion, selectedOverview, `Where does ${name} flow?`, `What uses ${name}?`, `Where does ${name} happen?`];
-  }
-  if (node.type === "jcl-dd") {
-    return [overviewQuestion, selectedOverview, `What uses ${name}?`, `What does ${name} use?`, `Where does ${name} happen?`];
-  }
-  if (node.type === "dataset") {
-    return [overviewQuestion, selectedOverview, `What uses ${name}?`, `Where does ${name} flow?`, `Where does ${name} happen?`];
-  }
-  return [
-    overviewQuestion,
-    selectedOverview,
-    `What uses ${name}?`,
-    `Where does ${name} happen?`,
-    `What depends on ${name}?`,
-  ];
+function ChatTurn({ answer, providerLabel }: { answer: ChatAnswer; providerLabel: string }) {
+  return (
+    <article className="chat-turn">
+      <div className="chat-user-message">{answer.question}</div>
+      <div className="chat-answer-bubble">
+        <span className={`chat-route-label ${answerRouteClass(answer)}`}>{answerRouteLabel(answer, providerLabel)}</span>
+        <div className="chat-answer-text">
+          <MessageText text={answer.text} />
+        </div>
+        {answer.semanticNote ? (
+          <div className="answer-semantic-note" role="status">
+            {answer.semanticNote}
+          </div>
+        ) : null}
+        {answer.fallbackReason ? (
+          <details className="answer-details">
+            <summary>Details</summary>
+            <p>{answer.fallbackReason}</p>
+          </details>
+        ) : null}
+      </div>
+    </article>
+  );
 }
 
-function selectedNodeOverviewQuestion(node: GraphNode) {
-  return `Explain ${node.name} in plain English.`;
+function AnswerModeDisclosure({
+  providerLabel,
+  semanticIndex,
+}: {
+  providerLabel: string;
+  semanticIndex: SemanticIndexState;
+}) {
+  return (
+    <details className="answer-mode-help">
+      <summary>How answers work</summary>
+      <ul>
+        <li>Graph uses the parsed dependency graph and source lines. No AI.</li>
+        <li>{providerLabel} uses retrieved graph and source context.</li>
+        <li>Semantic retrieval uses local embeddings when the index is ready.</li>
+      </ul>
+      <p>{semanticIndex.message}</p>
+    </details>
+  );
+}
+
+function StreamingStages({
+  workingWithModel,
+  providerLabel,
+  hasDraft,
+}: {
+  workingWithModel: boolean;
+  providerLabel: string;
+  hasDraft: boolean;
+}) {
+  const stages = workingWithModel
+    ? ["Finding graph context", "Retrieving cited source", `Asking ${providerLabel}`, "Checking citations", "Writing answer"]
+    : ["Finding graph context", "Retrieving cited source", "Writing graph answer"];
+
+  return (
+    <ol className="chat-stream-stages" aria-label="Answer progress">
+      {stages.map((stage, index) => (
+        <li key={stage} className={index === 0 || (hasDraft && index >= stages.length - 2) ? "is-active" : ""}>
+          {stage}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function routeNeedsModel(question: string, mode: ChatMode) {
+  if (!question) return mode === "ai";
+  if (mode === "graph") return false;
+  if (mode === "ai") return true;
+  return !isGraphQuestion(question);
+}
+
+function isStoppedError(error: string) {
+  return /\bwas stopped\.$/i.test(error);
+}
+
+function sameChatAnswer(left: ChatAnswer, right: ChatAnswer) {
+  return left.question === right.question && left.text === right.text && left.source === right.source;
+}
+
+function answerRouteLabel(answer: ChatAnswer, providerLabel: string) {
+  if (answer.guarded || answer.fallbackReason) return "Graph fallback";
+  return answer.source === "model" ? `${providerLabel} answer` : "Graph answer";
+}
+
+function answerRouteClass(answer: ChatAnswer) {
+  if (answer.guarded || answer.fallbackReason) return "fallback";
+  return answer.source === "model" ? "model" : "graph";
 }

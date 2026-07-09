@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_OLLAMA_EMBEDDING_MODEL, ModelProvider, ModelSettings, PROVIDER_LABELS, isCloudProvider } from "../model/config";
 import { RECOMMENDED_SMALL_OLLAMA_MODEL, isSameOllamaModel } from "../model/readiness";
+import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import type { ScanFormat, ScanSettings } from "../lib/appSettings";
 
 export type ModelReadiness = {
@@ -37,7 +38,9 @@ export function SettingsDialog({
   onSaveKey,
   onClearKey,
   onCheckModel,
+  onWarmSemanticIndex,
   onRefreshModels,
+  semanticIndex,
   onClose,
 }: {
   desktopAvailable: boolean;
@@ -57,8 +60,10 @@ export function SettingsDialog({
   onSaveKey: () => void;
   onClearKey: () => void;
   onCheckModel: () => void;
+  onWarmSemanticIndex: () => void;
   onRefreshModels: () => void;
   onClose: () => void;
+  semanticIndex: SemanticIndexState;
 }) {
   const dialogRef = useRef<HTMLElement | null>(null);
 
@@ -107,8 +112,10 @@ export function SettingsDialog({
           onSaveKey={onSaveKey}
           onClearKey={onClearKey}
           onCheckModel={onCheckModel}
+          onWarmSemanticIndex={onWarmSemanticIndex}
           onRefreshModels={onRefreshModels}
           modelReadiness={modelReadiness}
+          semanticIndex={semanticIndex}
           modelCallCount={modelCallCount}
           bulkTokenEstimate={bulkTokenEstimate}
         />
@@ -185,8 +192,10 @@ function ModelSettingsPanel({
   onSaveKey,
   onClearKey,
   onCheckModel,
+  onWarmSemanticIndex,
   onRefreshModels,
   modelReadiness,
+  semanticIndex,
 }: {
   settings: ModelSettings;
   keyDraft: string;
@@ -200,8 +209,10 @@ function ModelSettingsPanel({
   onSaveKey: () => void;
   onClearKey: () => void;
   onCheckModel: () => void;
+  onWarmSemanticIndex: () => void;
   onRefreshModels: () => void;
   modelReadiness: ModelReadiness;
+  semanticIndex: SemanticIndexState;
 }) {
   const cloud = isCloudProvider(settings.provider);
   const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
@@ -218,11 +229,21 @@ function ModelSettingsPanel({
     installedModels,
     modelInList,
     modelReadiness,
+    semanticIndex,
   });
+  const semanticBusy = semanticIndex.status === "warming";
 
   return (
     <section className="pane-block model-settings">
       <h2>AI</h2>
+      <details className="answer-mode-help settings-answer-mode">
+        <summary>How answers work</summary>
+        <ul>
+          <li>Graph uses the parsed dependency graph and source lines. No AI.</li>
+          <li>{PROVIDER_LABELS[settings.provider]} uses retrieved graph and source context.</li>
+          <li>Semantic retrieval uses local embeddings when the index is ready.</li>
+        </ul>
+      </details>
       <ol className="readiness-stepper" aria-label="AI setup readiness">
         {readinessSteps.map((step, index) => (
           <li key={step.label} className={`readiness-step ${step.status}`}>
@@ -307,7 +328,7 @@ function ModelSettingsPanel({
                 ? "Reading models installed on this machine…"
                 : installedModels.length
                   ? `${installedModels.length} model${installedModels.length === 1 ? "" : "s"} installed locally`
-                  : "No models listed. Start Ollama (ollama serve), then Refresh."}
+                  : "No models listed yet. Run Check AI or Refresh to confirm local Ollama."}
             </span>
             <button
               type="button"
@@ -372,7 +393,7 @@ function ModelSettingsPanel({
           <option value="c#">C#</option>
         </select>
       </label>
-      <div className={cloud ? "button-row three" : "button-row two"}>
+      <div className="button-row three">
         <button type="button" onClick={onCheckModel} disabled={modelReadiness.status === "checking"}>
           {modelReadiness.status === "checking" ? "Checking" : "Check AI"}
         </button>
@@ -386,15 +407,20 @@ function ModelSettingsPanel({
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={onRefreshModels}
-            disabled={modelReadiness.status === "checking"}
-            aria-label="Refresh models"
-            title="Refresh installed Ollama models"
-          >
-            Refresh
-          </button>
+          <>
+            <button type="button" onClick={onWarmSemanticIndex} disabled={semanticBusy} aria-label="Test semantic retrieval">
+              {semanticBusy ? "Warming" : "Test semantic"}
+            </button>
+            <button
+              type="button"
+              onClick={onRefreshModels}
+              disabled={modelReadiness.status === "checking"}
+              aria-label="Refresh models"
+              title="Refresh installed Ollama models"
+            >
+              Refresh
+            </button>
+          </>
         )}
       </div>
       <div className={`settings-footnote ${modelReadiness.status}`}>
@@ -426,6 +452,7 @@ function aiReadinessSteps({
   installedModels,
   modelInList,
   modelReadiness,
+  semanticIndex,
 }: {
   settings: ModelSettings;
   cloud: boolean;
@@ -433,6 +460,7 @@ function aiReadinessSteps({
   installedModels: string[];
   modelInList: boolean;
   modelReadiness: ModelReadiness;
+  semanticIndex: SemanticIndexState;
 }): ReadinessStep[] {
   if (cloud) {
     return [
@@ -468,14 +496,14 @@ function aiReadinessSteps({
 
   return [
     {
-      label: "Install / serve",
+      label: "Ollama server",
       status: localServerStatus(modelReadiness, hasModelList, serverUnavailable),
       detail: serverUnavailable
         ? "Ollama did not answer on localhost."
         : hasModelList || modelReadiness.status === "ready"
           ? "Ollama answered on localhost."
-          : "Start Ollama, then refresh the local model list.",
-      command: serverUnavailable || (!hasModelList && modelReadiness.status === "idle") ? "ollama serve" : undefined,
+          : "Run Check AI or Refresh to confirm localhost Ollama.",
+      command: serverUnavailable ? "ollama serve" : undefined,
     },
     {
       label: "Generation model",
@@ -484,8 +512,8 @@ function aiReadinessSteps({
         ? `${configuredModel} is available for Ask and summaries.`
         : hasModelList
           ? `${configuredModel} is not in the installed model list.`
-          : "Refresh models to confirm the configured generation model.",
-      command: modelInList ? undefined : `ollama pull ${configuredModel}`,
+          : "Run Check AI or Refresh to confirm the configured generation model.",
+      command: !modelInList && hasModelList ? `ollama pull ${configuredModel}` : undefined,
     },
     {
       label: "Embedding model",
@@ -494,8 +522,13 @@ function aiReadinessSteps({
         ? `${embeddingModel} is available for semantic retrieval.`
         : hasModelList
           ? `${embeddingModel} is not in the installed model list.`
-          : "Refresh models to confirm the semantic retrieval model.",
-      command: embeddingInList ? undefined : `ollama pull ${embeddingModel}`,
+          : "Run Check AI or Refresh to confirm the semantic retrieval model.",
+      command: !embeddingInList && hasModelList ? `ollama pull ${embeddingModel}` : undefined,
+    },
+    {
+      label: "Semantic index",
+      status: semanticStepStatus(semanticIndex, embeddingInList),
+      detail: semanticIndex.message || "Load a graph and warm local embeddings for semantic Ask retrieval.",
     },
     {
       label: "Test",
@@ -542,5 +575,13 @@ function localGenerationTestStatus(modelReadiness: ModelReadiness, generationVer
   if (modelReadiness.status === "checking") return "checking";
   if (generationVerified) return "ready";
   if (modelReadiness.status === "error") return "error";
+  return "pending";
+}
+
+function semanticStepStatus(semanticIndex: SemanticIndexState, embeddingReady: boolean): ReadinessStepStatus {
+  if (semanticIndex.status === "warming") return "checking";
+  if (semanticIndex.status === "ready") return "ready";
+  if (semanticIndex.status === "error") return "error";
+  if (!embeddingReady) return "pending";
   return "pending";
 }

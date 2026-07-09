@@ -11,9 +11,21 @@ export type DocumentationExport = {
 };
 
 export type DocumentationExportFiles = {
-  markdown: string;
-  mermaid: string;
-  png: string;
+  markdown?: string;
+  mermaid?: string;
+  png?: string;
+};
+
+export type DocumentationExportOptions = {
+  markdown: boolean;
+  mermaid: boolean;
+  png: boolean;
+};
+
+export const DEFAULT_DOCUMENTATION_EXPORT_OPTIONS: DocumentationExportOptions = {
+  markdown: true,
+  mermaid: true,
+  png: true,
 };
 
 export function buildDocumentationExport(
@@ -182,31 +194,54 @@ export async function downloadDocumentationExport(
   graph: GraphDocument,
   summaries: SummaryExportState,
   focusNodeId: string,
+  options = DEFAULT_DOCUMENTATION_EXPORT_OPTIONS,
 ) {
   const docs = buildDocumentationExport(graph, summaries, focusNodeId);
-  await downloadBuiltDocumentationExport(graph, focusNodeId, docs);
+  await downloadBuiltDocumentationExport(graph, focusNodeId, docs, options);
 }
 
 export async function downloadBuiltDocumentationExport(
   graph: GraphDocument,
   focusNodeId: string,
   docs: DocumentationExport,
+  options = DEFAULT_DOCUMENTATION_EXPORT_OPTIONS,
 ): Promise<DocumentationExportFiles> {
   const prefix = documentationExportPrefix(docs);
-  const files = {
-    markdown: `${prefix}.md`,
-    mermaid: `${prefix}.mmd`,
-    png: `${prefix}.png`,
-  };
-  downloadBlob(files.markdown, new Blob([docs.markdown], { type: "text/markdown;charset=utf-8" }));
-  downloadBlob(files.mermaid, new Blob([docs.mermaid], { type: "text/plain;charset=utf-8" }));
-  const png = await diagramPngBlob(graph, focusNodeId, docs.diagramTitle);
-  downloadBlob(files.png, png);
+  const files: DocumentationExportFiles = {};
+  if (options.markdown) {
+    files.markdown = `${prefix}.md`;
+    downloadBlob(files.markdown, new Blob([docs.markdown], { type: "text/markdown;charset=utf-8" }));
+  }
+  if (options.mermaid) {
+    files.mermaid = `${prefix}.mmd`;
+    downloadBlob(files.mermaid, new Blob([docs.mermaid], { type: "text/plain;charset=utf-8" }));
+  }
+  if (options.png) {
+    files.png = `${prefix}.png`;
+    const png = await diagramPngBlob(graph, focusNodeId, docs.diagramTitle);
+    downloadBlob(files.png, png);
+  }
   return files;
 }
 
 export function documentationExportPrefix(docs: DocumentationExport) {
   return `cobolens-${safeName(docs.diagramTitle)}`;
+}
+
+export function documentationExportPackageName(docs: DocumentationExport) {
+  return `${documentationExportPrefix(docs)}-export`;
+}
+
+export function selectedDocumentationExportLabels(options: DocumentationExportOptions) {
+  return [
+    options.markdown ? "Markdown documentation" : "",
+    options.mermaid ? "Mermaid diagram" : "",
+    options.png ? "PNG diagram" : "",
+  ].filter(Boolean);
+}
+
+export function selectedDocumentationExportCount(options: DocumentationExportOptions) {
+  return selectedDocumentationExportLabels(options).length;
 }
 
 export async function documentationPngBytes(graph: GraphDocument, focusNodeId: string, title: string) {

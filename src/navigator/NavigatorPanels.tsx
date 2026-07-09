@@ -147,12 +147,14 @@ export function SourceTree({
   selectedNodeId: string;
   onSelectNode: (nodeId: string) => void;
 }) {
+  const totalNodes = groups.reduce((total, group) => total + group.nodes.length, 0);
+
   return (
     <section className="pane-block source-tree" aria-label="Codebase browser">
       <div className="pane-heading-row">
         <h2>Codebase</h2>
+        {totalNodes ? <span className="source-tree-total">{totalNodes}</span> : null}
       </div>
-      <div className="settings-footnote">Click a program, copybook, or job to read its source.</div>
       {groups.length ? (
         groups.map((group) => (
           <div className="source-tree-group" key={group.title}>

@@ -28,6 +28,49 @@ export type SemanticVectorStore = {
   write: (key: string, index: StoredSemanticVectorIndex) => Promise<void>;
 };
 
+export async function buildSemanticChunkVectorIndex({
+  graph,
+  embedTexts,
+  indexKey,
+  vectorStore,
+  maxCandidateChunks = 80,
+}: {
+  graph: GraphDocument;
+  embedTexts: (texts: string[]) => Promise<VectorEmbedding>;
+  indexKey: string;
+  vectorStore: SemanticVectorStore;
+  maxCandidateChunks?: number;
+}) {
+  const chunks = buildSemanticChunks(graph).slice(0, maxCandidateChunks);
+  if (!chunks.length) return { indexKey, chunkCount: 0, cached: false };
+
+  const cachedChunkVectors = await readCachedChunkVectors(vectorStore, indexKey, chunks.length);
+  if (cachedChunkVectors) return { indexKey, chunkCount: chunks.length, cached: true };
+
+  const embedded = await embedTexts(chunks.map((chunk) => chunk.text));
+  if (embedded.vectors.length !== chunks.length) {
+    throw new Error(`Semantic index expected ${chunks.length} vectors but received ${embedded.vectors.length}.`);
+  }
+  await writeCachedChunkVectors(vectorStore, indexKey, embedded.vectors);
+  return { indexKey, chunkCount: chunks.length, cached: false };
+}
+
+export async function hasSemanticChunkVectorIndex({
+  graph,
+  indexKey,
+  vectorStore,
+  maxCandidateChunks = 80,
+}: {
+  graph: GraphDocument;
+  indexKey: string;
+  vectorStore: SemanticVectorStore;
+  maxCandidateChunks?: number;
+}) {
+  const chunkCount = buildSemanticChunks(graph).slice(0, maxCandidateChunks).length;
+  if (!chunkCount) return false;
+  return Boolean(await readCachedChunkVectors(vectorStore, indexKey, chunkCount));
+}
+
 export async function semanticSearchGraph({
   graph,
   question,
@@ -36,6 +79,7 @@ export async function semanticSearchGraph({
   vectorStore,
   maxCandidateChunks = 80,
   topK = 4,
+  requireCachedIndex = false,
 }: {
   graph: GraphDocument;
   question: string;
@@ -44,11 +88,13 @@ export async function semanticSearchGraph({
   vectorStore?: SemanticVectorStore;
   maxCandidateChunks?: number;
   topK?: number;
+  requireCachedIndex?: boolean;
 }): Promise<SemanticMatch[]> {
   const chunks = buildSemanticChunks(graph).slice(0, maxCandidateChunks);
   if (!question.trim() || !chunks.length) return [];
 
   const cachedChunkVectors = indexKey && vectorStore ? await readCachedChunkVectors(vectorStore, indexKey, chunks.length) : null;
+  if (requireCachedIndex && !cachedChunkVectors) return [];
   const embedded = cachedChunkVectors ? await embedTexts([question]) : await embedTexts([question, ...chunks.map((chunk) => chunk.text)]);
   const queryVector = embedded.vectors[0];
   const chunkVectors = cachedChunkVectors ?? embedded.vectors.slice(1);

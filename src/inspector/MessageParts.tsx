@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import type { Citation } from "../retrieval/context";
 
 const EVIDENCE_PREVIEW_LIMIT = 4;
@@ -43,11 +44,15 @@ export function MessageText({ text }: { text: string }) {
         block.type === "list" ? (
           <ul key={index}>
             {block.items.map((item, itemIndex) => (
-              <li key={`${index}:${itemIndex}`}>{item}</li>
+              <li key={`${index}:${itemIndex}`}>
+                <InlineMessageText text={item} />
+              </li>
             ))}
           </ul>
         ) : (
-          <p key={index}>{block.text}</p>
+          <p key={index}>
+            <InlineMessageText text={block.text} />
+          </p>
         ),
       )}
     </div>
@@ -55,6 +60,40 @@ export function MessageText({ text }: { text: string }) {
 }
 
 type MessageTextBlock = { type: "paragraph"; text: string } | { type: "list"; items: string[] };
+type InlineSegment = { type: "text" | "strong" | "em" | "code"; text: string };
+
+function InlineMessageText({ text }: { text: string }) {
+  return <>{inlineSegments(cleanInlineText(text)).map((segment, index) => renderInlineSegment(segment, index))}</>;
+}
+
+function renderInlineSegment(segment: InlineSegment, index: number): ReactNode {
+  if (segment.type === "strong") return <strong key={index}>{segment.text}</strong>;
+  if (segment.type === "em") return <em key={index}>{segment.text}</em>;
+  if (segment.type === "code") return <code key={index}>{segment.text}</code>;
+  return segment.text;
+}
+
+function inlineSegments(text: string): InlineSegment[] {
+  const segments: InlineSegment[] = [];
+  const pattern = /(`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+  let lastIndex = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index == null) continue;
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", text: text.slice(lastIndex, match.index) });
+    }
+    if (match[2]) segments.push({ type: "code", text: match[2] });
+    else if (match[3]) segments.push({ type: "strong", text: match[3] });
+    else if (match[4]) segments.push({ type: "em", text: match[4] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) segments.push({ type: "text", text: text.slice(lastIndex) });
+  return segments;
+}
+
+function cleanInlineText(text: string) {
+  return text.replace(/\bfile:([\w./-]+\.[A-Za-z][A-Za-z0-9]*:\d+(?:-\d+)?)/g, "$1");
+}
 
 function textBlocks(text: string): MessageTextBlock[] {
   const blocks: MessageTextBlock[] = [];

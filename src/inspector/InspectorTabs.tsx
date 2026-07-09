@@ -30,7 +30,7 @@ export function InspectorTabs({
           role="tab"
           aria-selected={activeTab === tab.id}
           aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}
-          className={activeTab === tab.id ? "is-active" : undefined}
+          className={`${activeTab === tab.id ? "is-active " : ""}inspector-tab-${tab.id}`}
           onClick={() => onChange(tab.id)}
         >
           <span>{tab.label}</span>

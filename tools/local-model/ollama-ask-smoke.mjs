@@ -77,6 +77,7 @@ try {
     "answer cites matched source line": /src\/LINEAGE\.cbl:1/i.test(answer.text),
     "answer cites a relationship": /src\/LINEAGE\.cbl:(11|13|21|26|37|40)/i.test(answer.text),
     "answer avoids generic compiler hallucination": !/\b(compiler optimization|recompil\w*)\b/i.test(answer.text),
+    "guarded fallback explains citation checks": !answer.guarded || answer.text.includes("Local AI draft failed citation checks, so Cobolens used the graph answer."),
     "retrieval supplied clickable citation": context.citations.some(
       (citation) => citation.file === "src/LINEAGE.cbl" && [11, 13, 21, 26, 37, 40].includes(citation.line),
     ),

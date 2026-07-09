@@ -1,26 +1,21 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import type { GraphDocument, GraphNode, SourceExcerpt } from "../lib/graph";
 import type { ModelSettings } from "../model/config";
 import { generateGroundedAnswer } from "../model/chat";
-import { embedTexts } from "../model/embeddings";
 import {
   friendlyModelError,
   isStoppedModelCall,
   runStreamingModelCall,
-  semanticEmbeddingModelKey,
 } from "../model/modelRuntime";
 import { retrieveQuestionContext, type RetrievedContext } from "../retrieval/context";
 import { graphAnswerFallback, isGraphQuestion } from "../retrieval/graphAnswer";
-import {
-  createLocalStorageSemanticVectorStore,
-  semanticGraphIndexKey,
-  semanticSearchGraph,
-} from "../retrieval/semantic";
+import type { SemanticMatch } from "../retrieval/semantic";
+import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import { shouldSyncAskFocus } from "../retrieval/askFocus";
-import type { ChatAnswer, ChatStatus } from "./ChatAnswerPanel";
+import type { ChatAnswer, ChatMode, ChatStatus } from "./ChatAnswerPanel";
 import type { InspectorTab } from "./InspectorTabs";
 
-const SEMANTIC_SEARCH_TIMEOUT_MS = 8_000;
+const COMPLETE_QUESTION_MESSAGE = 'Ask a complete question, like "What does this program do?"';
 
 export function useAskGeneration({
   graph,
@@ -36,8 +31,9 @@ export function useAskGeneration({
   prepareModelCall,
   onModelCallComplete,
   onSyncFocusNode,
-  onExplainSelectedNode,
   onTabChange,
+  semanticIndex,
+  searchSemanticIndex,
 }: {
   graph: GraphDocument | null;
   selectedNode: GraphNode | null;
@@ -52,26 +48,31 @@ export function useAskGeneration({
   prepareModelCall: () => Promise<string | undefined>;
   onModelCallComplete: () => void;
   onSyncFocusNode: (nodeId: string) => void;
-  onExplainSelectedNode: () => void;
   onTabChange: (tab: InspectorTab) => void;
+  semanticIndex: SemanticIndexState;
+  searchSemanticIndex: (question: string) => Promise<SemanticMatch[]>;
 }) {
   const activeChatAbortRef = useRef<AbortController | null>(null);
-  const semanticVectorStore = useMemo(() => {
-    try {
-      return createLocalStorageSemanticVectorStore(window.localStorage);
-    } catch {
-      return undefined;
-    }
-  }, []);
 
-  async function askQuestion(questionDraft = chatQuestion) {
+  async function askQuestion(questionDraft = chatQuestion, mode: ChatMode = "auto") {
     if (!graph || !questionDraft.trim()) return;
     const question = questionDraft.trim();
+    const qualityMessage = inputQualityMessage(question);
+    if (qualityMessage) {
+      setChatQuestion(question);
+      setChatAnswer(null);
+      setChatError(qualityMessage);
+      setChatStatus("error");
+      onTabChange("ask");
+      return;
+    }
+    const useGraphRoute = mode === "graph" || (mode === "auto" && isGraphQuestion(question));
     setChatQuestion(question);
     setChatStatus("running");
     setChatAnswer(null);
     setChatError("");
     let context: RetrievedContext | null = null;
+    const semanticNote = semanticStatusNote(semanticIndex);
 
     try {
       context = await retrieveQuestionContext({
@@ -79,28 +80,16 @@ export function useAskGeneration({
         question,
         preferredNode: selectedNode,
         readExcerpt: readExcerptForNode,
-        semanticSearch: isGraphQuestion(question)
-          ? undefined
-          : (semanticQuestion) =>
-              semanticSearchGraph({
-                graph,
-                question: semanticQuestion,
-                indexKey: semanticGraphIndexKey(graph, semanticEmbeddingModelKey(modelSettings)),
-                vectorStore: semanticVectorStore,
-                embedTexts: (texts) =>
-                  embedTexts({
-                    settings: modelSettings,
-                    texts,
-                    timeoutMs: SEMANTIC_SEARCH_TIMEOUT_MS,
-                  }),
-              }),
+        semanticSearch: useGraphRoute || semanticIndex.status !== "ready" ? undefined : searchSemanticIndex,
+        includeSourceExcerpts: !useGraphRoute,
       });
-      if (isGraphQuestion(question)) {
+      if (useGraphRoute) {
         const fallback = graphAnswerFallback(graph, question, context);
         const graphAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph" };
         setChatAnswer(graphAnswer);
         rememberChatAnswer(graphAnswer);
         setChatStatus("ready");
+        setChatQuestion("");
         if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
           onSyncFocusNode(context.focusNodes[0].id);
         }
@@ -133,6 +122,7 @@ export function useAskGeneration({
             question,
             answerContext,
             `model answer had ${answer.guardReason ?? "citation issues"}`,
+            "citation",
           )
         : { text: answer.text, citations: answerContext.citations };
       const modelAnswer: ChatAnswer = {
@@ -141,13 +131,16 @@ export function useAskGeneration({
         citations: displayedAnswer.citations,
         source: answer.guarded ? "graph" : "model",
         guarded: answer.guarded,
-        semanticNote: answerContext.semanticError
-          ? `Semantic search was unavailable (${answerContext.semanticError}) so this answer used graph and keyword retrieval only.`
-          : undefined,
+        fallbackReason: answer.guarded ? `Citation guard: ${answer.guardReason ?? "citation issues"}.` : undefined,
+        semanticNote:
+          answerContext.semanticError
+            ? `Semantic retrieval was unavailable (${answerContext.semanticError}), so this answer used graph and keyword retrieval.`
+            : semanticNote,
       };
       setChatAnswer(modelAnswer);
       rememberChatAnswer(modelAnswer);
       setChatStatus("ready");
+      setChatQuestion("");
       if (answerContext.focusNodes[0] && shouldSyncAskFocus(question)) {
         onSyncFocusNode(answerContext.focusNodes[0].id);
       }
@@ -160,10 +153,20 @@ export function useAskGeneration({
       }
       if (context) {
         const fallback = graphAnswerFallback(graph, question, context, fallbackReason);
-        const fallbackAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph", fallbackReason };
+        const fallbackAnswer: ChatAnswer = {
+          question,
+          text: fallback.text,
+          citations: fallback.citations,
+          source: "graph",
+          fallbackReason,
+          semanticNote: context.semanticError
+            ? `Semantic retrieval was unavailable (${context.semanticError}), so this answer used graph and keyword retrieval.`
+            : semanticNote,
+        };
         setChatAnswer(fallbackAnswer);
         rememberChatAnswer(fallbackAnswer);
         setChatStatus("ready");
+        setChatQuestion("");
         if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
           onSyncFocusNode(context.focusNodes[0].id);
         }
@@ -183,24 +186,8 @@ export function useAskGeneration({
     onTabChange("ask");
   }
 
-  function askPresetQuestion(question: string) {
-    if (selectedNode && question === `Explain ${selectedNode.name} from the graph.`) {
-      onExplainSelectedNode();
-      return;
-    }
-    if (!isGraphQuestion(question)) {
-      setChatQuestion(question);
-      setChatAnswer(null);
-      setChatError("");
-      setChatStatus("idle");
-      onTabChange("ask");
-      return;
-    }
-    askQuestion(question);
-  }
-
-  function askCurrentQuestion() {
-    askQuestion();
+  function askCurrentQuestion(mode: ChatMode = "auto") {
+    askQuestion(chatQuestion, mode);
   }
 
   function cancelAsk() {
@@ -211,7 +198,23 @@ export function useAskGeneration({
     askQuestion,
     askCurrentQuestion,
     askAboutSelectedNode,
-    askPresetQuestion,
     cancelAsk,
   };
+}
+
+export function inputQualityMessage(question: string) {
+  const words = question
+    .trim()
+    .toLocaleLowerCase()
+    .split(/[^a-z0-9_-]+/i)
+    .filter(Boolean);
+  const meaningfulWords = words.filter((word) => !["a", "an", "the", "this", "that", "it", "its", "does", "do", "is", "are"].includes(word));
+  if (question.trim().length < 8 || meaningfulWords.length < 2) return COMPLETE_QUESTION_MESSAGE;
+  return "";
+}
+
+function semanticStatusNote(state: SemanticIndexState) {
+  if (state.status === "warming") return "Semantic retrieval is warming; this answer used graph and keyword retrieval.";
+  if (state.status === "error") return `Semantic retrieval is unavailable (${state.message}); this answer used graph and keyword retrieval.`;
+  return undefined;
 }

@@ -50,7 +50,10 @@ export function useAppSettingsState() {
   const noteModelCallComplete = useCallback(() => {
     setModelCallCount((count) => count + 1);
   }, []);
-  const aiConfigured = isCloudProvider(modelSettings.provider) ? hasProviderKey : modelReadiness.status === "ready";
+  const hasLocalAiConfig = Boolean(modelSettings.model.trim() && modelSettings.baseUrl.trim());
+  const aiConfigured = isCloudProvider(modelSettings.provider)
+    ? hasProviderKey
+    : hasLocalAiConfig && modelReadiness.status !== "error";
 
   return {
     scanSettings,

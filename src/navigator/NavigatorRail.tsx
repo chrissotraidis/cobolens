@@ -62,12 +62,16 @@ export function NavigatorRail({
   onOpenWarning: (citation: Citation) => void;
   onFocusNode: (nodeId: string) => void;
 }) {
+  const projectLabel = root || "No codebase selected";
+  const projectStatus = statusLabel(status);
+
   return (
     <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
-      <section className="pane-block">
-        <h2>Project</h2>
-        <div className="path-label">{root || "No codebase selected"}</div>
-        <div className={`status-pill ${status}`}>{statusLabel(status)}</div>
+      <section className={`pane-block project-summary status-${status}`} aria-label={`Project ${projectStatus}`}>
+        <div className="project-strip" title={`${projectStatus}: ${projectLabel}`}>
+          <span className="project-status-dot" aria-hidden="true" />
+          <span className="path-label">{projectLabel}</span>
+        </div>
         {!graph ? (
           <div className="first-run-guide" aria-label="First run path">
             <span>First run</span>

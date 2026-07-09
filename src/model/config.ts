@@ -11,7 +11,7 @@ export type ModelSettings = {
 };
 
 export const PROVIDER_LABELS: Record<ModelProvider, string> = {
-  ollama: "Ollama",
+  ollama: "Local AI",
   anthropic: "Anthropic",
   openai: "OpenAI",
   openrouter: "OpenRouter",

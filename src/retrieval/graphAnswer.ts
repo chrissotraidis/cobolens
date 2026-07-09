@@ -15,6 +15,7 @@ export function graphAnswerFallback(
   question: string,
   context: RetrievedContext,
   modelNote = "",
+  fallbackKind: "runtime" | "citation" = "runtime",
 ) {
   const matched = context.focusNodes.slice(0, 3);
   const relationshipTargets = matched.slice(0, 1);
@@ -32,22 +33,22 @@ export function graphAnswerFallback(
   const includeFallbackCitations = intent === "general";
 
   if (intent === "orientation") {
-    return graphOrientationAnswer(graph, modelNote);
+    return graphOrientationAnswer(graph, modelNote, fallbackKind);
   }
 
   if (!matched.length) {
     return {
       text: [
         "I could not match that question to a symbol in the graph.",
-        ...(modelNote ? ["", `Model note: ${modelNote}`] : []),
+        ...(modelNote ? ["", localAiFallbackIntro(fallbackKind)] : []),
       ].join("\n"),
       citations: [],
     };
   }
 
   const lines = [
-    modelNote ? "I could not get a usable model answer, so I answered from the graph instead." : "I answered from the graph without using a model.",
-    `I matched ${matched.map(formatMatchedNode).join(", ")}.`,
+    modelNote ? localAiFallbackIntro(fallbackKind) : "From the dependency graph:",
+    `Matched ${matched.map(formatMatchedNode).join(", ")}.`,
   ];
 
   if (intent === "general") {
@@ -125,8 +126,6 @@ export function graphAnswerFallback(
     const locations = graphAnswerLocations(matched, relevantEdges);
     lines.push("", `Recorded locations: ${locations.length ? locations.join(", ") : "none recorded"}.`);
   }
-
-  if (modelNote) lines.push("", `Model note: ${modelNote}`);
 
   return {
     text: lines.join("\n"),
@@ -231,7 +230,7 @@ function graphBriefLines(
   return lines;
 }
 
-function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
+function graphOrientationAnswer(graph: GraphDocument, modelNote = "", fallbackKind: "runtime" | "citation" = "runtime") {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const programs = sourceNodesByType(graph, "program");
   const copybooks = sourceNodesByType(graph, "copybook");
@@ -262,7 +261,7 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
   ).slice(0, 4);
 
   const lines = [
-    modelNote ? "I could not get a usable model answer, so I answered from the graph instead." : "I answered from the graph without using a model.",
+    modelNote ? localAiFallbackIntro(fallbackKind) : "Codebase overview from the dependency graph.",
     `I found ${programs.length} source program${programs.length === 1 ? "" : "s"}, ${copybooks.length} copybook${copybooks.length === 1 ? "" : "s"}, and ${jobs.length} JCL job${jobs.length === 1 ? "" : "s"}.`,
     "",
     "Best starting points from the dependency graph:",
@@ -300,8 +299,6 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
     }
   }
 
-  if (modelNote) lines.push("", `Model note: ${modelNote}`);
-
   return {
     text: lines.join("\n"),
     citations: graphAnswerCitations(
@@ -311,6 +308,13 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "") {
       [],
     ),
   };
+}
+
+function localAiFallbackIntro(kind: "runtime" | "citation") {
+  if (kind === "citation") {
+    return "Local AI draft failed citation checks, so Cobolens used the graph answer.";
+  }
+  return "Local AI was unavailable, so Cobolens used the graph answer.";
 }
 
 function sourceNodesByType(graph: GraphDocument, type: string) {

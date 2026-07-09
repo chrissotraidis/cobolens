@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { GraphDocument } from "../lib/graph";
-import type { SummaryExportState } from "./docs";
+import {
+  buildDocumentationExport,
+  DEFAULT_DOCUMENTATION_EXPORT_OPTIONS,
+  documentationExportPackageName,
+  selectedDocumentationExportCount,
+  type DocumentationExportOptions,
+  type SummaryExportState,
+} from "./docs";
 import { runDocumentationExport } from "./runDocumentationExport";
 
 export function useDocumentationExport({
@@ -15,6 +22,8 @@ export function useDocumentationExport({
   desktopAvailable: boolean;
 }) {
   const [exportStatus, setExportStatus] = useState("");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportOptions, setExportOptions] = useState<DocumentationExportOptions>(DEFAULT_DOCUMENTATION_EXPORT_OPTIONS);
 
   useEffect(() => {
     if (!exportStatus || exportStatus === "Exporting") return;
@@ -30,22 +39,47 @@ export function useDocumentationExport({
     setExportStatus("");
   }, []);
 
+  const openExportDialog = useCallback(() => {
+    if (!graph) return;
+    setExportDialogOpen(true);
+  }, [graph]);
+
+  const closeExportDialog = useCallback(() => {
+    if (exportStatus === "Exporting") return;
+    setExportDialogOpen(false);
+  }, [exportStatus]);
+
   const exportDocs = useCallback(async () => {
     if (!graph) return;
+    if (selectedDocumentationExportCount(exportOptions) === 0) {
+      setExportStatus("Choose at least one export artifact.");
+      return;
+    }
     setExportStatus("Exporting");
     const message = await runDocumentationExport({
       graph,
       summaries,
       focusNodeId,
       desktopAvailable,
+      options: exportOptions,
     });
     setExportStatus(message);
-  }, [desktopAvailable, focusNodeId, graph, summaries]);
+    setExportDialogOpen(false);
+  }, [desktopAvailable, exportOptions, focusNodeId, graph, summaries]);
+
+  const exportPackageName = graph ? documentationExportPackageName(buildDocumentationExport(graph, summaries, focusNodeId)) : "cobolens-export";
 
   return {
     exportStatus,
+    exportDialogOpen,
+    exportOptions,
+    exportPackageName,
+    exportDocsRunning: exportStatus === "Exporting",
     showExportStatus,
     clearExportStatus,
+    setExportOptions,
+    openExportDialog,
+    closeExportDialog,
     exportDocs,
   };
 }

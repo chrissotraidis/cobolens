@@ -363,7 +363,11 @@ fn read_source_excerpt(
 #[tauri::command]
 fn write_export_files(
     output_dir: String,
+    package_name: String,
     prefix: String,
+    include_markdown: bool,
+    include_mermaid: bool,
+    include_png: bool,
     markdown: String,
     mermaid: String,
     png: Vec<u8>,
@@ -375,20 +379,30 @@ fn write_export_files(
         return Err("export destination must be a folder".to_string());
     }
 
-    if png.len() < 8 || &png[..8] != b"\x89PNG\r\n\x1a\n" {
+    if !include_markdown && !include_mermaid && !include_png {
+        return Err("choose at least one export artifact".to_string());
+    }
+
+    if include_png && (png.len() < 8 || &png[..8] != b"\x89PNG\r\n\x1a\n") {
         return Err("export PNG payload was invalid".to_string());
     }
 
+    let package_name = safe_export_prefix(&package_name)?;
     let prefix = safe_export_prefix(&prefix)?;
-    let markdown_path = output_dir.join(format!("{prefix}.md"));
-    let mermaid_path = output_dir.join(format!("{prefix}.mmd"));
-    let png_path = output_dir.join(format!("{prefix}.png"));
+    let target_dir = unique_export_dir(&output_dir, &package_name);
+    fs::create_dir_all(&target_dir).map_err(|err| err.to_string())?;
 
-    fs::write(&markdown_path, markdown).map_err(|err| err.to_string())?;
-    fs::write(&mermaid_path, mermaid).map_err(|err| err.to_string())?;
-    fs::write(&png_path, png).map_err(|err| err.to_string())?;
+    if include_markdown {
+        fs::write(target_dir.join(format!("{prefix}.md")), markdown).map_err(|err| err.to_string())?;
+    }
+    if include_mermaid {
+        fs::write(target_dir.join(format!("{prefix}.mmd")), mermaid).map_err(|err| err.to_string())?;
+    }
+    if include_png {
+        fs::write(target_dir.join(format!("{prefix}.png")), png).map_err(|err| err.to_string())?;
+    }
 
-    Ok(output_dir.to_string_lossy().to_string())
+    Ok(target_dir.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -591,6 +605,28 @@ fn safe_export_prefix(prefix: &str) -> Result<String, String> {
     }
 
     Ok(stem)
+}
+
+fn unique_export_dir(output_dir: &Path, package_name: &str) -> PathBuf {
+    let first = output_dir.join(package_name);
+    if !first.exists() {
+        return first;
+    }
+
+    for index in 2..1000 {
+        let candidate = output_dir.join(format!("{package_name}-{index}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    output_dir.join(format!(
+        "{package_name}-{}",
+        UNIX_EPOCH
+            .elapsed()
+            .map(|time| time.as_secs())
+            .unwrap_or(0)
+    ))
 }
 
 fn analyzer_binary_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
@@ -955,7 +991,11 @@ mod tests {
 
         let target = write_export_files(
             output_dir.to_string_lossy().to_string(),
+            "Cobolens LINEAGE Export!".to_string(),
             "Cobolens LINEAGE!".to_string(),
+            true,
+            true,
+            true,
             "# Cobolens\n".to_string(),
             "graph TD\n".to_string(),
             valid_png_bytes(),
@@ -966,18 +1006,32 @@ mod tests {
         // /var -> /private/var), so compare canonical paths.
         assert_eq!(
             target,
-            output_dir.canonicalize().unwrap().to_string_lossy()
+            output_dir
+                .join("cobolens-lineage-export")
+                .canonicalize()
+                .unwrap()
+                .to_string_lossy()
         );
         assert_eq!(
-            fs::read_to_string(output_dir.join("cobolens-lineage.md")).unwrap(),
+            fs::read_to_string(
+                output_dir
+                    .join("cobolens-lineage-export")
+                    .join("cobolens-lineage.md")
+            )
+            .unwrap(),
             "# Cobolens\n"
         );
         assert_eq!(
-            fs::read_to_string(output_dir.join("cobolens-lineage.mmd")).unwrap(),
+            fs::read_to_string(
+                output_dir
+                    .join("cobolens-lineage-export")
+                    .join("cobolens-lineage.mmd")
+            )
+            .unwrap(),
             "graph TD\n"
         );
         assert_eq!(
-            fs::read(output_dir.join("cobolens-lineage.png")).unwrap(),
+            fs::read(output_dir.join("cobolens-lineage-export").join("cobolens-lineage.png")).unwrap(),
             valid_png_bytes()
         );
 
@@ -992,6 +1046,10 @@ mod tests {
         let result = write_export_files(
             output_dir.to_string_lossy().to_string(),
             "docs".to_string(),
+            "docs".to_string(),
+            true,
+            true,
+            true,
             "# Docs\n".to_string(),
             "graph TD\n".to_string(),
             valid_png_bytes(),
@@ -1011,6 +1069,10 @@ mod tests {
         let result = write_export_files(
             output_dir.to_string_lossy().to_string(),
             "docs".to_string(),
+            "docs".to_string(),
+            true,
+            true,
+            true,
             "# Docs\n".to_string(),
             "graph TD\n".to_string(),
             b"not-png".to_vec(),
@@ -1019,10 +1081,57 @@ mod tests {
         assert!(result
             .unwrap_err()
             .contains("export PNG payload was invalid"));
-        assert!(!output_dir.join("docs.md").exists());
-        assert!(!output_dir.join("docs.mmd").exists());
-        assert!(!output_dir.join("docs.png").exists());
+        assert!(!output_dir.join("docs").exists());
 
+        fs::remove_dir_all(output_dir).unwrap();
+    }
+
+    #[test]
+    fn write_export_files_writes_only_selected_artifacts() {
+        let output_dir = temp_test_dir("export-selected-files");
+        fs::create_dir_all(&output_dir).unwrap();
+
+        let target = write_export_files(
+            output_dir.to_string_lossy().to_string(),
+            "Selected Export".to_string(),
+            "docs".to_string(),
+            true,
+            false,
+            false,
+            "# Docs\n".to_string(),
+            "graph TD\n".to_string(),
+            b"not-png-needed".to_vec(),
+        )
+        .unwrap();
+        let target_dir = PathBuf::from(target);
+
+        assert!(target_dir.ends_with("selected-export"));
+        assert_eq!(fs::read_to_string(target_dir.join("docs.md")).unwrap(), "# Docs\n");
+        assert!(!target_dir.join("docs.mmd").exists());
+        assert!(!target_dir.join("docs.png").exists());
+
+        fs::remove_dir_all(output_dir).unwrap();
+    }
+
+    #[test]
+    fn write_export_files_uses_unique_package_folder() {
+        let output_dir = temp_test_dir("export-unique-folder");
+        fs::create_dir_all(output_dir.join("docs-export")).unwrap();
+
+        let target = write_export_files(
+            output_dir.to_string_lossy().to_string(),
+            "docs-export".to_string(),
+            "docs".to_string(),
+            true,
+            false,
+            false,
+            "# Docs\n".to_string(),
+            "graph TD\n".to_string(),
+            Vec::new(),
+        )
+        .unwrap();
+
+        assert!(PathBuf::from(target).ends_with("docs-export-2"));
         fs::remove_dir_all(output_dir).unwrap();
     }
 

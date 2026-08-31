@@ -1,0 +1,4231 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "scannedAt": "unix:1788134012",
+    "dialectGuess": "IBM Enterprise COBOL-like + JCL (EXEC CICS, copybooks, fixed-format)",
+    "fileCount": 11,
+    "parsedFileCount": 11,
+    "parseErrors": [
+      {
+        "file": "cobol/claimci0.cbl",
+        "line": 92,
+        "reason": "tree-sitter parse contained errors; lightweight scan completed"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "copy:BAQRINFO",
+      "type": "copybook",
+      "name": "BAQRINFO",
+      "external": true
+    },
+    {
+      "id": "copy:CLAIMINF",
+      "type": "copybook",
+      "name": "CLAIMINF",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        1,
+        13
+      ]
+    },
+    {
+      "id": "copy:CLAIMREQ",
+      "type": "copybook",
+      "name": "CLAIMREQ",
+      "file": "cobol/claimreq.cpy",
+      "lines": [
+        1,
+        38
+      ]
+    },
+    {
+      "id": "copy:CLAIMRQC",
+      "type": "copybook",
+      "name": "CLAIMRQC",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        1,
+        24
+      ]
+    },
+    {
+      "id": "copy:CLAIMRSC",
+      "type": "copybook",
+      "name": "CLAIMRSC",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        1,
+        26
+      ]
+    },
+    {
+      "id": "copy:CLAIMRSP",
+      "type": "copybook",
+      "name": "CLAIMRSP",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        1,
+        123
+      ]
+    },
+    {
+      "id": "copy:IMSCLAIC",
+      "type": "copybook",
+      "name": "imsclaic",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        1,
+        31
+      ]
+    },
+    {
+      "id": "data:0",
+      "type": "data-item",
+      "name": "0",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        245,
+        245
+      ]
+    },
+    {
+      "id": "data:4",
+      "type": "data-item",
+      "name": "4",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        306,
+        306
+      ]
+    },
+    {
+      "id": "data:6",
+      "type": "data-item",
+      "name": "6",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        308,
+        308
+      ]
+    },
+    {
+      "id": "data:7",
+      "type": "data-item",
+      "name": "7",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        310,
+        310
+      ]
+    },
+    {
+      "id": "data:AMOUNT",
+      "type": "data-item",
+      "name": "amount",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        105,
+        105
+      ]
+    },
+    {
+      "id": "data:AMOUNT-NUM",
+      "type": "data-item",
+      "name": "amount-num",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        103,
+        103
+      ]
+    },
+    {
+      "id": "data:AMOUNT2",
+      "type": "data-item",
+      "name": "amount2",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        108,
+        108
+      ]
+    },
+    {
+      "id": "data:AMOUNT2-LENGTH",
+      "type": "data-item",
+      "name": "amount2-length",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        106,
+        106
+      ]
+    },
+    {
+      "id": "data:API-INFO",
+      "type": "data-item",
+      "name": "API-INFO",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        43,
+        43
+      ]
+    },
+    {
+      "id": "data:API-STATUS-MESSAGE",
+      "type": "data-item",
+      "name": "API-STATUS-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        64,
+        64
+      ]
+    },
+    {
+      "id": "data:BAQ-APIMETHOD",
+      "type": "data-item",
+      "name": "BAQ-APIMETHOD",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        9,
+        9
+      ]
+    },
+    {
+      "id": "data:BAQ-APIMETHOD-LEN",
+      "type": "data-item",
+      "name": "BAQ-APIMETHOD-LEN",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        11,
+        11
+      ]
+    },
+    {
+      "id": "data:BAQ-APINAME",
+      "type": "data-item",
+      "name": "BAQ-APINAME",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "data:BAQ-APINAME-LEN",
+      "type": "data-item",
+      "name": "BAQ-APINAME-LEN",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "data:BAQ-APIPATH",
+      "type": "data-item",
+      "name": "BAQ-APIPATH",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        5,
+        5
+      ]
+    },
+    {
+      "id": "data:BAQ-APIPATH-LEN",
+      "type": "data-item",
+      "name": "BAQ-APIPATH-LEN",
+      "file": "cobol/claiminf.cpy",
+      "lines": [
+        7,
+        7
+      ]
+    },
+    {
+      "id": "data:BAQ-REQUEST-LEN",
+      "type": "data-item",
+      "name": "BAQ-REQUEST-LEN",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        72,
+        72
+      ]
+    },
+    {
+      "id": "data:BAQ-REQUEST-PTR",
+      "type": "data-item",
+      "name": "BAQ-REQUEST-PTR",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        71,
+        71
+      ]
+    },
+    {
+      "id": "data:BAQ-RESPONSE-LEN",
+      "type": "data-item",
+      "name": "BAQ-RESPONSE-LEN",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        74,
+        74
+      ]
+    },
+    {
+      "id": "data:BAQ-RESPONSE-PTR",
+      "type": "data-item",
+      "name": "BAQ-RESPONSE-PTR",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        73,
+        73
+      ]
+    },
+    {
+      "id": "data:CLAIM-TEMP-AMOUNT",
+      "type": "data-item",
+      "name": "CLAIM-TEMP-AMOUNT",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        68,
+        68
+      ]
+    },
+    {
+      "id": "data:CLAIM-TYPE",
+      "type": "data-item",
+      "name": "claim-type",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        98,
+        98
+      ]
+    },
+    {
+      "id": "data:CLAIM-TYPE-NUM",
+      "type": "data-item",
+      "name": "claim-type-num",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        96,
+        96
+      ]
+    },
+    {
+      "id": "data:CLAIM-TYPE2",
+      "type": "data-item",
+      "name": "claim-type2",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        101,
+        101
+      ]
+    },
+    {
+      "id": "data:CLAIM-TYPE2-LENGTH",
+      "type": "data-item",
+      "name": "claim-type2-length",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        99,
+        99
+      ]
+    },
+    {
+      "id": "data:CLAIMAMOUNT",
+      "type": "data-item",
+      "name": "claimAmount",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        302,
+        302
+      ]
+    },
+    {
+      "id": "data:CLAIMTYPE",
+      "type": "data-item",
+      "name": "claimType",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        301,
+        301
+      ]
+    },
+    {
+      "id": "data:CLAIMTYPE-LENGTH",
+      "type": "data-item",
+      "name": "claimType-length",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        306,
+        306
+      ]
+    },
+    {
+      "id": "data:FILE",
+      "type": "data-item",
+      "name": "FILE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        271,
+        271
+      ]
+    },
+    {
+      "id": "data:FUNCTION",
+      "type": "data-item",
+      "name": "FUNCTION",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        331,
+        331
+      ]
+    },
+    {
+      "id": "data:IN-CLAIM-AMOUNT",
+      "type": "data-item",
+      "name": "IN-CLAIM-AMOUNT",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        21,
+        21
+      ]
+    },
+    {
+      "id": "data:IN-CLAIM-DATE",
+      "type": "data-item",
+      "name": "IN-CLAIM-DATE",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "data:IN-CLAIM-DESC",
+      "type": "data-item",
+      "name": "IN-CLAIM-DESC",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        22,
+        22
+      ]
+    },
+    {
+      "id": "data:IN-CLAIM-TYPE",
+      "type": "data-item",
+      "name": "IN-CLAIM-TYPE",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        19,
+        19
+      ]
+    },
+    {
+      "id": "data:IN-LL",
+      "type": "data-item",
+      "name": "IN-LL",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        16,
+        16
+      ]
+    },
+    {
+      "id": "data:IN-TRANCODE",
+      "type": "data-item",
+      "name": "IN-TRANCODE",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        18,
+        18
+      ]
+    },
+    {
+      "id": "data:IN-ZZ",
+      "type": "data-item",
+      "name": "IN-ZZ",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        17,
+        17
+      ]
+    },
+    {
+      "id": "data:INPUT-MSG",
+      "type": "data-item",
+      "name": "INPUT-MSG",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        15,
+        15
+      ]
+    },
+    {
+      "id": "data:IO-PCB-DATE",
+      "type": "data-item",
+      "name": "IO-PCB-DATE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        104,
+        104
+      ]
+    },
+    {
+      "id": "data:IO-PCB-LTERM",
+      "type": "data-item",
+      "name": "IO-PCB-LTERM",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        101,
+        101
+      ]
+    },
+    {
+      "id": "data:IO-PCB-MASK",
+      "type": "data-item",
+      "name": "IO-PCB-MASK",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        100,
+        100
+      ]
+    },
+    {
+      "id": "data:IO-PCB-MOD-NAME",
+      "type": "data-item",
+      "name": "IO-PCB-MOD-NAME",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        107,
+        107
+      ]
+    },
+    {
+      "id": "data:IO-PCB-MSG-SEG-NUMBER",
+      "type": "data-item",
+      "name": "IO-PCB-MSG-SEG-NUMBER",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        106,
+        106
+      ]
+    },
+    {
+      "id": "data:IO-PCB-STATUS-CODE",
+      "type": "data-item",
+      "name": "IO-PCB-STATUS-CODE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        103,
+        103
+      ]
+    },
+    {
+      "id": "data:IO-PCB-TIME",
+      "type": "data-item",
+      "name": "IO-PCB-TIME",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        105,
+        105
+      ]
+    },
+    {
+      "id": "data:IO-PCB-USER-ID",
+      "type": "data-item",
+      "name": "IO-PCB-USER-ID",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        108,
+        108
+      ]
+    },
+    {
+      "id": "data:LENGTH",
+      "type": "data-item",
+      "name": "LENGTH",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        246,
+        246
+      ]
+    },
+    {
+      "id": "data:OUT-API-STATUS-CODE",
+      "type": "data-item",
+      "name": "OUT-API-STATUS-CODE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        65,
+        65
+      ]
+    },
+    {
+      "id": "data:OUT-API-STATUS-MESSAGE",
+      "type": "data-item",
+      "name": "OUT-API-STATUS-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        67,
+        67
+      ]
+    },
+    {
+      "id": "data:OUT-API-STATUS-MSGLEN",
+      "type": "data-item",
+      "name": "OUT-API-STATUS-MSGLEN",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        66,
+        66
+      ]
+    },
+    {
+      "id": "data:OUT-CLAIM-AMOUNT",
+      "type": "data-item",
+      "name": "OUT-CLAIM-AMOUNT",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        30,
+        30
+      ]
+    },
+    {
+      "id": "data:OUT-CLAIM-DESC",
+      "type": "data-item",
+      "name": "OUT-CLAIM-DESC",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        29,
+        29
+      ]
+    },
+    {
+      "id": "data:OUT-CLAIM-STATUS",
+      "type": "data-item",
+      "name": "OUT-CLAIM-STATUS",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        28,
+        28
+      ]
+    },
+    {
+      "id": "data:OUT-CLAIM-TYPE",
+      "type": "data-item",
+      "name": "OUT-CLAIM-TYPE",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        27,
+        27
+      ]
+    },
+    {
+      "id": "data:OUT-LL",
+      "type": "data-item",
+      "name": "OUT-LL",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        25,
+        25
+      ]
+    },
+    {
+      "id": "data:OUT-MESSAGE",
+      "type": "data-item",
+      "name": "OUT-MESSAGE",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        31,
+        31
+      ]
+    },
+    {
+      "id": "data:OUT-ZZ",
+      "type": "data-item",
+      "name": "OUT-ZZ",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        26,
+        26
+      ]
+    },
+    {
+      "id": "data:OUTPUT-MSG",
+      "type": "data-item",
+      "name": "OUTPUT-MSG",
+      "file": "cobol/imsclaic.cpy",
+      "lines": [
+        24,
+        24
+      ]
+    },
+    {
+      "id": "data:REASON",
+      "type": "data-item",
+      "name": "reason",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        119,
+        119
+      ]
+    },
+    {
+      "id": "data:REASON-NUM",
+      "type": "data-item",
+      "name": "reason-num",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        117,
+        117
+      ]
+    },
+    {
+      "id": "data:REASON2",
+      "type": "data-item",
+      "name": "reason2",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        122,
+        122
+      ]
+    },
+    {
+      "id": "data:REASON2-LENGTH",
+      "type": "data-item",
+      "name": "reason2-length",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        120,
+        120
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-ACTION",
+      "type": "data-item",
+      "name": "REQ-CLAIM-ACTION",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        24,
+        24
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-AMOUNT",
+      "type": "data-item",
+      "name": "REQ-CLAIM-AMOUNT",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        302,
+        302
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-CONTAINER",
+      "type": "data-item",
+      "name": "REQ-CLAIM-CONTAINER",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        14,
+        14
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-DATE",
+      "type": "data-item",
+      "name": "REQ-CLAIM-DATE",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-DESC",
+      "type": "data-item",
+      "name": "REQ-CLAIM-DESC",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        21,
+        21
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-DETAILS",
+      "type": "data-item",
+      "name": "REQ-CLAIM-DETAILS",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        17,
+        17
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-ID",
+      "type": "data-item",
+      "name": "REQ-CLAIM-ID",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        16,
+        16
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-PROVIDER",
+      "type": "data-item",
+      "name": "REQ-CLAIM-PROVIDER",
+      "file": "cobol/claimrqc.cpy",
+      "lines": [
+        22,
+        22
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-RECORD",
+      "type": "data-item",
+      "name": "REQ-CLAIM-RECORD",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        262,
+        262
+      ]
+    },
+    {
+      "id": "data:REQ-CLAIM-TYPE",
+      "type": "data-item",
+      "name": "REQ-CLAIM-TYPE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        301,
+        301
+      ]
+    },
+    {
+      "id": "data:REQ-FILLER",
+      "type": "data-item",
+      "name": "REQ-FILLER",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        465,
+        465
+      ]
+    },
+    {
+      "id": "data:REQQUERYPARAMETERS",
+      "type": "data-item",
+      "name": "ReqQueryParameters",
+      "file": "cobol/claimreq.cpy",
+      "lines": [
+        34,
+        34
+      ]
+    },
+    {
+      "id": "data:REQUEST",
+      "type": "data-item",
+      "name": "REQUEST",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        39,
+        39
+      ]
+    },
+    {
+      "id": "data:RESPBODY",
+      "type": "data-item",
+      "name": "RespBody",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        94,
+        94
+      ]
+    },
+    {
+      "id": "data:RESPONSE",
+      "type": "data-item",
+      "name": "RESPONSE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        41,
+        41
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-AMOUNT",
+      "type": "data-item",
+      "name": "RSP-CLAIM-AMOUNT",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        19,
+        19
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-CICS-RESP",
+      "type": "data-item",
+      "name": "RSP-CLAIM-CICS-RESP",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        286,
+        286
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-CICS-RESP2",
+      "type": "data-item",
+      "name": "RSP-CLAIM-CICS-RESP2",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        25,
+        25
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-CONTAINER",
+      "type": "data-item",
+      "name": "RSP-CLAIM-CONTAINER",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        14,
+        14
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-DATE",
+      "type": "data-item",
+      "name": "RSP-CLAIM-DATE",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        20,
+        20
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-DESC",
+      "type": "data-item",
+      "name": "RSP-CLAIM-DESC",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        21,
+        21
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-DETAILS",
+      "type": "data-item",
+      "name": "RSP-CLAIM-DETAILS",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        17,
+        17
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-ID",
+      "type": "data-item",
+      "name": "RSP-CLAIM-ID",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        16,
+        16
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-OUTPUT-MESSAGE",
+      "type": "data-item",
+      "name": "RSP-CLAIM-OUTPUT-MESSAGE",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        26,
+        26
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-PROVIDER",
+      "type": "data-item",
+      "name": "RSP-CLAIM-PROVIDER",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        22,
+        22
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-RECORD",
+      "type": "data-item",
+      "name": "RSP-CLAIM-RECORD",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        262,
+        262
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-STATUS",
+      "type": "data-item",
+      "name": "RSP-CLAIM-STATUS",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        465,
+        465
+      ]
+    },
+    {
+      "id": "data:RSP-CLAIM-TYPE",
+      "type": "data-item",
+      "name": "RSP-CLAIM-TYPE",
+      "file": "cobol/claimrsc.cpy",
+      "lines": [
+        18,
+        18
+      ]
+    },
+    {
+      "id": "data:WS-ABSTIME",
+      "type": "data-item",
+      "name": "WS-ABSTIME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        64,
+        64
+      ]
+    },
+    {
+      "id": "data:WS-CHANNEL-NAME",
+      "type": "data-item",
+      "name": "WS-CHANNEL-NAME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        57,
+        57
+      ]
+    },
+    {
+      "id": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "data-item",
+      "name": "WS-CICS-RESP-CODE-NUM",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        59,
+        59
+      ]
+    },
+    {
+      "id": "data:WS-CONTAINER-NAME",
+      "type": "data-item",
+      "name": "WS-CONTAINER-NAME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        58,
+        58
+      ]
+    },
+    {
+      "id": "data:WS-CSMT-OUTAREA",
+      "type": "data-item",
+      "name": "WS-CSMT-OUTAREA",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        63,
+        63
+      ]
+    },
+    {
+      "id": "data:WS-CURRENT-DATE",
+      "type": "data-item",
+      "name": "WS-CURRENT-DATE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        65,
+        65
+      ]
+    },
+    {
+      "id": "data:WS-CURRENT-TIME",
+      "type": "data-item",
+      "name": "WS-CURRENT-TIME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        66,
+        66
+      ]
+    },
+    {
+      "id": "data:WS-DIFF-GMT",
+      "type": "data-item",
+      "name": "WS-DIFF-GMT",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        81,
+        81
+      ]
+    },
+    {
+      "id": "data:WS-FILE-NAME",
+      "type": "data-item",
+      "name": "WS-FILE-NAME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        60,
+        60
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-DATE-TIME",
+      "type": "data-item",
+      "name": "WS-FORMATTED-DATE-TIME",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        83,
+        83
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-DAY",
+      "type": "data-item",
+      "name": "WS-FORMATTED-DAY",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        88,
+        88
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-HOUR",
+      "type": "data-item",
+      "name": "WS-FORMATTED-HOUR",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        90,
+        90
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-MIN",
+      "type": "data-item",
+      "name": "WS-FORMATTED-MIN",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        92,
+        92
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-MONTH",
+      "type": "data-item",
+      "name": "WS-FORMATTED-MONTH",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        86,
+        86
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-MS",
+      "type": "data-item",
+      "name": "WS-FORMATTED-MS",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        96,
+        96
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-SEC",
+      "type": "data-item",
+      "name": "WS-FORMATTED-SEC",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        94,
+        94
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-TS",
+      "type": "data-item",
+      "name": "WS-FORMATTED-TS",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        82,
+        82
+      ]
+    },
+    {
+      "id": "data:WS-FORMATTED-YEAR",
+      "type": "data-item",
+      "name": "WS-FORMATTED-YEAR",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        84,
+        84
+      ]
+    },
+    {
+      "id": "data:WS-INPUT-LENGTH",
+      "type": "data-item",
+      "name": "WS-INPUT-LENGTH",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        56,
+        56
+      ]
+    },
+    {
+      "id": "data:WS-LOG-MESSAGE",
+      "type": "data-item",
+      "name": "WS-LOG-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        69,
+        69
+      ]
+    },
+    {
+      "id": "data:WS-MSG-TO-WRITE",
+      "type": "data-item",
+      "name": "WS-MSG-TO-WRITE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        62,
+        62
+      ]
+    },
+    {
+      "id": "data:WS-STORAGE",
+      "type": "data-item",
+      "name": "WS-STORAGE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        55,
+        55
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-DATE",
+      "type": "data-item",
+      "name": "WS-TEMP-DATE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        72,
+        72
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-DATE-TIME",
+      "type": "data-item",
+      "name": "WS-TEMP-DATE-TIME",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        71,
+        71
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-DAY",
+      "type": "data-item",
+      "name": "WS-TEMP-DAY",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        75,
+        75
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-HOUR",
+      "type": "data-item",
+      "name": "WS-TEMP-HOUR",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        77,
+        77
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-MIN",
+      "type": "data-item",
+      "name": "WS-TEMP-MIN",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        78,
+        78
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-MONTH",
+      "type": "data-item",
+      "name": "WS-TEMP-MONTH",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        74,
+        74
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-MS",
+      "type": "data-item",
+      "name": "WS-TEMP-MS",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        80,
+        80
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-SEC",
+      "type": "data-item",
+      "name": "WS-TEMP-SEC",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        79,
+        79
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-TIME",
+      "type": "data-item",
+      "name": "WS-TEMP-TIME",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        76,
+        76
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-TS",
+      "type": "data-item",
+      "name": "WS-TEMP-TS",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        70,
+        70
+      ]
+    },
+    {
+      "id": "data:WS-TEMP-YEAR",
+      "type": "data-item",
+      "name": "WS-TEMP-YEAR",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        73,
+        73
+      ]
+    },
+    {
+      "id": "data:WS-TOKEN",
+      "type": "data-item",
+      "name": "WS-TOKEN",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        61,
+        61
+      ]
+    },
+    {
+      "id": "data:WS-WRITEQ-RESP-CODE",
+      "type": "data-item",
+      "name": "WS-WRITEQ-RESP-CODE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        67,
+        67
+      ]
+    },
+    {
+      "id": "data:XSTATUS",
+      "type": "data-item",
+      "name": "Xstatus",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        112,
+        112
+      ]
+    },
+    {
+      "id": "data:XSTATUS-NUM",
+      "type": "data-item",
+      "name": "Xstatus-num",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        110,
+        110
+      ]
+    },
+    {
+      "id": "data:XSTATUS2",
+      "type": "data-item",
+      "name": "Xstatus2",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        115,
+        115
+      ]
+    },
+    {
+      "id": "data:XSTATUS2-LENGTH",
+      "type": "data-item",
+      "name": "Xstatus2-length",
+      "file": "cobol/claimrsp.cpy",
+      "lines": [
+        113,
+        113
+      ]
+    },
+    {
+      "id": "dataset:&&COPYLINK",
+      "type": "dataset",
+      "name": "&&COPYLINK",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        79,
+        79
+      ]
+    },
+    {
+      "id": "dataset:&&LOADSET",
+      "type": "dataset",
+      "name": "&&LOADSET",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        54,
+        54
+      ]
+    },
+    {
+      "id": "dataset:<CICSAOR1>.DFHCSD",
+      "type": "dataset",
+      "name": "<CICSAOR1>.DFHCSD",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        31,
+        31
+      ]
+    },
+    {
+      "id": "dataset:<CICSPRFX>.SDFHCOB",
+      "type": "dataset",
+      "name": "<CICSPRFX>.SDFHCOB",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        48,
+        48
+      ]
+    },
+    {
+      "id": "dataset:<CICSPRFX>.SDFHCOB(DFHEILIC",
+      "type": "dataset",
+      "name": "<CICSPRFX>.SDFHCOB(DFHEILIC",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        78,
+        78
+      ]
+    },
+    {
+      "id": "dataset:<CICSPRFX>.SDFHLOAD",
+      "type": "dataset",
+      "name": "<CICSPRFX>.SDFHLOAD",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        30,
+        30
+      ]
+    },
+    {
+      "id": "dataset:<LNGPRFX>.SIGYCOMP",
+      "type": "dataset",
+      "name": "<LNGPRFX>.SIGYCOMP",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        46,
+        46
+      ]
+    },
+    {
+      "id": "dataset:<SOURCE.PDS.LIB>(&MEM",
+      "type": "dataset",
+      "name": "<SOURCE.PDS.LIB>(&MEM",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        53,
+        53
+      ]
+    },
+    {
+      "id": "dataset:<USER.LOAD.LIB>(&MEM",
+      "type": "dataset",
+      "name": "<USER.LOAD.LIB>(&MEM",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        93,
+        93
+      ]
+    },
+    {
+      "id": "dataset:WS-FILE-NAME",
+      "type": "dataset",
+      "name": "WS-FILE-NAME",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        398,
+        398
+      ]
+    },
+    {
+      "id": "db2:RSP-CLAIM-CONTAINER",
+      "type": "db2-table",
+      "name": "RSP-CLAIM-CONTAINER",
+      "external": true
+    },
+    {
+      "id": "db2:RSP-CLAIM-RECORD",
+      "type": "db2-table",
+      "name": "RSP-CLAIM-RECORD",
+      "external": true
+    },
+    {
+      "id": "db2:WS-CSMT-OUTAREA",
+      "type": "db2-table",
+      "name": "WS-CSMT-OUTAREA",
+      "external": true
+    },
+    {
+      "id": "dd:DFHCSD",
+      "type": "jcl-dd",
+      "name": "DFHCSD",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        31,
+        31
+      ]
+    },
+    {
+      "id": "dd:STEPLIB",
+      "type": "jcl-dd",
+      "name": "STEPLIB",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        30,
+        30
+      ]
+    },
+    {
+      "id": "dd:SYSIN",
+      "type": "jcl-dd",
+      "name": "SYSIN",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        53,
+        53
+      ]
+    },
+    {
+      "id": "dd:SYSLIB",
+      "type": "jcl-dd",
+      "name": "SYSLIB",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        48,
+        48
+      ]
+    },
+    {
+      "id": "dd:SYSLIN",
+      "type": "jcl-dd",
+      "name": "SYSLIN",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        54,
+        54
+      ]
+    },
+    {
+      "id": "dd:SYSLMOD",
+      "type": "jcl-dd",
+      "name": "SYSLMOD",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        93,
+        93
+      ]
+    },
+    {
+      "id": "dd:SYSUT1",
+      "type": "jcl-dd",
+      "name": "SYSUT1",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        78,
+        78
+      ]
+    },
+    {
+      "id": "dd:SYSUT2",
+      "type": "jcl-dd",
+      "name": "SYSUT2",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        79,
+        79
+      ]
+    },
+    {
+      "id": "job:CICSDEFN",
+      "type": "jcl-job",
+      "name": "cicsdefn",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        1,
+        48
+      ],
+      "steps": [
+        "step:CICSDEFN/CSDDEFS"
+      ]
+    },
+    {
+      "id": "job:COMPILE",
+      "type": "jcl-job",
+      "name": "compile",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        1,
+        103
+      ],
+      "steps": [
+        "step:COMPILE/COBOL",
+        "step:COMPILE/COPYLINK",
+        "step:COMPILE/LKED",
+        "step:COMPILE/COMPVSAM"
+      ]
+    },
+    {
+      "id": "job:VSAM",
+      "type": "jcl-job",
+      "name": "vsam",
+      "file": "jcl/vsam.jcl",
+      "lines": [
+        1,
+        49
+      ],
+      "steps": [
+        "step:VSAM/STEP01"
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-CALL-CLAIM-RULE",
+      "type": "paragraph",
+      "name": "DO-CALL-CLAIM-RULE",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        268,
+        268
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-INITIALIZATION",
+      "type": "paragraph",
+      "name": "DO-INITIALIZATION",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        88,
+        88
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-READ-CLAIM-REC",
+      "type": "paragraph",
+      "name": "DO-READ-CLAIM-REC",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        215,
+        215
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "paragraph",
+      "name": "DO-RETURN-TO-CICS",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        117,
+        117
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-REWRITE-CLAIM-REC",
+      "type": "paragraph",
+      "name": "DO-REWRITE-CLAIM-REC",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        448,
+        448
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-SUBMIT-CLAIM-REC",
+      "type": "paragraph",
+      "name": "DO-SUBMIT-CLAIM-REC",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        213,
+        213
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-UPDATE-CLAIM-REC",
+      "type": "paragraph",
+      "name": "DO-UPDATE-CLAIM-REC",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        217,
+        217
+      ]
+    },
+    {
+      "id": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "paragraph",
+      "name": "DO-WRITE-TO-CSMT",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        116,
+        116
+      ]
+    },
+    {
+      "id": "para:IMSCLAIM/CALL-API",
+      "type": "paragraph",
+      "name": "CALL-API",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        120,
+        120
+      ]
+    },
+    {
+      "id": "para:IMSCLAIM/GET-INPUT-MESSAGE",
+      "type": "paragraph",
+      "name": "GET-INPUT-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        117,
+        117
+      ]
+    },
+    {
+      "id": "para:IMSCLAIM/LOG-MESSAGE",
+      "type": "paragraph",
+      "name": "LOG-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        116,
+        116
+      ]
+    },
+    {
+      "id": "para:IMSCLAIM/SET-OUTPUT-MESSAGE",
+      "type": "paragraph",
+      "name": "SET-OUTPUT-MESSAGE",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        121,
+        121
+      ]
+    },
+    {
+      "id": "prog:CBLTDLI",
+      "type": "program",
+      "name": "CBLTDLI",
+      "external": true
+    },
+    {
+      "id": "prog:CLAIMCI0",
+      "type": "program",
+      "name": "claimci0",
+      "file": "cobol/claimci0.cbl",
+      "lines": [
+        1,
+        546
+      ]
+    },
+    {
+      "id": "prog:COMM-STUB-PGM-NAME",
+      "type": "program",
+      "name": "COMM-STUB-PGM-NAME",
+      "external": true
+    },
+    {
+      "id": "prog:COMM-TERM-PGM-NAME",
+      "type": "program",
+      "name": "COMM-TERM-PGM-NAME",
+      "external": true
+    },
+    {
+      "id": "prog:DFHCSDUP",
+      "type": "program",
+      "name": "DFHCSDUP",
+      "external": true
+    },
+    {
+      "id": "prog:IDCAMS",
+      "type": "program",
+      "name": "IDCAMS",
+      "external": true
+    },
+    {
+      "id": "prog:IEBGENER",
+      "type": "program",
+      "name": "IEBGENER",
+      "external": true
+    },
+    {
+      "id": "prog:IEWL",
+      "type": "program",
+      "name": "IEWL",
+      "external": true
+    },
+    {
+      "id": "prog:IGYCRCTL",
+      "type": "program",
+      "name": "IGYCRCTL",
+      "external": true
+    },
+    {
+      "id": "prog:IMSCLAIM",
+      "type": "program",
+      "name": "imsclaim",
+      "file": "cobol/imsclaim.cbl",
+      "lines": [
+        1,
+        343
+      ]
+    },
+    {
+      "id": "step:CICSDEFN/CSDDEFS",
+      "type": "jcl-step",
+      "name": "CSDDEFS",
+      "file": "jcl/cicsdefn.jcl",
+      "lines": [
+        29,
+        29
+      ]
+    },
+    {
+      "id": "step:COMPILE/COBOL",
+      "type": "jcl-step",
+      "name": "COBOL",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        44,
+        44
+      ]
+    },
+    {
+      "id": "step:COMPILE/COMPVSAM",
+      "type": "jcl-step",
+      "name": "COMPVSAM",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        102,
+        102
+      ]
+    },
+    {
+      "id": "step:COMPILE/COPYLINK",
+      "type": "jcl-step",
+      "name": "COPYLINK",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        77,
+        77
+      ]
+    },
+    {
+      "id": "step:COMPILE/LKED",
+      "type": "jcl-step",
+      "name": "LKED",
+      "file": "jcl/compile.jcl",
+      "lines": [
+        89,
+        89
+      ]
+    },
+    {
+      "id": "step:VSAM/STEP01",
+      "type": "jcl-step",
+      "name": "STEP01",
+      "file": "jcl/vsam.jcl",
+      "lines": [
+        29,
+        29
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APIMETHOD-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 11
+      }
+    },
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APIMETHOD",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 9
+      }
+    },
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APINAME-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 3
+      }
+    },
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APINAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 1
+      }
+    },
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APIPATH-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 7
+      }
+    },
+    {
+      "from": "copy:CLAIMINF",
+      "to": "data:BAQ-APIPATH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claiminf.cpy",
+        "line": 5
+      }
+    },
+    {
+      "from": "copy:CLAIMREQ",
+      "to": "data:CLAIMAMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimreq.cpy",
+        "line": 37
+      }
+    },
+    {
+      "from": "copy:CLAIMREQ",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimreq.cpy",
+        "line": 35
+      }
+    },
+    {
+      "from": "copy:CLAIMREQ",
+      "to": "data:CLAIMTYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimreq.cpy",
+        "line": 36
+      }
+    },
+    {
+      "from": "copy:CLAIMREQ",
+      "to": "data:REQQUERYPARAMETERS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimreq.cpy",
+        "line": 34
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-ACTION",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 24
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 19
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-CONTAINER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 14
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 20
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-DESC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 21
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-DETAILS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 17
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-ID",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 16
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-PROVIDER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 22
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-RECORD",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 15
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-CLAIM-TYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 18
+      }
+    },
+    {
+      "from": "copy:CLAIMRQC",
+      "to": "data:REQ-FILLER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrqc.cpy",
+        "line": 23
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 19
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-CICS-RESP2",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 25
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-CICS-RESP",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 24
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-CONTAINER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 14
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 20
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-DESC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 21
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-DETAILS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 17
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-ID",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 16
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-OUTPUT-MESSAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 26
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-PROVIDER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 22
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-RECORD",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 15
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-STATUS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 23
+      }
+    },
+    {
+      "from": "copy:CLAIMRSC",
+      "to": "data:RSP-CLAIM-TYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsc.cpy",
+        "line": 18
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:AMOUNT-NUM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 103
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:AMOUNT2-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 106
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:AMOUNT2",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 108
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 105
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:CLAIM-TYPE-NUM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 96
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:CLAIM-TYPE2-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 99
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:CLAIM-TYPE2",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 101
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:CLAIM-TYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 98
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:REASON-NUM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 117
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:REASON2-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 120
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:REASON2",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 122
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:REASON",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 119
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:RESPBODY",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 94
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:XSTATUS-NUM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 110
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:XSTATUS2-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 113
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:XSTATUS2",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 115
+      }
+    },
+    {
+      "from": "copy:CLAIMRSP",
+      "to": "data:XSTATUS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimrsp.cpy",
+        "line": 112
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-CLAIM-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 21
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-CLAIM-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 20
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-CLAIM-DESC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 22
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-CLAIM-TYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 19
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-LL",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 16
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-TRANCODE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 18
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:IN-ZZ",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 17
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:INPUT-MSG",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 15
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-CLAIM-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 30
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-CLAIM-DESC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 29
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-CLAIM-STATUS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 28
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-CLAIM-TYPE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 27
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-LL",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 25
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-MESSAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 31
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUT-ZZ",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 26
+      }
+    },
+    {
+      "from": "copy:IMSCLAIC",
+      "to": "data:OUTPUT-MSG",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaic.cpy",
+        "line": 24
+      }
+    },
+    {
+      "from": "data:0",
+      "to": "data:OUT-ZZ",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 245
+      }
+    },
+    {
+      "from": "data:4",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 306
+      }
+    },
+    {
+      "from": "data:4",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 151
+      }
+    },
+    {
+      "from": "data:6",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 308
+      }
+    },
+    {
+      "from": "data:6",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 153
+      }
+    },
+    {
+      "from": "data:7",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 310
+      }
+    },
+    {
+      "from": "data:7",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 312
+      }
+    },
+    {
+      "from": "data:7",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 155
+      }
+    },
+    {
+      "from": "data:7",
+      "to": "data:CLAIMTYPE-LENGTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 157
+      }
+    },
+    {
+      "from": "data:CLAIM-TEMP-AMOUNT",
+      "to": "data:CLAIMAMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 147
+      }
+    },
+    {
+      "from": "data:FUNCTION",
+      "to": "data:WS-TEMP-DATE-TIME",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 331
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-AMOUNT",
+      "to": "data:CLAIM-TEMP-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 145
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-AMOUNT",
+      "to": "data:OUT-CLAIM-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 183
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-AMOUNT",
+      "to": "data:OUT-CLAIM-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 190
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-AMOUNT",
+      "to": "data:OUT-CLAIM-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 238
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-AMOUNT",
+      "to": "data:OUT-CLAIM-AMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 298
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-DESC",
+      "to": "data:OUT-CLAIM-DESC",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 182
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-DESC",
+      "to": "data:OUT-CLAIM-DESC",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 189
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-TYPE",
+      "to": "data:CLAIMTYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 146
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-TYPE",
+      "to": "data:OUT-CLAIM-TYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 180
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-TYPE",
+      "to": "data:OUT-CLAIM-TYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 187
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-TYPE",
+      "to": "data:OUT-CLAIM-TYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 237
+      }
+    },
+    {
+      "from": "data:IN-CLAIM-TYPE",
+      "to": "data:OUT-CLAIM-TYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 297
+      }
+    },
+    {
+      "from": "data:LENGTH",
+      "to": "data:BAQ-REQUEST-LEN",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 246
+      }
+    },
+    {
+      "from": "data:LENGTH",
+      "to": "data:BAQ-REQUEST-LEN",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 138
+      }
+    },
+    {
+      "from": "data:LENGTH",
+      "to": "data:BAQ-RESPONSE-LEN",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 249
+      }
+    },
+    {
+      "from": "data:LENGTH",
+      "to": "data:BAQ-RESPONSE-LEN",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 140
+      }
+    },
+    {
+      "from": "data:LENGTH",
+      "to": "data:OUT-LL",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 244
+      }
+    },
+    {
+      "from": "data:REQ-CLAIM-AMOUNT",
+      "to": "data:CLAIMAMOUNT",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 302
+      }
+    },
+    {
+      "from": "data:REQ-CLAIM-RECORD",
+      "to": "data:RSP-CLAIM-RECORD",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 262
+      }
+    },
+    {
+      "from": "data:REQ-CLAIM-TYPE",
+      "to": "data:CLAIMTYPE",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 301
+      }
+    },
+    {
+      "from": "data:REQ-FILLER",
+      "to": "data:RSP-CLAIM-STATUS",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 465
+      }
+    },
+    {
+      "from": "data:RSP-CLAIM-CICS-RESP",
+      "to": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 286
+      }
+    },
+    {
+      "from": "data:RSP-CLAIM-CICS-RESP",
+      "to": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 416
+      }
+    },
+    {
+      "from": "data:RSP-CLAIM-CICS-RESP",
+      "to": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 450
+      }
+    },
+    {
+      "from": "data:RSP-CLAIM-CICS-RESP",
+      "to": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 482
+      }
+    },
+    {
+      "from": "data:WS-TEMP-DAY",
+      "to": "data:WS-FORMATTED-DAY",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 334
+      }
+    },
+    {
+      "from": "data:WS-TEMP-HOUR",
+      "to": "data:WS-FORMATTED-HOUR",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 335
+      }
+    },
+    {
+      "from": "data:WS-TEMP-MIN",
+      "to": "data:WS-FORMATTED-MIN",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 336
+      }
+    },
+    {
+      "from": "data:WS-TEMP-MONTH",
+      "to": "data:WS-FORMATTED-MONTH",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 333
+      }
+    },
+    {
+      "from": "data:WS-TEMP-MS",
+      "to": "data:WS-FORMATTED-MS",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 338
+      }
+    },
+    {
+      "from": "data:WS-TEMP-SEC",
+      "to": "data:WS-FORMATTED-SEC",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 337
+      }
+    },
+    {
+      "from": "data:WS-TEMP-YEAR",
+      "to": "data:WS-FORMATTED-YEAR",
+      "type": "moves-to",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 332
+      }
+    },
+    {
+      "from": "dd:DFHCSD",
+      "to": "dataset:<CICSAOR1>.DFHCSD",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 31
+      }
+    },
+    {
+      "from": "dd:STEPLIB",
+      "to": "dataset:<CICSPRFX>.SDFHLOAD",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 30
+      }
+    },
+    {
+      "from": "dd:STEPLIB",
+      "to": "dataset:<LNGPRFX>.SIGYCOMP",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 46
+      }
+    },
+    {
+      "from": "dd:SYSIN",
+      "to": "dataset:<SOURCE.PDS.LIB>(&MEM",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 53
+      }
+    },
+    {
+      "from": "dd:SYSLIB",
+      "to": "dataset:<CICSPRFX>.SDFHCOB",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 48
+      }
+    },
+    {
+      "from": "dd:SYSLIB",
+      "to": "dataset:<CICSPRFX>.SDFHLOAD",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 91
+      }
+    },
+    {
+      "from": "dd:SYSLIN",
+      "to": "dataset:&&COPYLINK",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 97
+      }
+    },
+    {
+      "from": "dd:SYSLIN",
+      "to": "dataset:&&LOADSET",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 54
+      }
+    },
+    {
+      "from": "dd:SYSLMOD",
+      "to": "dataset:<USER.LOAD.LIB>(&MEM",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 93
+      }
+    },
+    {
+      "from": "dd:SYSUT1",
+      "to": "dataset:<CICSPRFX>.SDFHCOB(DFHEILIC",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 78
+      }
+    },
+    {
+      "from": "dd:SYSUT2",
+      "to": "dataset:&&COPYLINK",
+      "type": "uses-dd",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 79
+      }
+    },
+    {
+      "from": "job:CICSDEFN",
+      "to": "step:CICSDEFN/CSDDEFS",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 29
+      }
+    },
+    {
+      "from": "job:COMPILE",
+      "to": "step:COMPILE/COBOL",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 44
+      }
+    },
+    {
+      "from": "job:COMPILE",
+      "to": "step:COMPILE/COMPVSAM",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 102
+      }
+    },
+    {
+      "from": "job:COMPILE",
+      "to": "step:COMPILE/COPYLINK",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 77
+      }
+    },
+    {
+      "from": "job:COMPILE",
+      "to": "step:COMPILE/LKED",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 89
+      }
+    },
+    {
+      "from": "job:VSAM",
+      "to": "step:VSAM/STEP01",
+      "type": "CONTAINS",
+      "site": {
+        "file": "jcl/vsam.jcl",
+        "line": 29
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:BAQRINFO",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 34
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:CLAIMINF",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 44
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:CLAIMREQ",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 40
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:CLAIMRQC",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 50
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:CLAIMRSC",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 51
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "copy:CLAIMRSP",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 42
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:API-INFO",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 43
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:BAQ-REQUEST-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 72
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:BAQ-REQUEST-PTR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 71
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:BAQ-RESPONSE-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 74
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:BAQ-RESPONSE-PTR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 73
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:FILE",
+      "type": "writes",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 271
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:REQUEST",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 39
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:RESPONSE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 41
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-ABSTIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 64
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CHANNEL-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 57
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CICS-RESP-CODE-NUM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 59
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CONTAINER-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 58
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CSMT-OUTAREA",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 63
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CURRENT-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 65
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-CURRENT-TIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 66
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-FILE-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 60
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-INPUT-LENGTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 56
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-MSG-TO-WRITE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 62
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-STORAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 55
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-TOKEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 61
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "data:WS-WRITEQ-RESP-CODE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 67
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "dataset:WS-FILE-NAME",
+      "type": "reads",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 398
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "dataset:WS-FILE-NAME",
+      "type": "reads",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 432
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "db2:RSP-CLAIM-CONTAINER",
+      "type": "queries",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 531
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "db2:RSP-CLAIM-RECORD",
+      "type": "queries",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 272
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "db2:RSP-CLAIM-RECORD",
+      "type": "queries",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 469
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "db2:WS-CSMT-OUTAREA",
+      "type": "queries",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 510
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-CALL-CLAIM-RULE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 268
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-INITIALIZATION",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 88
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-READ-CLAIM-REC",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 215
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 117
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 133
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 156
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 167
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 173
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 186
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 205
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-RETURN-TO-CICS",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 225
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-REWRITE-CLAIM-REC",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 448
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-SUBMIT-CLAIM-REC",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 213
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-UPDATE-CLAIM-REC",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 217
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 116
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 132
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 155
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 166
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 172
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 180
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 185
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 204
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 347
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 384
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "para:CLAIMCI0/DO-WRITE-TO-CSMT",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 539
+      }
+    },
+    {
+      "from": "prog:CLAIMCI0",
+      "to": "prog:COMM-STUB-PGM-NAME",
+      "type": "CALLS",
+      "site": {
+        "file": "cobol/claimci0.cbl",
+        "line": 320
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "copy:BAQRINFO",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 27
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "copy:CLAIMINF",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 37
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "copy:CLAIMREQ",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 33
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "copy:CLAIMRSP",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 35
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "copy:IMSCLAIC",
+      "type": "COPIES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 42
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:API-INFO",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 36
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:API-STATUS-MESSAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 64
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:BAQ-REQUEST-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 47
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:BAQ-REQUEST-PTR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 46
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:BAQ-RESPONSE-LEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 49
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:BAQ-RESPONSE-PTR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 48
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:CLAIM-TEMP-AMOUNT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 68
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 104
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-LTERM",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 101
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-MASK",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 100
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-MOD-NAME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 107
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-MSG-SEG-NUMBER",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 106
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-STATUS-CODE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 103
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-TIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 105
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:IO-PCB-USER-ID",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 108
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:OUT-API-STATUS-CODE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 65
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:OUT-API-STATUS-MESSAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 67
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:OUT-API-STATUS-MSGLEN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 66
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:REQUEST",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 32
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:RESPONSE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 34
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-DIFF-GMT",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 81
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-DATE-TIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 83
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-DAY",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 88
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-HOUR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 90
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-MIN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 92
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-MONTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 86
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-MS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 96
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-SEC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 94
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-TS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 82
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-FORMATTED-YEAR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 84
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-LOG-MESSAGE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 69
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-DATE-TIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 71
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-DATE",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 72
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-DAY",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 75
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-HOUR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 77
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-MIN",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 78
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-MONTH",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 74
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-MS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 80
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-SEC",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 79
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-TIME",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 76
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-TS",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 70
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "data:WS-TEMP-YEAR",
+      "type": "DEFINES",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 73
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/CALL-API",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 120
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/GET-INPUT-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 117
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/GET-INPUT-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 122
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/LOG-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 116
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/LOG-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 243
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/LOG-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 258
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "para:IMSCLAIM/SET-OUTPUT-MESSAGE",
+      "type": "PERFORMS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 121
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "prog:CBLTDLI",
+      "type": "CALLS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 306
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "prog:CBLTDLI",
+      "type": "CALLS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 319
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "prog:COMM-STUB-PGM-NAME",
+      "type": "CALLS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 165
+      }
+    },
+    {
+      "from": "prog:IMSCLAIM",
+      "to": "prog:COMM-TERM-PGM-NAME",
+      "type": "CALLS",
+      "site": {
+        "file": "cobol/imsclaim.cbl",
+        "line": 253
+      }
+    },
+    {
+      "from": "step:CICSDEFN/CSDDEFS",
+      "to": "dd:DFHCSD",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 31
+      }
+    },
+    {
+      "from": "step:CICSDEFN/CSDDEFS",
+      "to": "dd:STEPLIB",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 30
+      }
+    },
+    {
+      "from": "step:CICSDEFN/CSDDEFS",
+      "to": "prog:DFHCSDUP",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/cicsdefn.jcl",
+        "line": 29
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "dd:STEPLIB",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 46
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "dd:SYSIN",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 53
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "dd:SYSLIB",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 48
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "dd:SYSLIN",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 54
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "prog:IGYCRCTL",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 44
+      }
+    },
+    {
+      "from": "step:COMPILE/COBOL",
+      "to": "step:COMPILE/COPYLINK",
+      "type": "RUNS-AFTER",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 77
+      }
+    },
+    {
+      "from": "step:COMPILE/COPYLINK",
+      "to": "dd:SYSUT1",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 78
+      }
+    },
+    {
+      "from": "step:COMPILE/COPYLINK",
+      "to": "dd:SYSUT2",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 79
+      }
+    },
+    {
+      "from": "step:COMPILE/COPYLINK",
+      "to": "prog:IEBGENER",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 77
+      }
+    },
+    {
+      "from": "step:COMPILE/COPYLINK",
+      "to": "step:COMPILE/LKED",
+      "type": "RUNS-AFTER",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 89
+      }
+    },
+    {
+      "from": "step:COMPILE/LKED",
+      "to": "dd:SYSLIB",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 91
+      }
+    },
+    {
+      "from": "step:COMPILE/LKED",
+      "to": "dd:SYSLIN",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 97
+      }
+    },
+    {
+      "from": "step:COMPILE/LKED",
+      "to": "dd:SYSLMOD",
+      "type": "DECLARES-DD",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 93
+      }
+    },
+    {
+      "from": "step:COMPILE/LKED",
+      "to": "prog:IEWL",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 89
+      }
+    },
+    {
+      "from": "step:COMPILE/LKED",
+      "to": "step:COMPILE/COMPVSAM",
+      "type": "RUNS-AFTER",
+      "site": {
+        "file": "jcl/compile.jcl",
+        "line": 102
+      }
+    },
+    {
+      "from": "step:VSAM/STEP01",
+      "to": "prog:IDCAMS",
+      "type": "RUNS",
+      "site": {
+        "file": "jcl/vsam.jcl",
+        "line": 29
+      }
+    }
+  ]
+}

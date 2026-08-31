@@ -46,6 +46,7 @@ try {
     RECOMMENDED_SMALL_OLLAMA_MODEL,
     checkOllamaReadiness,
     inspectOllamaReadiness,
+    isEmbeddingOnlyOllamaModel,
     isSameOllamaModel,
     ollamaReadinessDetails,
   } = require(compiledModule("readiness.js"));
@@ -124,6 +125,8 @@ try {
     ["timeout error preserves installed model choices", timeoutDetails.installedModels.includes("tinyllama:latest")],
     ["timeout error recommends a smaller local model", timeoutDetails.suggestedModel === RECOMMENDED_SMALL_OLLAMA_MODEL],
     ["model equivalence treats latest tag as current model", isSameOllamaModel("llama3.2:latest", "llama3.2")],
+    ["embedding-only models are excluded from generation choices", isEmbeddingOnlyOllamaModel("nomic-embed-text:latest")],
+    ["generation models remain selectable", !isEmbeddingOnlyOllamaModel("qwen3.8:27b-mlx")],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {

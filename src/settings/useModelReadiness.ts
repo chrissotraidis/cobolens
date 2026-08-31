@@ -13,8 +13,8 @@ import type { ModelReadiness } from "./SettingsDialog";
 import { createReadinessRequestTracker, modelReadinessKey } from "./readinessRequest";
 
 // Large local models (e.g. a 12B) can take well over 12s to cold-start their
-// first generation. Keep the readiness probe close to the Ask timeout so a
-// capable local model that answers fine in Ask does not fail "Check AI".
+// first generation. Keep the readiness probe close to the Chat timeout so a
+// capable local model that answers fine in Chat does not fail the connection check.
 const MODEL_READINESS_TIMEOUT_MS = 40_000;
 
 export function useModelReadiness({
@@ -29,6 +29,7 @@ export function useModelReadiness({
   settingsOpen: boolean;
 }) {
   const [modelReadiness, setModelReadiness] = useState<ModelReadiness>({ status: "idle", message: "" });
+  const explicitCheckInFlightRef = useRef(false);
   const readinessKey = modelReadinessKey(modelSettings, hasProviderKey);
   const requestTrackerRef = useRef<ReturnType<typeof createReadinessRequestTracker> | null>(null);
   if (!requestTrackerRef.current) {
@@ -71,7 +72,7 @@ export function useModelReadiness({
         }
         setModelReadiness({
           status: "ready",
-          message: `${PROVIDER_LABELS[modelSettings.provider]} key is saved. Cloud calls happen only when you run AI Summary or non-graph Ask.`,
+          message: `${PROVIDER_LABELS[modelSettings.provider]} key is saved. Cloud calls happen only when you run an AI summary or non-graph Chat.`,
         });
         return apiKey;
       }
@@ -99,9 +100,16 @@ export function useModelReadiness({
   }, [hasProviderKey, modelSettings, requestTracker]);
 
   const checkModelReadiness = useCallback(async () => {
+    explicitCheckInFlightRef.current = true;
     if (isCloudProvider(modelSettings.provider)) {
-      await prepareModelCall().catch(() => {});
-      return;
+      try {
+        await prepareModelCall();
+        return true;
+      } catch {
+        return false;
+      } finally {
+        explicitCheckInFlightRef.current = false;
+      }
     }
     const request = requestTracker.begin();
     try {
@@ -110,10 +118,11 @@ export function useModelReadiness({
         verifyGeneration: true,
         generationTimeoutMs: MODEL_READINESS_TIMEOUT_MS,
       });
-      if (!requestTracker.isCurrent(request)) return;
+      if (!requestTracker.isCurrent(request)) return false;
       setModelReadiness({ status: "ready", message: readiness.message, installedModels: readiness.installedModels });
+      return true;
     } catch (err) {
-      if (!requestTracker.isCurrent(request)) return;
+      if (!requestTracker.isCurrent(request)) return false;
       const details = ollamaReadinessDetails(err);
       setModelReadiness({
         status: "error",
@@ -121,6 +130,9 @@ export function useModelReadiness({
         installedModels: details.installedModels,
         suggestedModel: details.suggestedModel,
       });
+      return false;
+    } finally {
+      explicitCheckInFlightRef.current = false;
     }
   }, [modelSettings, prepareModelCall, requestTracker]);
 
@@ -157,10 +169,11 @@ export function useModelReadiness({
   useEffect(() => {
     if (!settingsOpen || isCloudProvider(modelSettings.provider)) return;
     if (installedModelCount) return;
+    if (modelReadiness.status !== "idle" || explicitCheckInFlightRef.current) return;
     refreshInstalledModels().catch(() => {
       // Listing models is a convenience; failure leaves the text field usable.
     });
-  }, [installedModelCount, modelSettings.provider, refreshInstalledModels, settingsOpen]);
+  }, [installedModelCount, modelReadiness.status, modelSettings.provider, refreshInstalledModels, settingsOpen]);
 
   return {
     modelReadiness,

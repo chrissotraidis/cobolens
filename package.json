@@ -19,6 +19,7 @@
     "desktop:packaged-smoke": "node tools/desktop/packaged-gui-smoke.mjs",
     "desktop:macos-packaged-smoke": "node tools/desktop/macos-packaged-smoke.mjs",
     "m6:fixture-graph": "node tools/m6-bakeoff/export-fixture-graph.mjs",
+    "samples:build": "node tools/sample-library/build.mjs",
     "m6:parser-readiness": "node tools/parser-upgrade/readiness.mjs",
     "m6:mapa-probe": "node tools/parser-upgrade/mapa-probe.mjs",
     "m6:mapa-bakeoff": "node tools/m6-bakeoff/run.mjs --candidate mapa=sidecar/cobolens-analyze-mapa/bin/cobolens-analyze-mapa",

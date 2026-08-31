@@ -54,7 +54,9 @@ try {
   const sourceBundle = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-source.json"), "utf8"));
   const reportRecord = graph.nodes.find((node) => node.name === "REPORT-RECORD");
   const customer = graph.nodes.find((node) => node.name === "CUSTOMER");
-  if (!reportRecord || !customer) throw new Error("Fixture nodes missing.");
+  const lineage = graph.nodes.find((node) => node.name === "LINEAGE" && node.type === "program");
+  const customerMaster = graph.nodes.find((node) => node.name === "BANK.CUSTOMER.MASTER");
+  if (!reportRecord || !customer || !lineage || !customerMaster) throw new Error("Fixture nodes missing.");
 
   const sourceChunks = await buildSemanticSourceChunks({
     graph,
@@ -177,6 +179,32 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
     semanticSearch: async () => sourceMatches.slice(0, 1),
   });
+  const flowContext = await retrieveQuestionContext({
+    graph,
+    question: "How does customer data get from the input dataset to the report, and where is the rate added?",
+    preferredNode: lineage,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+    semanticSearch: async () => [
+      {
+        node: lineage,
+        score: 0.99,
+        text: "LINEAGE reads customer input, selects a rate, and writes the report.",
+        kind: "source",
+        file: "src/LINEAGE.cbl",
+        startLine: 20,
+        endLine: 47,
+      },
+      {
+        node: customerMaster,
+        score: 0.92,
+        text: "CUSTIN maps to BANK.CUSTOMER.MASTER.",
+        kind: "graph",
+        file: "jcl/DAILYLN.jcl",
+        startLine: 3,
+        endLine: 3,
+      },
+    ],
+  });
   const checks = {
     "semantic chunks include graph relationship facts": chunks.some((chunk) => chunk.node.name === "REPORT-RECORD" && /writes REPORT-RECORD/.test(chunk.text)),
     "semantic source chunks split at a paragraph boundary with exact ranges":
@@ -207,6 +235,21 @@ try {
       fallbackContext.prompt.includes("Semantic vector matches:\n- Unavailable (embedding model unavailable)") &&
       fallbackContext.semanticError === "embedding model unavailable" &&
       fallbackContext.focusNodes.length > 0,
+    "selected node stays first while semantic and keyword matches are mixed":
+      flowContext.focusNodes[0]?.id === lineage.id &&
+      flowContext.focusNodes.some((node) => node.id === customerMaster.id),
+    "multi-hop prompt plans the dataset-to-program input path":
+      flowContext.prompt.includes("Planned graph paths:") &&
+      flowContext.prompt.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER") &&
+      flowContext.prompt.includes("CUSTOMER-FILE assigned-to CUSTIN") &&
+      flowContext.prompt.includes("LINEAGE reads CUSTOMER-FILE"),
+    "multi-hop prompt includes report and rate relationships":
+      flowContext.prompt.includes("LINEAGE writes REPORT-RECORD") &&
+      flowContext.prompt.includes("LINEAGE DEFINES WS-RATE"),
+    "key evidence orders input mapping before program read and report write":
+      flowContext.prompt.indexOf("CUSTIN uses-dd BANK.CUSTOMER.MASTER") < flowContext.prompt.indexOf("CUSTOMER-FILE assigned-to CUSTIN") &&
+      flowContext.prompt.indexOf("CUSTOMER-FILE assigned-to CUSTIN") < flowContext.prompt.indexOf("LINEAGE reads CUSTOMER-FILE") &&
+      flowContext.prompt.indexOf("LINEAGE reads CUSTOMER-FILE") < flowContext.prompt.indexOf("LINEAGE writes REPORT-RECORD"),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {
@@ -226,7 +269,11 @@ try {
     process.exit(1);
   }
 
-  console.log(JSON.stringify({ checks }, null, 2));
+  console.log(JSON.stringify({
+    checks,
+    flowFocus: flowContext.focusNodes.map((node) => node.name),
+    flowPaths: flowContext.plannedPaths?.map((path) => path.map((edge) => `${edge.from} ${edge.type} ${edge.to}`)),
+  }, null, 2));
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

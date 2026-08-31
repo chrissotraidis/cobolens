@@ -145,6 +145,15 @@ export function isSameOllamaModel(left: string, right: string) {
   return normalizeModelName(left) === normalizeModelName(right);
 }
 
+export function isEmbeddingOnlyOllamaModel(model: string) {
+  const name = model.trim().toLocaleLowerCase();
+  return /(?:^|[/:._-])(?:embed(?:ding)?|bge|e5|gte)(?:[/:._-]|$)/.test(name) ||
+    name.includes("nomic-embed") ||
+    name.includes("mxbai-embed") ||
+    name.includes("all-minilm") ||
+    name.includes("snowflake-arctic-embed");
+}
+
 function normalizeModelName(model: string) {
   return model.trim().replace(/:latest$/, "");
 }

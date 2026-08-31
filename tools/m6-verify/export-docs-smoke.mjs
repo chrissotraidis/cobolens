@@ -39,7 +39,7 @@ try {
   }
 
   const require = createRequire(resolve(tempRoot, "smoke.cjs"));
-  const { buildDocumentationExport } = require(resolve(tempRoot, "export", "docs.js"));
+  const { buildDocumentationExport, layoutDiagramNodes } = require(resolve(tempRoot, "export", "docs.js"));
   const graph = JSON.parse(await readFile(resolve(repoRoot, "public", "m6-bakeoff-graph.json"), "utf8"));
   const docs = buildDocumentationExport(graph, {}, "prog:LINEAGE");
   const aiSummaryDocs = buildDocumentationExport(
@@ -103,6 +103,20 @@ try {
     {},
     "prog:LINEAGE",
   );
+  const routedLayout = layoutDiagramNodes(
+    [
+      { id: "incoming", type: "program", name: "LINEAGE" },
+      { id: "focus", type: "cics-command", name: "LINK RATEAPI" },
+      { id: "outgoing", type: "program", name: "RATEAPI" },
+    ],
+    [
+      { from: "incoming", to: "focus", type: "executes" },
+      { from: "focus", to: "outgoing", type: "links" },
+    ],
+    "focus",
+    1400,
+    900,
+  );
   const assertions = [
     ["graph-derived summaries", docs.markdown.includes("Summary: graph-derived, no model required")],
     ["source ranges are exported", docs.markdown.includes("- Source: src/LINEAGE.cbl:1-47")],
@@ -134,6 +148,7 @@ try {
       warningDocs.markdown.includes("- bad/UNSUPPORTED.cbl:12: unsupported preprocessor directive; lightweight scan completed"),
     ],
     ["mermaid diagram", docs.mermaid.includes("flowchart LR")],
+    ["focused PNG layout preserves incoming-focus-outgoing direction", routedLayout.get("incoming").x < routedLayout.get("focus").x && routedLayout.get("focus").x < routedLayout.get("outgoing").x],
   ];
   const failed = assertions.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length) {

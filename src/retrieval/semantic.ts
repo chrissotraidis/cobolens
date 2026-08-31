@@ -1,5 +1,4 @@
 import type { GraphDocument, GraphNode, SourceExcerpt } from "../lib/graph";
-import { edgeLabel } from "../lib/graph";
 
 export type VectorEmbedding = {
   vectors: number[][];
@@ -51,7 +50,7 @@ export async function buildSemanticChunkVectorIndex({
   chunks?: SemanticChunk[];
   maxCandidateChunks?: number;
 }) {
-  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph, [], maxCandidateChunks)).slice(0, maxCandidateChunks);
   if (!chunks.length) return { indexKey, chunkCount: 0, cached: false };
 
   const cachedChunkVectors = await readCachedChunkVectors(vectorStore, indexKey, chunks.length);
@@ -78,7 +77,7 @@ export async function hasSemanticChunkVectorIndex({
   chunks?: SemanticChunk[];
   maxCandidateChunks?: number;
 }) {
-  const chunkCount = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks).length;
+  const chunkCount = (suppliedChunks ?? buildSemanticChunks(graph, [], maxCandidateChunks)).slice(0, maxCandidateChunks).length;
   if (!chunkCount) return false;
   return Boolean(await readCachedChunkVectors(vectorStore, indexKey, chunkCount));
 }
@@ -104,7 +103,7 @@ export async function semanticSearchGraph({
   topK?: number;
   requireCachedIndex?: boolean;
 }): Promise<SemanticMatch[]> {
-  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph, [], maxCandidateChunks)).slice(0, maxCandidateChunks);
   if (!question.trim() || !chunks.length) return [];
 
   const cachedChunkVectors = indexKey && vectorStore ? await readCachedChunkVectors(vectorStore, indexKey, chunks.length) : null;
@@ -138,7 +137,7 @@ export function semanticGraphIndexKey(
   maxCandidateChunks = 80,
   suppliedChunks?: SemanticChunk[],
 ) {
-  const chunks = (suppliedChunks ?? buildSemanticChunks(graph)).slice(0, maxCandidateChunks);
+  const chunks = (suppliedChunks ?? buildSemanticChunks(graph, [], maxCandidateChunks)).slice(0, maxCandidateChunks);
   const fingerprint = stableHash(
     JSON.stringify({
       schemaVersion: graph.schemaVersion,
@@ -147,15 +146,8 @@ export function semanticGraphIndexKey(
       fileCount: graph.meta.fileCount,
       parsedFileCount: graph.meta.parsedFileCount,
       parseErrors: graph.meta.parseErrors,
-      nodes: graph.nodes.map((node) => ({
-        id: node.id,
-        type: node.type,
-        name: node.name,
-        file: node.file,
-        lines: node.lines,
-        external: node.external,
-      })),
-      edges: graph.edges,
+      nodeCount: graph.nodes.length,
+      edgeCount: graph.edges.length,
       chunks: chunks.map((chunk) => ({
         kind: chunk.kind,
         file: chunk.file,
@@ -181,18 +173,34 @@ export function createLocalStorageSemanticVectorStore(storage: Pick<Storage, "ge
   };
 }
 
-export function buildSemanticChunks(graph: GraphDocument, sourceChunks: SemanticChunk[] = []): SemanticChunk[] {
+export function buildSemanticChunks(
+  graph: GraphDocument,
+  sourceChunks: SemanticChunk[] = [],
+  maxChunks = Number.MAX_SAFE_INTEGER,
+): SemanticChunk[] {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const graphChunks = graph.nodes
+  const graphNodes = graph.nodes
     .filter((node) => node.file && !node.external)
     .sort((left, right) => semanticNodePriority(left) - semanticNodePriority(right) || left.name.localeCompare(right.name))
+    .slice(0, maxChunks);
+  const graphNodeIds = new Set(graphNodes.map((node) => node.id));
+  const edgesByNodeId = new Map<string, typeof graph.edges>();
+  for (const edge of graph.edges) {
+    for (const nodeId of [edge.from, edge.to]) {
+      if (!graphNodeIds.has(nodeId)) continue;
+      const edges = edgesByNodeId.get(nodeId) ?? [];
+      if (edges.length < 12) edges.push(edge);
+      edgesByNodeId.set(nodeId, edges);
+    }
+  }
+  const graphChunks = graphNodes
     .map((node) => {
-      const relationships = graph.edges
-        .filter((edge) => edge.from === node.id || edge.to === node.id)
-        .slice(0, 12)
+      const relationships = (edgesByNodeId.get(node.id) ?? [])
         .map((edge) => {
           const other = nodeById.get(edge.from === node.id ? edge.to : edge.from);
-          return `${edgeLabel(edge, graph)}${other ? ` (${other.type})` : ""}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`;
+          const from = nodeById.get(edge.from)?.name ?? edge.from;
+          const to = nodeById.get(edge.to)?.name ?? edge.to;
+          return `${from} ${edge.type} ${to}${other ? ` (${other.type})` : ""}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`;
         });
       const location = node.lines?.[1] && node.lines[1] !== node.lines[0]
         ? `${node.file}:${node.lines[0]}-${node.lines[1]}`
@@ -209,19 +217,21 @@ export function buildSemanticChunks(graph: GraphDocument, sourceChunks: Semantic
         ].join(" "),
       };
     });
-  return interleaveChunks(sourceChunks, graphChunks);
+  return interleaveChunks(sourceChunks, graphChunks).slice(0, maxChunks);
 }
 
 export async function buildSemanticSourceChunks({
   graph,
   readExcerpt,
   maxLinesPerChunk = 80,
+  maxChunks = Number.MAX_SAFE_INTEGER,
 }: {
   graph: GraphDocument;
   readExcerpt: (node: GraphNode) => Promise<SourceExcerpt>;
   maxLinesPerChunk?: number;
+  maxChunks?: number;
 }): Promise<SemanticChunk[]> {
-  const plans = sourceChunkPlans(graph, maxLinesPerChunk);
+  const plans = sourceChunkPlans(graph, maxLinesPerChunk).slice(0, maxChunks);
   const excerpts = await Promise.allSettled(
     plans.map((plan) => readExcerpt({ ...plan.node, lines: [plan.startLine, plan.endLine] })),
   );

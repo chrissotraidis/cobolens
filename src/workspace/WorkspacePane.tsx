@@ -3,6 +3,7 @@ import type { GraphDocument, GraphEdge, GraphNode, SourceFileContent } from "../
 import { nodeColor } from "../lib/graph";
 import { nodeTypeLabel } from "../lib/graphLabels";
 import { SourceFileView } from "../source/SourceFileView";
+import { SourceFilePicker, type SourceFileEntry } from "../source/SourceFilePicker";
 import { sourceLineLabel } from "../source/sourceLineLabels";
 
 export type CenterView = "map" | "source";
@@ -10,11 +11,6 @@ export type SourceFocus = {
   file: string;
   line: number;
   nodeId?: string;
-};
-
-type SourceFileEntry = {
-  file: string;
-  node: GraphNode;
 };
 
 type FocusExpansion = {
@@ -39,6 +35,7 @@ export function WorkspacePane({
   focusExpansion,
   expandButtonTitle,
   showGraphNodeList,
+  desktopAvailable,
   onCenterViewChange,
   onSelectNode,
   onSelectEdge,
@@ -46,6 +43,10 @@ export function WorkspacePane({
   onToggleExpandFocus,
   onToggleGraphNodeList,
   onFocusNode,
+  onOpenDependencies,
+  onAskAboutNode,
+  onImportProject,
+  onOpenSample,
 }: {
   centerView: CenterView;
   graph: GraphDocument | null;
@@ -64,6 +65,7 @@ export function WorkspacePane({
   focusExpansion: FocusExpansion;
   expandButtonTitle: string;
   showGraphNodeList: boolean;
+  desktopAvailable: boolean;
   onCenterViewChange: (view: CenterView) => void;
   onSelectNode: (nodeId: string) => void;
   onSelectEdge: (edge: GraphEdge | null) => void;
@@ -71,6 +73,10 @@ export function WorkspacePane({
   onToggleExpandFocus: () => void;
   onToggleGraphNodeList: () => void;
   onFocusNode: (nodeId: string, options?: { preserveChat?: boolean; preserveExpansion?: boolean }) => void;
+  onOpenDependencies: () => void;
+  onAskAboutNode: () => void;
+  onImportProject: () => void;
+  onOpenSample: () => void;
 }) {
   const focusedCitation = Boolean(
     sourceFocus &&
@@ -129,22 +135,11 @@ export function WorkspacePane({
             <>
               <span className="swatch" style={{ background: nodeColor(selectedNode.type) }} aria-hidden="true" />
               <strong className="source-meta-symbol">{selectedNode.name}</strong>
-              <label className="source-file-picker" title="Switch to another file in this codebase">
-                <span className="sr-only">Open a different file</span>
-                <select
-                  value={selectedNode.file}
-                  onChange={(event) => {
-                    const target = sourceFiles.find((entry) => entry.file === event.currentTarget.value);
-                    if (target) onFocusNode(target.node.id, { preserveChat: true });
-                  }}
-                >
-                  {sourceFiles.map((entry) => (
-                    <option key={entry.file} value={entry.file}>
-                      {entry.file}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SourceFilePicker
+                entries={sourceFiles}
+                selectedFile={selectedNode.file}
+                onSelect={(target) => onFocusNode(target.node.id, { preserveChat: true })}
+              />
               <small className="source-line-chip">{sourceLineText}</small>
             </>
           ) : (
@@ -160,7 +155,7 @@ export function WorkspacePane({
                 title={expandButtonTitle}
                 aria-label={expandButtonTitle}
               >
-                {focusExpanded ? "Collapse" : `Expand +${focusExpansion.hiddenByLimit}`}
+                {focusExpanded ? "Fewer relationships" : `More relationships +${focusExpansion.hiddenByLimit}`}
               </button>
             ) : null}
             <button
@@ -179,6 +174,7 @@ export function WorkspacePane({
       <div className="center-body">
         <div className="graph-canvas" hidden={centerView !== "map"}>
           <GraphView
+            active={centerView === "map"}
             graph={graph}
             focusNodeId={focusNodeId}
             expandedNodeIds={expandedNodeIds}
@@ -188,8 +184,31 @@ export function WorkspacePane({
             onSelectEdge={onSelectEdge}
             onExpandNode={onExpandNode}
             showNodeList={showGraphNodeList}
+            desktopAvailable={desktopAvailable}
+            onImportProject={onImportProject}
+            onOpenSample={onOpenSample}
           />
         </div>
+        {centerView === "map" && focusedNode ? (
+          <section className="graph-context-bar" aria-label={`Actions for ${focusedNode.name}`}>
+            <div className="graph-context-selection">
+              <span>Selected</span>
+              <strong>{focusedNode.name}</strong>
+              <small>{nodeTypeLabel(focusedNode.type)}</small>
+            </div>
+            <div className="graph-context-actions">
+              <button
+                type="button"
+                onClick={() => onCenterViewChange("source")}
+                disabled={!focusedNode.file}
+              >
+                Open source
+              </button>
+              <button type="button" onClick={onOpenDependencies}>Dependencies</button>
+              <button type="button" className="primary-action ask-action" onClick={onAskAboutNode}>Chat about this</button>
+            </div>
+          </section>
+        ) : null}
         <section
           id="code-panel"
           className="code-panel center-source-view"
@@ -197,7 +216,7 @@ export function WorkspacePane({
           tabIndex={-1}
           hidden={centerView !== "source"}
         >
-            {selectedNode?.file ? (
+            {centerView === "source" && selectedNode?.file ? (
               <SourceFileView
                 node={selectedNode}
                 source={source}

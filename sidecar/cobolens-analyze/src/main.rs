@@ -647,11 +647,12 @@ fn parse_cobol_file(
         }
 
         if let Some(copybook) = copy_target(&tokens) {
-            let copy_id = format!("copy:{}", normalize_symbol(copybook));
+            let copybook_name = clean_symbol(copybook);
+            let copy_id = format!("copy:{}", normalize_symbol(&copybook_name));
             builder.node(GraphNode {
                 id: copy_id.clone(),
                 node_type: "copybook".to_string(),
-                name: copybook.to_string(),
+                name: copybook_name,
                 file: None,
                 lines: None,
                 external: Some(true),
@@ -737,17 +738,18 @@ fn parse_cobol_file(
         }
 
         if let Some(program) = cics_link_target(&tokens) {
+            let program_name = clean_symbol(program);
             let command_id = format!(
                 "cics:{}/{}:{}",
                 normalize_symbol(owner_name),
                 line_number,
-                normalize_symbol(program)
+                normalize_symbol(&program_name)
             );
-            let program_id = format!("prog:{}", normalize_symbol(program));
+            let program_id = format!("prog:{}", normalize_symbol(&program_name));
             builder.node(GraphNode {
                 id: command_id.clone(),
                 node_type: "cics-command".to_string(),
-                name: format!("LINK {program}"),
+                name: format!("LINK {program_name}"),
                 file: Some(source_file.rel.clone()),
                 lines: Some([line_number, line_number]),
                 external: None,
@@ -756,7 +758,7 @@ fn parse_cobol_file(
             builder.node(GraphNode {
                 id: program_id.clone(),
                 node_type: "program".to_string(),
-                name: program.to_string(),
+                name: program_name,
                 file: None,
                 lines: None,
                 external: Some(true),
@@ -883,11 +885,12 @@ fn parse_jcl_file(
             current_step_id = Some(step_id.clone());
 
             if let Some(program) = exec_program(&tokens[exec_index + 1..]) {
-                let program_id = format!("prog:{}", normalize_symbol(program));
+                let program_name = clean_symbol(program);
+                let program_id = format!("prog:{}", normalize_symbol(&program_name));
                 builder.node(GraphNode {
                     id: program_id.clone(),
                     node_type: "program".to_string(),
-                    name: program.to_string(),
+                    name: program_name,
                     file: None,
                     lines: None,
                     external: Some(true),
@@ -946,12 +949,12 @@ fn normalize_cobol_lines(content: &str, format: SourceFormat) -> Vec<String> {
         .lines()
         .map(|line| match format {
             SourceFormat::Fixed => fixed_area(line),
-            SourceFormat::Free => line.to_string(),
+            SourceFormat::Free => free_area(line),
             SourceFormat::Auto => {
                 if looks_fixed(line) {
                     fixed_area(line)
                 } else {
-                    line.to_string()
+                    free_area(line)
                 }
             }
         })
@@ -959,7 +962,22 @@ fn normalize_cobol_lines(content: &str, format: SourceFormat) -> Vec<String> {
 }
 
 fn fixed_area(line: &str) -> String {
-    line.chars().skip(6).take(66).collect()
+    let indicator = line.chars().nth(6);
+    if matches!(indicator, Some('*' | '/' | 'D' | 'd')) {
+        return String::new();
+    }
+    let code_start = if indicator == Some(' ') { 7 } else { 6 };
+    strip_inline_comment(&line.chars().skip(code_start).take(66).collect::<String>())
+}
+
+fn free_area(line: &str) -> String {
+    strip_inline_comment(line)
+}
+
+fn strip_inline_comment(line: &str) -> String {
+    line.split_once("*>")
+        .map_or(line, |(code, _)| code)
+        .to_string()
 }
 
 fn looks_fixed(line: &str) -> bool {
@@ -1047,6 +1065,9 @@ fn move_targets(tokens: &[String]) -> Option<(&str, &str)> {
         .iter()
         .position(|token| token.eq_ignore_ascii_case("TO"))?;
     let source = tokens.get(1)?;
+    if is_quoted_token(source) {
+        return None;
+    }
     let target = tokens.get(to_index + 1)?;
     Some((source, target))
 }
@@ -1055,7 +1076,11 @@ fn read_target(tokens: &[String]) -> Option<&str> {
     let index = tokens
         .iter()
         .position(|token| token.eq_ignore_ascii_case("READ"))?;
-    tokens.get(index + 1).map(String::as_str)
+    let target = tokens.get(index + 1)?;
+    if target.eq_ignore_ascii_case("FILE") {
+        return tokens.get(index + 2).map(String::as_str);
+    }
+    Some(target.as_str())
 }
 
 fn write_target(tokens: &[String]) -> Option<&str> {
@@ -1211,8 +1236,32 @@ fn ensure_jcl_dd(
 fn tokenize(line: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
+    let mut quote = None;
 
     for ch in line.chars() {
+        if let Some(quote_char) = quote {
+            if ch == quote_char {
+                let token = clean_symbol(&current);
+                if !token.is_empty() {
+                    tokens.push(format!("{quote_char}{token}{quote_char}"));
+                }
+                current.clear();
+                quote = None;
+            } else {
+                current.push(ch);
+            }
+            continue;
+        }
+
+        if matches!(ch, '\'' | '"') {
+            if !current.is_empty() {
+                tokens.push(clean_symbol(&current));
+                current.clear();
+            }
+            quote = Some(ch);
+            continue;
+        }
+
         if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '=' | '$' | '#' | '@') {
             current.push(ch);
         } else if !current.is_empty() {
@@ -1222,7 +1271,12 @@ fn tokenize(line: &str) -> Vec<String> {
     }
 
     if !current.is_empty() {
-        tokens.push(clean_symbol(&current));
+        let token = clean_symbol(&current);
+        if let Some(quote_char) = quote {
+            tokens.push(format!("{quote_char}{token}{quote_char}"));
+        } else {
+            tokens.push(token);
+        }
     }
 
     tokens
@@ -1231,9 +1285,18 @@ fn tokenize(line: &str) -> Vec<String> {
         .collect()
 }
 
+fn is_quoted_token(token: &str) -> bool {
+    matches!(
+        (token.chars().next(), token.chars().last()),
+        (Some('\''), Some('\'')) | (Some('"'), Some('"'))
+    )
+}
+
 fn clean_symbol(symbol: &str) -> String {
     symbol
-        .trim_matches(|ch: char| matches!(ch, '\'' | '"' | '.' | ',' | ';' | '(' | ')' | '='))
+        .trim_matches(|ch: char| {
+            ch.is_ascii_whitespace() || matches!(ch, '\'' | '"' | '.' | ',' | ';' | '(' | ')' | '=')
+        })
         .to_string()
 }
 
@@ -1446,6 +1509,58 @@ mod tests {
                     .as_ref()
                     .is_some_and(|site| site.file == "src/CALLER.cbl" && site.line == 4)
         }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn ignores_fixed_and_free_format_comment_statements() {
+        let root = temp_test_dir("comment-statements");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("src").join("COMMENTS.cbl"),
+            [
+                "000100 IDENTIFICATION DIVISION.",
+                "000200 PROGRAM-ID. COMMENTS.",
+                "000300 PROCEDURE DIVISION.",
+                "000400*    CALL 'NOT-A-PROGRAM'.",
+                "000500/    COPY NOT-A-COPYBOOK.",
+                "000600D    READ NOT-A-DATASET.",
+                "000700     CALL 'REALPGM'. *> CALL 'ALSO-NOT-REAL'.",
+                "000710     DISPLAY 'READ UPDATE CALL TO ROOT'.",
+                "000720     EXEC CICS READ FILE(WS-FILE-NAME) END-EXEC.",
+                "*> SELECT NAME FROM NOT_A_TABLE",
+                "000800     STOP RUN.",
+                "",
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        let options = AnalyzeOptions {
+            root: root.clone(),
+            out: root.join("graph.json"),
+            format: SourceFormat::Auto,
+            extensions: vec![".cbl".to_string()],
+            encoding: "utf8".to_string(),
+        };
+
+        let graph = analyze(&options, Vec::new()).unwrap();
+
+        assert!(graph.nodes.iter().any(|node| node.name == "REALPGM"));
+        assert!(!graph.nodes.iter().any(|node| matches!(
+            node.name.as_str(),
+            "NOT-A-PROGRAM"
+                | "NOT-A-COPYBOOK"
+                | "NOT-A-DATASET"
+                | "ALSO-NOT-REAL"
+                | "NOT_A_TABLE"
+                | "FILE"
+                | "UPDATE"
+                | "TO"
+        )));
+        assert!(graph
+            .nodes
+            .iter()
+            .any(|node| { node.node_type == "dataset" && node.name == "WS-FILE-NAME" }));
         fs::remove_dir_all(root).unwrap();
     }
 

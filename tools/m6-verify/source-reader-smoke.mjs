@@ -104,6 +104,7 @@ try {
     [
       "graph URL maps to committed source bundle",
       sourceBaseForGraphUrl("/m6-bakeoff-graph.json") === "/m6-bakeoff-source.json" &&
+        sourceBaseForGraphUrl("/samples/aws-carddemo-graph.json") === "/samples/aws-carddemo-source.json" &&
         sourceBaseForGraphUrl("/other-graph.json") === "",
     ],
     ["line numbers are padded for model excerpts", padLine(7) === "    7" && padLine(12345) === "12345"],

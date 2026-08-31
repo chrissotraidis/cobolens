@@ -19,8 +19,8 @@ export function useGraphViewState({
   );
   const focusExpanded = Boolean(focusNodeId && expandedNodeIds.has(focusNodeId));
   const expandButtonTitle = focusExpanded
-    ? "Collapse the expanded neighbors"
-    : `Show ${focusExpansion.hiddenByLimit} more direct neighbor${focusExpansion.hiddenByLimit === 1 ? "" : "s"} of this symbol`;
+    ? "Show fewer relationships for this symbol"
+    : `Show ${focusExpansion.hiddenByLimit} more direct relationship${focusExpansion.hiddenByLimit === 1 ? "" : "s"} for this symbol`;
 
   const clearGraphExpansion = useCallback(() => {
     setExpandedNodeIds(new Set());

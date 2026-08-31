@@ -1,7 +1,8 @@
 import { edgeLabel, type GraphDocument, type GraphEdge, type GraphNode } from "../lib/graph";
+import { graphIndex, incidentEdges, incomingEdges } from "../lib/graphIndex";
 import type { Citation, RetrievedContext } from "./context";
 
-type GraphQuestionIntent = "orientation" | "dependency" | "call" | "read" | "write" | "flow" | "where" | "general";
+type GraphQuestionIntent = "orientation" | "dependency" | "call" | "read" | "write" | "read-write" | "flow" | "where" | "general";
 
 const CALL_EDGE_TYPES = new Set(["calls", "call", "executes", "links", "xctls"]);
 const FLOW_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
@@ -90,7 +91,7 @@ export function graphAnswerFallback(
     lines.push("", `Calls or transfers: ${callEdges.length ? callEdges.map((edge) => nodeName(graph, edge.to)).join(", ") : "none recorded"}.`);
   }
 
-  if (intent === "read") {
+  if (intent === "read" || intent === "read-write") {
     const readTargets = outgoing.filter(isReadEdge);
     const readSources = incoming.filter(isReadEdge);
     lines.push(
@@ -100,7 +101,7 @@ export function graphAnswerFallback(
     );
   }
 
-  if (intent === "write") {
+  if (intent === "write" || intent === "read-write") {
     const writeTargets = outgoing.filter(isWriteEdge);
     const writeSources = incoming.filter(isWriteEdge);
     lines.push(
@@ -135,7 +136,6 @@ export function graphAnswerFallback(
 
 export function isGraphQuestion(question: string) {
   if (isOrientationQuestion(question)) return true;
-  if (isSelectedSymbolOverviewQuestion(question)) return true;
   if (isExplicitGraphExplanationQuestion(question)) return true;
   if (isInterpretiveModelQuestion(question)) return false;
   return /\b(overview|depend\w*|impact\w*|where|happen\w*|feed\w*|flow\w*|used by|uses|read\w*|writ\w*|mov\w*|call\w*|cop\w*|quer\w*|link\w*|xctl\w*|dataset\w*|table\w*|file\w*)\b/i.test(
@@ -144,13 +144,14 @@ export function isGraphQuestion(question: string) {
 }
 
 function nodeName(graph: GraphDocument, nodeId: string) {
-  return graph.nodes.find((node) => node.id === nodeId)?.name ?? nodeId;
+  return graphIndex(graph).nodeById.get(nodeId)?.name ?? nodeId;
 }
 
 function graphQuestionIntent(question: string): GraphQuestionIntent {
   if (isOrientationQuestion(question)) return "orientation";
   if (/\b(depend\w*|impact\w*|used by|uses?)\b/i.test(question)) return "dependency";
   if (/\b(call\w*|link\w*|xctl\w*|execut\w*)\b/i.test(question)) return "call";
+  if (/\bread\w*\b/i.test(question) && /\b(writ\w*|updat\w*)\b/i.test(question)) return "read-write";
   if (/\bread\w*\b/i.test(question)) return "read";
   if (/\b(writ\w*|updat\w*)\b/i.test(question)) return "write";
   if (/\b(feed\w*|flow\w*|mov\w*|quer\w*|dataset\w*|table\w*|file\w*)\b/i.test(question)) return "flow";
@@ -158,18 +159,12 @@ function graphQuestionIntent(question: string): GraphQuestionIntent {
   return "general";
 }
 
-function isSelectedSymbolOverviewQuestion(question: string) {
-  return /\b(what\s+does\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)\s+do|what\s+is\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table)|tell\s+me\s+about\s+(?:this|that|selected|current)\s+(?:program|copybook|job|step|symbol|node|unit|paragraph|section|dataset|file|table))\b/i.test(
-    question,
-  );
-}
-
 function isExplicitGraphExplanationQuestion(question: string) {
   return /\b(?:from|using|with)\s+(?:the\s+)?graph\b|\bgraph[- ](?:derived|grounded|only)\b/i.test(question);
 }
 
 function isInterpretiveModelQuestion(question: string) {
-  return /\b(explain\w*|summari[sz]\w*|purpose|business\s+(?:logic|rule|rules|meaning)|plain\s+english|new\s+developer|walk\s+me\s+through|what\s+does\s+\w+\s+do)\b/i.test(
+  return /\b(explain\w*|summari[sz]\w*|purpose|business\s+(?:logic|rule|rules|meaning)|plain\s+english|new\s+developer|walk\s+me\s+through|how\s+(?:does|do|is|are|can)|what\s+(?:does|is)\s+(?:this|that|it|selected|current|\w+)\s+(?:do|for))\b/i.test(
     question,
   );
 }
@@ -195,6 +190,12 @@ function relevantEdgesForIntent(
   if (intent === "call") return dedupeEdges([...outgoing.filter(isCallEdge), ...incoming.filter(isCallEdge)]);
   if (intent === "read") return dedupeEdges([...outgoing.filter(isReadEdge), ...incoming.filter(isReadEdge)]);
   if (intent === "write") return dedupeEdges([...outgoing.filter(isWriteEdge), ...incoming.filter(isWriteEdge)]);
+  if (intent === "read-write") {
+    return dedupeEdges([
+      ...outgoing.filter((edge) => isReadEdge(edge) || isWriteEdge(edge)),
+      ...incoming.filter((edge) => isReadEdge(edge) || isWriteEdge(edge)),
+    ]);
+  }
   if (intent === "flow") return dedupeEdges([...directEdges.filter(isFlowEdge), ...directEdges]);
   return directEdges;
 }
@@ -231,7 +232,8 @@ function graphBriefLines(
 }
 
 function graphOrientationAnswer(graph: GraphDocument, modelNote = "", fallbackKind: "runtime" | "citation" = "runtime") {
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const index = graphIndex(graph);
+  const nodeById = index.nodeById;
   const programs = sourceNodesByType(graph, "program");
   const copybooks = sourceNodesByType(graph, "copybook");
   const jobs = sourceNodesByType(graph, "jcl-job");
@@ -240,14 +242,14 @@ function graphOrientationAnswer(graph: GraphDocument, modelNote = "", fallbackKi
   ).slice(0, 3);
   const highConnectionNodes = graph.nodes
     .filter((node) => node.file && !node.external && ["program", "copybook", "jcl-job", "jcl-step"].includes(node.type))
-    .map((node) => ({ node, degree: graph.edges.filter((edge) => edge.from === node.id || edge.to === node.id).length }))
+    .map((node) => ({ node, degree: incidentEdges(index, node.id).length }))
     .filter(({ degree }) => degree > 0)
     .sort((left, right) => right.degree - left.degree || left.node.name.localeCompare(right.node.name))
     .slice(0, 4);
   const sharedCopybooks = copybooks
     .map((node) => ({
       node,
-      incomingCopies: graph.edges.filter((edge) => edge.to === node.id && edge.type.toLocaleLowerCase() === "copies"),
+      incomingCopies: incomingEdges(index, node.id).filter((edge) => edge.type.toLocaleLowerCase() === "copies"),
     }))
     .filter(({ incomingCopies }) => incomingCopies.length)
     .sort((left, right) => right.incomingCopies.length - left.incomingCopies.length || left.node.name.localeCompare(right.node.name))
@@ -371,16 +373,7 @@ function dedupeEdges(edges: GraphEdge[]) {
 
 function shortestConnectionPath(graph: GraphDocument, startId: string, endId: string) {
   if (startId === endId) return [];
-  const adjacency = new Map<string, Array<{ nodeId: string; edge: GraphEdge }>>();
-  for (const edge of graph.edges) {
-    const fromEdges = adjacency.get(edge.from) ?? [];
-    fromEdges.push({ nodeId: edge.to, edge });
-    adjacency.set(edge.from, fromEdges);
-
-    const toEdges = adjacency.get(edge.to) ?? [];
-    toEdges.push({ nodeId: edge.from, edge });
-    adjacency.set(edge.to, toEdges);
-  }
+  const adjacencyIndex = graphIndex(graph);
 
   const queue: Array<{ nodeId: string; path: GraphEdge[] }> = [{ nodeId: startId, path: [] }];
   const seen = new Set([startId]);
@@ -388,12 +381,13 @@ function shortestConnectionPath(graph: GraphDocument, startId: string, endId: st
   for (let index = 0; index < queue.length; index += 1) {
     const current = queue[index];
     if (current.path.length >= MAX_CONNECTION_PATH_EDGES) continue;
-    for (const next of adjacency.get(current.nodeId) ?? []) {
-      if (seen.has(next.nodeId)) continue;
-      const nextPath = [...current.path, next.edge];
-      if (next.nodeId === endId) return dedupeEdges(nextPath);
-      seen.add(next.nodeId);
-      queue.push({ nodeId: next.nodeId, path: nextPath });
+    for (const edge of incidentEdges(adjacencyIndex, current.nodeId)) {
+      const nextNodeId = edge.from === current.nodeId ? edge.to : edge.from;
+      if (seen.has(nextNodeId)) continue;
+      const nextPath = [...current.path, edge];
+      if (nextNodeId === endId) return dedupeEdges(nextPath);
+      seen.add(nextNodeId);
+      queue.push({ nodeId: nextNodeId, path: nextPath });
     }
   }
 

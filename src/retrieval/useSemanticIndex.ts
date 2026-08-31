@@ -17,7 +17,7 @@ import {
 import { createSemanticVectorStore } from "./semanticStore";
 
 const SEMANTIC_INDEX_TIMEOUT_MS = 30_000;
-const SEMANTIC_QUERY_TIMEOUT_MS = 8_000;
+const SEMANTIC_QUERY_TIMEOUT_MS = 30_000;
 const MAX_SEMANTIC_CHUNKS = 160;
 
 export type SemanticIndexStatus = "idle" | "warming" | "ready" | "error" | "disabled";
@@ -43,12 +43,16 @@ export function useSemanticIndex({
     [graph, modelSettings.baseUrl, modelSettings.embeddingModel, modelSettings.model, modelSettings.provider],
   );
   const preparedIndexRef = useRef<{ key: string; chunks: SemanticChunk[] } | null>(null);
-  const [state, setState] = useState<SemanticIndexState>({ status: "idle", message: "Load a graph to prepare semantic retrieval." });
+  const [state, setState] = useState<SemanticIndexState>({ status: "idle", message: "Load a graph to enable semantic retrieval." });
 
   const prepareIndex = useCallback(async () => {
     if (!graph || !vectorStore || !indexKey) throw new Error("Semantic cache is unavailable in this session.");
-    const sourceChunks = await buildSemanticSourceChunks({ graph, readExcerpt: readExcerptForNode });
-    const chunks = buildSemanticChunks(graph, sourceChunks);
+    const sourceChunks = await buildSemanticSourceChunks({
+      graph,
+      readExcerpt: readExcerptForNode,
+      maxChunks: Math.ceil(MAX_SEMANTIC_CHUNKS / 2),
+    });
+    const chunks = buildSemanticChunks(graph, sourceChunks, MAX_SEMANTIC_CHUNKS);
     const result = await buildSemanticChunkVectorIndex({
       graph,
       chunks,
@@ -81,7 +85,7 @@ export function useSemanticIndex({
 
   const warmSemanticIndex = useCallback(async () => {
     if (!graph) {
-      setState({ status: "idle", message: "Load a graph to prepare semantic retrieval." });
+      setState({ status: "idle", message: "Load a graph to enable semantic retrieval." });
       return;
     }
     if (isCloudProvider(modelSettings.provider)) {
@@ -95,20 +99,29 @@ export function useSemanticIndex({
 
     setState({ status: "warming", message: "Preparing local semantic retrieval." });
     try {
-      setState(readyState(await prepareIndex()));
+      const result = await prepareIndex();
+      setState({ status: "warming", message: "Testing a local semantic query embedding." });
+      await embedTexts({
+        settings: modelSettings,
+        texts: ["Cobolens semantic retrieval readiness probe"],
+        timeoutMs: SEMANTIC_QUERY_TIMEOUT_MS,
+      });
+      setState({
+        ...readyState(result),
+        message: `Semantic retrieval is verified (${result.sourceChunkCount} source, ${result.graphChunkCount} graph chunks; query embedding tested locally).`,
+      });
     } catch (err) {
       setState({
         status: "error",
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [graph, indexKey, modelSettings.provider, prepareIndex, readyState, vectorStore]);
+  }, [graph, indexKey, modelSettings, prepareIndex, readyState, vectorStore]);
 
   useEffect(() => {
-    let cancelled = false;
     if (!graph) {
       preparedIndexRef.current = null;
-      setState({ status: "idle", message: "Load a graph to prepare semantic retrieval." });
+      setState({ status: "idle", message: "Load a graph to enable semantic retrieval." });
       return;
     }
     if (isCloudProvider(modelSettings.provider)) {
@@ -121,27 +134,12 @@ export function useSemanticIndex({
       return;
     }
 
-    setState({ status: "warming", message: "Preparing local semantic retrieval." });
-    const timeout = window.setTimeout(() => {
-      prepareIndex()
-        .then((result) => {
-          if (cancelled) return;
-          setState(readyState(result));
-        })
-        .catch((err) => {
-          if (cancelled) return;
-          setState({
-            status: "error",
-            message: err instanceof Error ? err.message : String(err),
-          });
-        });
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [graph, indexKey, modelSettings.provider, prepareIndex, readyState, vectorStore]);
+    preparedIndexRef.current = null;
+    setState({
+      status: "idle",
+      message: "Semantic search is optional. Prepare it here when you want broader source retrieval.",
+    });
+  }, [graph, indexKey, modelSettings.provider, vectorStore]);
 
   const searchSemanticIndex = useCallback(
     async (question: string): Promise<SemanticMatch[]> => {

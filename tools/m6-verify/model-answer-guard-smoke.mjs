@@ -47,6 +47,7 @@ try {
     citations: [
       { file: "src/LINEAGE.cbl", line: 1, endLine: 47, label: "LINEAGE source", nodeId: "program:LINEAGE" },
       { file: "src/LINEAGE.cbl", line: 21, label: "LINEAGE reads CUSTOMER-FILE", nodeId: "program:LINEAGE" },
+      { file: "src/LINEAGE.cbl", line: 26, label: "LINEAGE writes REPORT-RECORD", nodeId: "program:LINEAGE" },
     ],
     prompt: "",
   };
@@ -80,6 +81,21 @@ try {
     ].join("\n"),
     context,
     { maxClaims: 3 },
+  );
+  const schedulingContext = {
+    focusNodes: [{ id: "job:DAILYLN", type: "jcl-job", name: "DAILYLN", file: "jcl/DAILYLN.jcl", lines: [1, 4] }],
+    citations: [
+      { file: "jcl/DAILYLN.jcl", line: 1, endLine: 4, label: "DAILYLN", nodeId: "job:DAILYLN" },
+      { file: "jcl/DAILYLN.jcl", line: 2, label: "STEP010 runs LINEAGE", nodeId: "step:DAILYLN/STEP010" },
+    ],
+  };
+  const inventedSchedule = enforceGroundedAnswerCitations(
+    "- DAILYLN is scheduled daily (jcl/DAILYLN.jcl:2).",
+    schedulingContext,
+  );
+  const wrongNamedArtifact = enforceGroundedAnswerCitations(
+    "- LINEAGE reads SECRET-FILE (src/LINEAGE.cbl:21).",
+    context,
   );
 
   // Small local models cite in prose ("at src/LINEAGE.cbl:21") rather than in
@@ -139,9 +155,13 @@ try {
       mostlyUncited.guarded === false &&
       mostlyUncited.repaired === true &&
       !mostlyUncited.text.includes("business calculations") &&
-      mostlyUncited.text.includes("Additional graph evidence"),
+      mostlyUncited.text.includes("Grounded path evidence"),
     "rejects citations outside retrieved context":
       inventedCitation.guarded === true && inventedCitation.text.includes("citations outside retrieved context"),
+    "rejects a scheduling inference that the cited JCL does not establish":
+      inventedSchedule.guarded === true && inventedSchedule.text.includes("unsupported scheduling claim"),
+    "rejects a named artifact absent from the cited relationship evidence":
+      wrongNamedArtifact.guarded === true && wrongNamedArtifact.text.includes("citation does not support named artifacts: SECRET-FILE"),
     "limits a fully cited answer after validating every claim":
       longAnswer.guarded === false &&
       longAnswer.repaired === true &&

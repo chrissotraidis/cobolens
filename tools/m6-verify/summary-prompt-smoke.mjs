@@ -21,8 +21,8 @@ const checks = {
     summaryGenerationSource.includes('[node.id]: { status: "running", draftText }') &&
     !summaryGenerationSource.includes('runTimedModelCall("Summary generation"'),
   "Summary panel renders streamed draft text": summaryDockSource.includes("draftText?: string") &&
-    summaryDockSource.includes('className="summary-draft"') &&
-    summaryDockSource.includes("Draft summary"),
+    summaryDockSource.includes('className="summary-live-output"') &&
+    summaryDockSource.includes("state.draftText ? <MessageText text={state.draftText} /> : null"),
   "local summary budget is smaller than cloud budget":
     summariesSource.includes("const LOCAL_SUMMARY_MAX_OUTPUT_TOKENS = 384") &&
     summariesSource.includes("const CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 420"),

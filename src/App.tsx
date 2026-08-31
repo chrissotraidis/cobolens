@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { AppShell } from "./AppShell";
 import { useDocumentationExport } from "./export/useDocumentationExport";
 import { canUseTauri } from "./lib/tauri";
@@ -24,10 +24,13 @@ import "./App.css";
 function App() {
   const desktopAvailable = canUseTauri();
   const project = useProjectState();
+  const [sampleLibraryOpen, setSampleLibraryOpen] = useState(false);
+  const [loadingSampleId, setLoadingSampleId] = useState("");
   const { inspectorTab, setInspectorTab, showInspectorImpact } = useInspectorTabState();
   const {
     chatQuestion,
     setChatQuestion,
+    updateChatQuestion,
     chatStatus,
     setChatStatus,
     chatAnswer,
@@ -44,7 +47,8 @@ function App() {
     railCollapsed,
     toggleRailCollapsed,
     inspectorCollapsed,
-    toggleInspectorCollapsed,
+    openInspector,
+    closeInspector,
     rightWidthPx,
     startInspectorResize,
     resetInspectorWidth,
@@ -116,7 +120,7 @@ function App() {
     centerView,
     setCenterView,
     focusOnNode,
-    syncAskFocusNode,
+    focusOnMapNode,
     goHome,
     readNodeSource,
     selectNode,
@@ -179,6 +183,7 @@ function App() {
     onFocusNode: focusOnNode,
   });
   const {
+    askQuestion,
     askCurrentQuestion,
     askAboutSelectedNode,
     cancelAsk,
@@ -195,7 +200,6 @@ function App() {
     readExcerptForNode: sourceExcerptForNode,
     prepareModelCall,
     onModelCallComplete: noteModelCallComplete,
-    onSyncFocusNode: syncAskFocusNode,
     onTabChange: setInspectorTab,
     semanticIndex: semanticIndex.state,
     searchSemanticIndex: semanticIndex.searchSemanticIndex,
@@ -234,6 +238,7 @@ function App() {
     resetChatForProjectLoad,
     clearExportStatus,
     showExportStatus,
+    onProjectLoad: () => setCenterView("map"),
   });
 
   const {
@@ -254,16 +259,33 @@ function App() {
     },
     [setInspectorTab],
   );
+  const toggleAskInspector = useCallback(() => {
+    if (!inspectorCollapsed && inspectorTab === "ask") {
+      closeInspector();
+      return;
+    }
+    setInspectorTab("ask");
+    openInspector();
+  }, [closeInspector, inspectorCollapsed, inspectorTab, openInspector, setInspectorTab]);
+  const openDependenciesInspector = useCallback(() => {
+    setInspectorTab("impact");
+    openInspector();
+  }, [openInspector, setInspectorTab]);
+  const askAboutWorkspaceSelection = useCallback(() => {
+    askAboutSelectedNode();
+    openInspector();
+  }, [askAboutSelectedNode, openInspector]);
   const handleCheckAi = useCallback(async () => {
-    await checkModelReadiness();
-    await semanticIndex.warmSemanticIndex();
+    if (await checkModelReadiness()) {
+      await semanticIndex.warmSemanticIndex();
+    }
   }, [checkModelReadiness, semanticIndex]);
 
   return (
     <AppShell
       topBar={{
         railCollapsed,
-        inspectorCollapsed,
+        askOpen: !inspectorCollapsed && inspectorTab === "ask",
         status: project.status,
         desktopAvailable,
         graphLoaded: Boolean(project.graph),
@@ -277,8 +299,8 @@ function App() {
         onHome: () => goHome(clearSearch),
         onChooseFolder: chooseFolder,
         onBrowserImport: importBrowserProject,
-        onOpenSample: openSample,
-        onToggleInspector: toggleInspectorCollapsed,
+        onOpenSample: () => setSampleLibraryOpen(true),
+        onToggleAsk: toggleAskInspector,
         onExport: openExportDialog,
         onOpenSettings: openSettings,
       }}
@@ -291,6 +313,17 @@ function App() {
         onOptionsChange: setExportOptions,
         onCancel: closeExportDialog,
         onConfirm: exportDocs,
+      }}
+      sampleLibrary={{
+        open: sampleLibraryOpen,
+        loadingSampleId,
+        onClose: () => setSampleLibraryOpen(false),
+        onSelect: async (sampleId) => {
+          setLoadingSampleId(sampleId);
+          await openSample(sampleId);
+          setLoadingSampleId("");
+          setSampleLibraryOpen(false);
+        },
       }}
       exportToast={exportStatus ? { status: exportStatus, onDismiss: clearExportStatus } : null}
       settings={{
@@ -337,7 +370,8 @@ function App() {
           unreferencedSourceUnits,
           onRescan: rescanCurrent,
           onFocusSearchResult: focusOnSearchResult,
-          onSelectSourceNode: readNodeSource,
+          onSelectSourceNode: focusOnMapNode,
+          onOpenGuideStop: readNodeSource,
           onResetNodeTypeFilters: resetNodeTypeFilters,
           onToggleNodeTypeFilter: toggleNodeTypeFilter,
           onOpenWarning: jumpToCitation,
@@ -361,6 +395,7 @@ function App() {
           focusExpansion,
           expandButtonTitle,
           showGraphNodeList,
+          desktopAvailable,
           onCenterViewChange: setCenterView,
           onSelectNode: selectNode,
           onSelectEdge: selectEdge,
@@ -368,6 +403,10 @@ function App() {
           onToggleExpandFocus: toggleExpandFocus,
           onToggleGraphNodeList: toggleGraphNodeList,
           onFocusNode: focusOnNode,
+          onOpenDependencies: openDependenciesInspector,
+          onAskAboutNode: askAboutWorkspaceSelection,
+          onImportProject: chooseFolder,
+          onOpenSample: () => setSampleLibraryOpen(true),
         },
         inspector: {
           activeTab: inspectorTab,
@@ -390,16 +429,17 @@ function App() {
           aiConfigured,
           onStartResize: startInspectorResize,
           onResetWidth: resetInspectorWidth,
+          onClose: closeInspector,
           onTabChange: handleInspectorTabChange,
           onOpenSettings: openSettings,
-          onQuestionChange: setChatQuestion,
+          onQuestionChange: updateChatQuestion,
           onAsk: askCurrentQuestion,
+          onAskSuggestion: askQuestion,
           onCancelAsk: cancelAsk,
           onGenerateSelected: generateSelectedSummary,
           onGenerateAll: generateAllSummaries,
           onCancelSummary: cancelSummary,
           onExplainNode: explainSelectedNode,
-          onAskFollowUp: askAboutSelectedNode,
           onViewSource: showSourcePanel,
           onOpenSummaryCitation: jumpToCitation,
           onFocusNode: focusOnNode,

@@ -11,6 +11,11 @@ const checks = [
     args: ["tools/m6-verify/demo-assets-smoke.mjs"],
   },
   {
+    name: "sample library smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/sample-library-smoke.mjs"],
+  },
+  {
     name: "citation focus smoke",
     command: process.execPath,
     args: ["tools/m6-verify/citation-focus-smoke.mjs"],
@@ -19,6 +24,11 @@ const checks = [
     name: "graph selectors smoke",
     command: process.execPath,
     args: ["tools/m6-verify/graph-selectors-smoke.mjs"],
+  },
+  {
+    name: "graph index performance smoke",
+    command: process.execPath,
+    args: ["tools/m6-verify/graph-index-smoke.mjs"],
   },
   {
     name: "summary planning smoke",

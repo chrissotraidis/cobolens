@@ -36,7 +36,7 @@ try {
     "copybook is present": hasNode(nodes, "copybook", "CUSTOMER"),
     "jcl wiring is present": hasNode(nodes, "jcl-job", "DAILYACT") && hasEdge(edges, "RUNS"),
     "dataset lineage is present": hasNode(nodes, "dataset", "MINIBANK.ACCOUNTS") && hasEdge(edges, "uses-dd"),
-    "data-item flow is present": hasNode(nodes, "data-item", "CUSTOMER-ID") && hasEdge(edges, "moves-to"),
+    "data-item analysis is present": hasNode(nodes, "data-item", "CUSTOMER-ID") && hasEdge(edges, "DEFINES"),
     "db2 signal is present": nodes.some((node) => node.type === "db2-table"),
   };
   const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);

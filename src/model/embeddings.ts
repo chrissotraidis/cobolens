@@ -93,7 +93,7 @@ async function fetchWithTimeout(
     return await fetchImpl(url, { ...init, signal: controller.signal });
   } catch (err) {
     if (isAbortError(err)) {
-      throw new Error("Ollama embeddings timed out. Use a smaller local embedding model or check Ollama logs.");
+      throw new Error("Ollama embeddings timed out during local model startup. Retry once after the model is warm, or check Ollama logs and the configured embedding model.");
     }
     throw err;
   } finally {

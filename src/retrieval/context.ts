@@ -1,5 +1,6 @@
 import type { GraphDocument, GraphEdge, GraphNode, SourceExcerpt } from "../lib/graph";
 import { edgeLabel, matchesFuzzy } from "../lib/graph";
+import { graphIndex, incidentEdges, type GraphIndex } from "../lib/graphIndex";
 import type { SemanticMatch } from "./semantic";
 
 export type Citation = {
@@ -13,6 +14,7 @@ export type Citation = {
 export type RetrievedContext = {
   focusNodes: GraphNode[];
   edges: GraphEdge[];
+  plannedPaths?: GraphEdge[][];
   citations: Citation[];
   prompt: string;
   semanticMatches?: SemanticMatch[];
@@ -46,19 +48,27 @@ export async function retrieveQuestionContext({
       })
     : [];
   const focusNodes = applyPreferredNode(
-    uniqueNodes([...rankedNodes, ...semanticMatches.map((match) => match.node)]),
+    interleaveNodes(rankedNodes, semanticMatches.map((match) => match.node)),
     preferredNode,
-    question,
-  ).slice(0, 4);
+  ).slice(0, 6);
+  const index = graphIndex(graph);
   const focusIds = new Set(focusNodes.map((node) => node.id));
-  const edges = graph.edges
-    .filter((edge) => focusIds.has(edge.from) || focusIds.has(edge.to))
-    .slice(0, 32);
+  const plannedPaths = planGraphPaths(index, focusNodes, preferredNode).slice(0, 5);
+  const plannedEdges = dedupeEdges(plannedPaths.flat()).slice(0, 24);
+  const directEdges = dedupeEdges(focusNodes.flatMap((node) => incidentEdges(index, node.id)));
+  const candidateEdges = dedupeEdges([...plannedEdges, ...directEdges]);
+  const coverageEdges = coverageEdgesForQuestion(graph, question, candidateEdges);
+  const edges = dedupeEdges([
+    ...coverageEdges,
+    ...rankEdgesForQuestion(graph, question, candidateEdges, plannedEdges),
+  ]).slice(0, 24);
   const neighborIds = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
+  const pathNodeIds = new Set(plannedEdges.flatMap((edge) => [edge.from, edge.to]));
   const contextNodes = uniqueNodes([
     ...focusNodes,
+    ...[...pathNodeIds].map((nodeId) => index.nodeById.get(nodeId)).filter((node): node is GraphNode => Boolean(node)),
     ...semanticMatches.map((match) => match.node),
-    ...graph.nodes.filter((node) => neighborIds.has(node.id) || focusIds.has(node.id)),
+    ...[...neighborIds, ...focusIds].map((nodeId) => index.nodeById.get(nodeId)).filter((node): node is GraphNode => Boolean(node)),
   ])
     .filter((node) => node.file && !node.external)
     .slice(0, 8);
@@ -71,34 +81,38 @@ export async function retrieveQuestionContext({
       result.status === "fulfilled" ? formatSourceExcerpt(contextNodes[index], result.value) : "",
     )
     .filter(Boolean);
-  const citations = dedupeCitations([
-    ...semanticMatches.map((match) => ({
+  const edgeCitations = edges
+    .filter((edge) => edge.site)
+    .map((edge) => ({
+      file: edge.site?.file ?? "",
+      line: edge.site?.line ?? 1,
+      label: edgeLabel(edge, graph),
+      nodeId: edge.from,
+    }));
+  const semanticCitations = semanticMatches.map((match) => ({
       file: match.file ?? match.node.file ?? "",
       line: match.startLine ?? match.node.lines?.[0] ?? 1,
       endLine: match.endLine ?? match.node.lines?.[1],
       label: `${match.node.name} ${match.kind === "source" ? "source" : "graph"} semantic match`,
       nodeId: match.node.id,
-    })),
-    ...contextNodes.map((node) => ({
+    }));
+  const nodeCitations = contextNodes.map((node) => ({
       file: node.file ?? "",
       line: node.lines?.[0] ?? 1,
       endLine: node.lines?.[1],
       label: node.name,
       nodeId: node.id,
-    })),
-    ...edges
-      .filter((edge) => edge.site)
-      .map((edge) => ({
-        file: edge.site?.file ?? "",
-        line: edge.site?.line ?? 1,
-        label: edgeLabel(edge, graph),
-        nodeId: edge.from,
-      })),
-  ]).filter((citation) => citation.file);
+    }));
+  const citations = dedupeCitations([
+    ...edgeCitations.slice(0, 10),
+    ...semanticCitations.slice(0, 4),
+    ...nodeCitations.slice(0, 4),
+  ]).filter((citation) => citation.file).slice(0, 18);
 
   return {
     focusNodes,
     edges,
+    plannedPaths,
     citations,
     prompt: [
       "Question:",
@@ -114,6 +128,14 @@ export async function retrieveQuestionContext({
       "Matched symbols:",
       focusNodes.map((node) => `- ${node.name} (${node.type}) ${nodeLocation(node)}`).join("\n") ||
         "- None",
+      "",
+      "Key evidence for answering:",
+      edges.slice(0, 12).map((edge) => `- ${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`).join("\n") || "- None",
+      "",
+      "Planned graph paths:",
+      plannedPaths.length
+        ? plannedPaths.map((path) => `- ${path.map((edge) => edgeLabel(edge, graph)).join(" | ")}`).join("\n")
+        : "- None",
       "",
       "Graph relationships:",
       edges.map((edge) => `- ${edgeLabel(edge, graph)}${edge.site ? ` at ${edge.site.file}:${edge.site.line}` : ""}`).join("\n") ||
@@ -134,20 +156,49 @@ export async function retrieveQuestionContext({
   };
 }
 
-function applyPreferredNode(rankedNodes: GraphNode[], preferredNode: GraphNode | null | undefined, question: string) {
+function applyPreferredNode(rankedNodes: GraphNode[], preferredNode: GraphNode | null | undefined) {
   if (!preferredNode) return rankedNodes;
-  if (isSelectedNodeReference(question)) return [preferredNode];
-  if (!shouldPreferSelectedNode(question, rankedNodes)) return rankedNodes;
   return [preferredNode, ...rankedNodes.filter((node) => node.id !== preferredNode.id)];
 }
 
-function shouldPreferSelectedNode(question: string, rankedNodes: GraphNode[]) {
-  if (!rankedNodes.length) return true;
-  return isSelectedNodeReference(question);
+function interleaveNodes(primary: GraphNode[], secondary: GraphNode[]) {
+  const mixed: GraphNode[] = [];
+  const count = Math.max(primary.length, secondary.length);
+  for (let index = 0; index < count; index += 1) {
+    if (primary[index]) mixed.push(primary[index]);
+    if (secondary[index]) mixed.push(secondary[index]);
+  }
+  return uniqueNodes(mixed);
 }
 
-function isSelectedNodeReference(question: string) {
-  return /\b(this|that|it|its|selected|current)\b/i.test(question);
+function planGraphPaths(index: GraphIndex, focusNodes: GraphNode[], preferredNode?: GraphNode | null) {
+  if (focusNodes.length < 2) return [];
+  const anchor = preferredNode && focusNodes.some((node) => node.id === preferredNode.id)
+    ? preferredNode
+    : focusNodes[0];
+  const targets = focusNodes.filter((node) => node.id !== anchor.id).slice(0, 5);
+  return targets
+    .map((target) => shortestUndirectedPath(index, anchor.id, target.id, 6))
+    .filter((path): path is GraphEdge[] => Boolean(path?.length));
+}
+
+function shortestUndirectedPath(index: GraphIndex, startId: string, targetId: string, maxEdges: number) {
+  if (startId === targetId) return [];
+  const queue: Array<{ nodeId: string; path: GraphEdge[] }> = [{ nodeId: startId, path: [] }];
+  const visited = new Set([startId]);
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || current.path.length >= maxEdges) continue;
+    for (const edge of incidentEdges(index, current.nodeId)) {
+      const next = edge.from === current.nodeId ? edge.to : edge.from;
+      if (visited.has(next)) continue;
+      const path = [...current.path, edge];
+      if (next === targetId) return path;
+      visited.add(next);
+      queue.push({ nodeId: next, path });
+    }
+  }
+  return null;
 }
 
 function uniqueNodes(nodes: GraphNode[]) {
@@ -319,4 +370,68 @@ function dedupeCitations(citations: Citation[]) {
     seen.add(key);
     return true;
   });
+}
+
+function dedupeEdges(edges: GraphEdge[]) {
+  const seen = new Set<string>();
+  return edges.filter((edge) => {
+    const key = `${edge.from}:${edge.to}:${edge.type}:${edge.site?.file ?? ""}:${edge.site?.line ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function rankEdgesForQuestion(
+  graph: GraphDocument,
+  question: string,
+  edges: GraphEdge[],
+  plannedEdges: GraphEdge[],
+) {
+  const nodeById = graphIndex(graph).nodeById;
+  const planned = new Set(plannedEdges);
+  return edges
+    .map((edge, index) => {
+      const from = nodeById.get(edge.from);
+      const to = nodeById.get(edge.to);
+      const artifactText = `${from?.name ?? edge.from} ${to?.name ?? edge.to} ${from?.type ?? ""} ${to?.type ?? ""}`;
+      const type = edge.type.toLocaleLowerCase();
+      let score = planned.has(edge) ? -12 : 0;
+      if (/\brate\b/i.test(question) && /rate/i.test(artifactText)) score -= 30;
+      if (/\breport\b/i.test(question) && /report/i.test(artifactText)) score -= 24;
+      if (/\b(customer|input|dataset|file)\b/i.test(question) && /(customer|dataset|jcl-dd)/i.test(artifactText)) score -= 20;
+      if (["reads", "writes", "moves-to", "assigned-to", "uses-dd", "queries", "updates"].includes(type)) score -= 8;
+      return { edge, index, score };
+    })
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .map(({ edge }) => edge);
+}
+
+function coverageEdgesForQuestion(graph: GraphDocument, question: string, edges: GraphEdge[]) {
+  const nodeById = graphIndex(graph).nodeById;
+  const artifactText = (edge: GraphEdge) => {
+    const from = nodeById.get(edge.from);
+    const to = nodeById.get(edge.to);
+    return `${from?.name ?? edge.from} ${to?.name ?? edge.to} ${from?.type ?? ""} ${to?.type ?? ""}`;
+  };
+  const find = (type: string, pattern?: RegExp) => edges.find((edge) =>
+    edge.type.toLocaleLowerCase() === type && (!pattern || pattern.test(artifactText(edge))),
+  );
+  const coverage: Array<GraphEdge | undefined> = [];
+
+  if (/\b(customer|input|dataset|file|data)\b/i.test(question)) {
+    coverage.push(find("uses-dd", /(customer|dataset)/i));
+    coverage.push(find("assigned-to", /(customer|cust)/i));
+    coverage.push(find("reads", /(customer|file)/i));
+  }
+  if (/\brate\b/i.test(question)) {
+    coverage.push(find("queries"));
+    coverage.push(find("moves-to", /rate/i));
+  }
+  if (/\breport\b/i.test(question)) {
+    coverage.push(find("writes", /report/i));
+    coverage.push(find("moves-to", /report/i));
+  }
+
+  return coverage.filter((edge): edge is GraphEdge => Boolean(edge));
 }

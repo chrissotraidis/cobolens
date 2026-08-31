@@ -1,11 +1,11 @@
 # Cobolens Product Requirements Document
 
-Version: 0.1 local v1 release-candidate spec  
-Last updated: 2026-07-01
+Version: 0.2 local v1 release-candidate spec
+Last updated: 2026-08-30
 
 ## One-Line Definition
 
-Cobolens is a free, open-source, local-first desktop app that helps engineers understand COBOL, copybooks, and JCL through an interactive dependency map, cited source inspection, graph-grounded Ask, optional AI summaries, and exportable documentation.
+Cobolens is a local-first investigation desk that helps engineers trace unfamiliar COBOL systems and prove every explanation through an interactive dependency map, cited source, in-context questions, and exportable documentation.
 
 ## Product Position
 
@@ -49,6 +49,10 @@ The primary user is a developer who inherits a COBOL/JCL system they did not wri
 6. AI is optional and opt-in.
 7. Real COBOL is messy; degrade gracefully.
 8. Keep the app fast, legible, and maintainable.
+9. Orient, trace, prove, explain, then carry the result forward.
+10. Conversation continues the investigation; it is not a separate chatbot destination.
+
+The product personality and interface grammar are specified in [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md).
 
 ## Current V1 Scope
 
@@ -65,7 +69,7 @@ The primary user is a developer who inherits a COBOL/JCL system they did not wri
 - Filter graph node types.
 - Click nodes, relationships, and citations to focus source.
 - View source snippets with highlighted cited lines.
-- Inspect Overview, Ask, Dependencies, and Source.
+- Ask in an evidence-led conversation and inspect compact Dependencies.
 - Ask deterministic graph questions without AI.
 - Configure local Ollama or cloud providers for optional AI.
 - Generate guarded AI summaries with cited graph fallback.
@@ -120,14 +124,19 @@ The graph must avoid the hairball problem.
 
 ### Right Pane
 
-The right pane is task-oriented:
+The right inspector continues the investigation in the current canvas context:
 
-- `Overview`: graph facts, evidence, optional AI summary.
-- `Ask`: graph Ask first, AI Ask only after setup.
-- `Dependencies`: depends-on, used-by, lineage, and relationship details.
-- `Source`: file/line focus and source-viewer handoff.
+- `Ask`: compact current context, progressive evidence, graph Ask, and optional AI explanation.
+- `Dependencies`: depends-on, used-by, lineage, and compact relationship source sites.
 
-The Source panel remains visible above the inspector where space allows.
+The center canvas switches between Map and Source so evidence stays beside the explanation. Model work must use one truthful progress state and leave map/source navigation available.
+
+Codebase selection is an orientation action: it focuses the map and reveals a
+stable selected-symbol bar with Source, Dependencies, and Ask. Source selection
+is explicit. Large inventories use grouped disclosure and search; large source
+files use bounded pages without weakening citation jumps. Ask remains a labeled
+top-level entry when the Inspector is closed, and Home/brand reset to the root
+map focus.
 
 ## Functional Requirements
 
@@ -145,12 +154,12 @@ The Source panel remains visible above the inspector where space allows.
 | FR-10 | Surface data lineage. | Implemented on current graph signals |
 | FR-11 | Surface impact/where-used. | Implemented as Dependencies |
 | FR-12 | Flag potentially unreferenced source units. | Partial but useful |
-| FR-13 | Provide focus-and-expand graph navigation. | Implemented |
+| FR-13 | Provide focus-and-expand graph navigation with visible selected-symbol actions. | Implemented |
 | FR-14 | Avoid full-graph hairballs with LOD/clustering. | Implemented |
 | FR-15 | Click nodes/edges/citations to source. | Implemented |
 | FR-16 | Provide legend, filters, and orientation. | Implemented |
 | FR-17 | Export static diagrams. | Implemented |
-| FR-18 | Provide search, breadcrumbs, and Home reset. | Implemented |
+| FR-18 | Provide search, breadcrumbs, and Home/brand reset. | Implemented |
 | FR-19 | Generate grounded summaries. | Implemented with citation guard and fallback |
 | FR-20 | Support Rosetta language setting. | Implemented in prompts |
 | FR-21 | Export documentation. | Implemented |
@@ -163,8 +172,9 @@ The Source panel remains visible above the inspector where space allows.
 | FR-28 | Show honest local/cloud mode. | Implemented |
 | FR-29 | Show usage and bulk summary estimates. | Implemented |
 | FR-30 | Keep embeddings privacy-aware. | Implemented for local Ollama with a dedicated embedding model (default `nomic-embed-text`); cloud embeddings rejected. Semantic-retrieval failure surfaces a visible note instead of degrading silently. |
-| FR-31 | Bundle a sample codebase. | Implemented |
+| FR-31 | Bundle a graduated sample library with retained provenance, offline source, and guided traces. | Implemented with one Cobolens fixture and three Apache-2.0 public projects. |
 | FR-32 | Guide first-run without requiring AI. | Implemented |
+| FR-33 | Keep large inventories and source files responsive with grouped search, lazy views, and bounded source pages. | Implemented |
 
 ## Architecture
 
@@ -266,9 +276,9 @@ Not yet claimed:
 
 ## Next Research
 
-1. Run on several real COBOL/JCL repos and record parser gaps.
-2. Improve source browsing beyond snippets.
+1. Reduce lightweight-parser false positives exposed by the IBM and AWS sample corpora without hiding fallback warnings.
+2. Measure large-project cold load, program-focus latency, and Map/Source switching in the packaged desktop app.
 3. Tighten relationship explanations directly on graph interactions.
-4. Harden local AI setup copy and model checks.
-5. Decide whether a JVM analyzer candidate is worth production adoption.
+4. Harden local AI setup copy and model checks against every sample scale.
+5. Decide whether the JVM analyzer candidates improve the recorded public-corpus gaps enough to justify production packaging.
 6. Validate signed installer paths.

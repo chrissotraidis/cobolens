@@ -11,11 +11,9 @@ import { retrieveQuestionContext, type RetrievedContext } from "../retrieval/con
 import { graphAnswerFallback, isGraphQuestion } from "../retrieval/graphAnswer";
 import type { SemanticMatch } from "../retrieval/semantic";
 import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
-import { shouldSyncAskFocus } from "../retrieval/askFocus";
 import type { ChatAnswer, ChatMode, ChatStatus } from "./ChatAnswerPanel";
 import type { InspectorTab } from "./InspectorTabs";
-
-const COMPLETE_QUESTION_MESSAGE = 'Ask a complete question, like "What does this program do?"';
+import { inputQualityMessage } from "./questionQuality";
 
 export function useAskGeneration({
   graph,
@@ -30,7 +28,6 @@ export function useAskGeneration({
   readExcerptForNode,
   prepareModelCall,
   onModelCallComplete,
-  onSyncFocusNode,
   onTabChange,
   semanticIndex,
   searchSemanticIndex,
@@ -47,7 +44,6 @@ export function useAskGeneration({
   readExcerptForNode: (node: GraphNode) => Promise<SourceExcerpt>;
   prepareModelCall: () => Promise<string | undefined>;
   onModelCallComplete: () => void;
-  onSyncFocusNode: (nodeId: string) => void;
   onTabChange: (tab: InspectorTab) => void;
   semanticIndex: SemanticIndexState;
   searchSemanticIndex: (question: string) => Promise<SemanticMatch[]>;
@@ -57,7 +53,8 @@ export function useAskGeneration({
   async function askQuestion(questionDraft = chatQuestion, mode: ChatMode = "auto") {
     if (!graph || !questionDraft.trim()) return;
     const question = questionDraft.trim();
-    const qualityMessage = inputQualityMessage(question);
+    const contextLabel = selectedNode?.name ?? "the codebase";
+    const qualityMessage = inputQualityMessage(question, Boolean(selectedNode));
     if (qualityMessage) {
       setChatQuestion(question);
       setChatAnswer(null);
@@ -85,19 +82,16 @@ export function useAskGeneration({
       });
       if (useGraphRoute) {
         const fallback = graphAnswerFallback(graph, question, context);
-        const graphAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph" };
+        const graphAnswer: ChatAnswer = { question, text: fallback.text, citations: fallback.citations, source: "graph", contextLabel };
         setChatAnswer(graphAnswer);
         rememberChatAnswer(graphAnswer);
         setChatStatus("ready");
         setChatQuestion("");
-        if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
-          onSyncFocusNode(context.focusNodes[0].id);
-        }
         return;
       }
       const answerContext = context;
       const apiKey = await prepareModelCall();
-      const answer = await runStreamingModelCall("Ask", activeChatAbortRef, (abortSignal, noteFirstToken) =>
+      const answer = await runStreamingModelCall("Chat", activeChatAbortRef, (abortSignal, noteFirstToken) =>
         generateGroundedAnswer({
           question,
           context: answerContext,
@@ -111,6 +105,7 @@ export function useAskGeneration({
               text: draft,
               citations: [],
               source: "model",
+              contextLabel,
             });
           },
         }),
@@ -131,6 +126,7 @@ export function useAskGeneration({
         text: displayedAnswer.text,
         citations: displayedAnswer.citations,
         source: fellBackToGraph ? "graph" : "model",
+        contextLabel,
         guarded: fellBackToGraph,
         citationFiltered: Boolean(answer.repaired),
         fallbackReason: answer.repaired
@@ -147,9 +143,6 @@ export function useAskGeneration({
       rememberChatAnswer(modelAnswer);
       setChatStatus("ready");
       setChatQuestion("");
-      if (answerContext.focusNodes[0] && shouldSyncAskFocus(question)) {
-        onSyncFocusNode(answerContext.focusNodes[0].id);
-      }
     } catch (err) {
       const fallbackReason = friendlyModelError(err, modelSettings);
       if (isStoppedModelCall(fallbackReason)) {
@@ -164,6 +157,7 @@ export function useAskGeneration({
           text: fallback.text,
           citations: fallback.citations,
           source: "graph",
+          contextLabel,
           fallbackReason,
           semanticNote: context.semanticError
             ? `Semantic retrieval was unavailable (${context.semanticError}), so this answer used graph and keyword retrieval.`
@@ -173,9 +167,6 @@ export function useAskGeneration({
         rememberChatAnswer(fallbackAnswer);
         setChatStatus("ready");
         setChatQuestion("");
-        if (context.focusNodes[0] && shouldSyncAskFocus(question)) {
-          onSyncFocusNode(context.focusNodes[0].id);
-        }
         return;
       }
       setChatError(fallbackReason);
@@ -206,17 +197,6 @@ export function useAskGeneration({
     askAboutSelectedNode,
     cancelAsk,
   };
-}
-
-export function inputQualityMessage(question: string) {
-  const words = question
-    .trim()
-    .toLocaleLowerCase()
-    .split(/[^a-z0-9_-]+/i)
-    .filter(Boolean);
-  const meaningfulWords = words.filter((word) => !["a", "an", "the", "this", "that", "it", "its", "does", "do", "is", "are"].includes(word));
-  if (question.trim().length < 8 || meaningfulWords.length < 2) return COMPLETE_QUESTION_MESSAGE;
-  return "";
 }
 
 function semanticStatusNote(state: SemanticIndexState) {

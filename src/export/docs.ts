@@ -367,7 +367,7 @@ async function diagramPngBlob(graph: GraphDocument, focusNodeId: string, title: 
   context.fillText(title, 56, 68);
 
   const visible = visibleDiagramGraph(graph, focusNodeId);
-  const positions = layoutNodes(visible.nodes, canvas.width, canvas.height);
+  const positions = layoutDiagramNodes(visible.nodes, visible.edges, focusNodeId, canvas.width, canvas.height);
 
   context.lineWidth = 2;
   context.strokeStyle = "#9aa7b4";
@@ -456,6 +456,47 @@ function layoutNodes(nodes: GraphDocument["nodes"], width: number, height: numbe
   });
 
   return positions;
+}
+
+export function layoutDiagramNodes(
+  nodes: GraphDocument["nodes"],
+  edges: GraphEdge[],
+  focusNodeId: string,
+  width: number,
+  height: number,
+) {
+  if (!focusNodeId || !nodes.some((node) => node.id === focusNodeId)) {
+    return layoutNodes(nodes, width, height);
+  }
+
+  const positions = new Map<string, { x: number; y: number }>();
+  const incoming = [...new Set(edges.filter((edge) => edge.to === focusNodeId && edge.from !== focusNodeId).map((edge) => edge.from))];
+  const incomingIds = new Set(incoming);
+  const outgoing = [...new Set(edges.filter((edge) => edge.from === focusNodeId && edge.to !== focusNodeId).map((edge) => edge.to))]
+    .filter((nodeId) => !incomingIds.has(nodeId));
+  const placedIds = new Set([focusNodeId, ...incoming, ...outgoing]);
+  const remaining = nodes.map((node) => node.id).filter((nodeId) => !placedIds.has(nodeId));
+
+  positions.set(focusNodeId, { x: width / 2, y: height / 2 });
+  placeDiagramColumn(positions, incoming, 190, height);
+  placeDiagramColumn(positions, outgoing, width - 190, height);
+  placeDiagramColumn(positions, remaining, width / 2, height, height - 165, height - 165);
+  return positions;
+}
+
+function placeDiagramColumn(
+  positions: Map<string, { x: number; y: number }>,
+  nodeIds: string[],
+  x: number,
+  height: number,
+  top = 155,
+  bottom = height - 145,
+) {
+  if (!nodeIds.length) return;
+  const gap = nodeIds.length === 1 ? 0 : (bottom - top) / (nodeIds.length - 1);
+  nodeIds.forEach((nodeId, index) => {
+    positions.set(nodeId, { x, y: nodeIds.length === 1 ? (top + bottom) / 2 : top + index * gap });
+  });
 }
 
 function drawArrow(context: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) {

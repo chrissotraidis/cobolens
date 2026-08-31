@@ -9,6 +9,7 @@ import {
   nodeColor,
   nodeLabel,
 } from "../lib/graph";
+import { graphEdgeKey, graphIndex, incidentEdges } from "../lib/graphIndex";
 
 type NodeAttributes = {
   x: number;
@@ -37,6 +38,7 @@ type FocusSlice = {
 };
 
 type GraphViewProps = {
+  active: boolean;
   graph: GraphDocument | null;
   focusNodeId: string;
   expandedNodeIds: Set<string>;
@@ -46,12 +48,16 @@ type GraphViewProps = {
   onSelectEdge: (edge: GraphEdge | null) => void;
   onExpandNode: (nodeId: string) => void;
   showNodeList: boolean;
+  desktopAvailable: boolean;
+  onImportProject: () => void;
+  onOpenSample: () => void;
 };
 
 const DIRECT_LIMIT_PER_TYPE = 14;
 const EXPANDED_LIMIT_PER_TYPE = 6;
 
 export function GraphView({
+  active,
   graph,
   focusNodeId,
   expandedNodeIds,
@@ -61,15 +67,19 @@ export function GraphView({
   onSelectEdge,
   onExpandNode,
   showNodeList,
+  desktopAvailable,
+  onImportProject,
+  onOpenSample,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<Sigma<NodeAttributes, EdgeAttributes> | null>(null);
-  const selectedEdgeKey = selectedEdge ? edgeKey(selectedEdge) : "";
+  const selectedEdgeKey = selectedEdge ? graphEdgeKey(selectedEdge) : "";
+  const previousSelectedEdgeKeyRef = useRef("");
 
   const slice = useMemo(() => {
-    if (!graph || !focusNodeId) return null;
-    return buildFocusSlice(graph, focusNodeId, expandedNodeIds, hiddenNodeTypes, selectedEdgeKey);
-  }, [expandedNodeIds, focusNodeId, graph, hiddenNodeTypes, selectedEdgeKey]);
+    if (!active || !graph || !focusNodeId) return null;
+    return buildFocusSlice(graph, focusNodeId, expandedNodeIds, hiddenNodeTypes);
+  }, [active, expandedNodeIds, focusNodeId, graph, hiddenNodeTypes]);
   const visibleNodeControls = useMemo(() => {
     if (!slice) return [];
     return slice.graph
@@ -95,6 +105,7 @@ export function GraphView({
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !slice) return;
+    const compactCanvas = container.clientWidth < 560;
 
     const renderer = new Sigma(slice.graph, container, {
       allowInvalidContainer: true,
@@ -109,19 +120,19 @@ export function GraphView({
       // overlapping, and adapt automatically to the pane size (more on a wide
       // desktop pane, fewer on a narrow phone) instead of forcing every label.
       // Lower density + larger cells => fewer, non-overlapping labels.
-      labelDensity: 0.5,
-      labelGridCellSize: 96,
-      labelRenderedSizeThreshold: 6,
-      labelSize: 12.5,
+      labelDensity: compactCanvas ? 0.22 : 0.5,
+      labelGridCellSize: compactCanvas ? 126 : 96,
+      labelRenderedSizeThreshold: compactCanvas ? 8 : 6,
+      labelSize: compactCanvas ? 11.5 : 12.5,
       labelWeight: "600",
       renderEdgeLabels: false,
       renderLabels: true,
       // Padding leaves room for outer-ring node labels (long dataset and CICS
       // names) without clipping, while the tighter camera ratio below zooms the
       // focus slice in so it fills the pane instead of floating as a speck.
-      stagePadding: 70,
+      stagePadding: compactCanvas ? 46 : 70,
     });
-    renderer.getCamera().setState({ ratio: 0.86 });
+    renderer.getCamera().setState({ ratio: compactCanvas ? 1.18 : 0.86 });
 
     renderer.on("clickNode", ({ node }) => {
       if (slice.syntheticNodeIds.has(node)) {
@@ -145,6 +156,23 @@ export function GraphView({
       }
     };
   }, [onExpandNode, onSelectEdge, onSelectNode, slice]);
+
+  useEffect(() => {
+    if (!slice) return;
+    const previousKey = previousSelectedEdgeKeyRef.current;
+    if (previousKey && slice.graph.hasEdge(previousKey)) {
+      const previousEdge = slice.graph.getEdgeAttribute(previousKey, "sourceEdge");
+      slice.graph.mergeEdgeAttributes(previousKey, {
+        color: previousEdge ? edgeColor(previousEdge.type) : "#48525f",
+        size: 1.4,
+      });
+    }
+    if (selectedEdgeKey && slice.graph.hasEdge(selectedEdgeKey)) {
+      slice.graph.mergeEdgeAttributes(selectedEdgeKey, { color: "#f2d06b", size: 3 });
+    }
+    previousSelectedEdgeKeyRef.current = selectedEdgeKey;
+    rendererRef.current?.refresh();
+  }, [selectedEdgeKey, slice]);
   function activateVisibleNode(nodeId: string) {
     if (!slice) return;
     if (slice.syntheticNodeIds.has(nodeId)) {
@@ -156,17 +184,20 @@ export function GraphView({
     onSelectNode(nodeId);
   }
 
+  if (!active) return null;
+
   if (!graph) {
     return (
       <div className="graph-empty">
         <div className="graph-empty-card">
-          <strong>Get started</strong>
-          <span>Import a COBOL project or open the bundled sample. AI is optional.</span>
-          <ol className="graph-empty-steps" aria-label="Getting-started steps">
-            <li>Use Import Project for a local folder, or Sample for the demo graph.</li>
-            <li>Explore the dependency map and read cited source.</li>
-            <li>Add local AI later for summaries and open-ended chat.</li>
-          </ol>
+          <span className="graph-empty-kicker">Evidence-first codebase investigation</span>
+          <strong>Understand unfamiliar COBOL without guessing.</strong>
+          <p>Follow a dependency through the map, open the exact source, and ask questions that stay tied to evidence.</p>
+          <div className="graph-empty-actions">
+            {desktopAvailable ? <button type="button" className="primary-action" onClick={onImportProject}>Import a project</button> : null}
+            <button type="button" onClick={onOpenSample}>Explore samples</button>
+          </div>
+          <span className="graph-empty-assurance">No account. AI is optional. Your graph works on its own.</span>
         </div>
       </div>
     );
@@ -226,11 +257,11 @@ function buildFocusSlice(
   focusNodeId: string,
   expandedNodeIds: Set<string>,
   hiddenNodeTypes: Set<string>,
-  selectedEdgeKey: string,
 ): FocusSlice {
   const graph = new Graph<NodeAttributes, EdgeAttributes>({ type: "directed", multi: true });
-  const nodeById = new Map(document.nodes.map((node) => [node.id, node]));
-  const edgeByKey = new Map(document.edges.map((edge) => [edgeKey(edge), edge]));
+  const index = graphIndex(document);
+  const syntheticNodes = new Map<string, GraphNode>();
+  const syntheticEdges = new Map<string, GraphEdge>();
   const visibleNodeIds = new Set<string>();
   const visibleEdgeKeys = new Set<string>();
   const syntheticNodeIds = new Set<string>();
@@ -238,9 +269,9 @@ function buildFocusSlice(
   let hiddenNeighborCount = 0;
   let syntheticIndex = 0;
 
-  const focusNode = nodeById.get(focusNodeId) ?? document.nodes[0];
+  const focusNode = index.nodeById.get(focusNodeId) ?? document.nodes[0];
   visibleNodeIds.add(focusNode.id);
-  const focusEdges = incidentEdges(document.edges, focusNode.id);
+  const focusEdges = incidentEdges(index, focusNode.id);
   addNeighborGroups(
     focusEdges,
     focusNode.id,
@@ -249,14 +280,14 @@ function buildFocusSlice(
 
   for (const expandedNodeId of expandedNodeIds) {
     if (!visibleNodeIds.has(expandedNodeId)) continue;
-    const expandedEdges = incidentEdges(document.edges, expandedNodeId).filter(
+    const expandedEdges = incidentEdges(index, expandedNodeId).filter(
       (edge) => edge.from !== focusNode.id && edge.to !== focusNode.id,
     );
     addNeighborGroups(expandedEdges, expandedNodeId, EXPANDED_LIMIT_PER_TYPE);
   }
 
   const positionedNodes = layoutNodes(
-    [...visibleNodeIds].map((id) => nodeById.get(id)).filter(Boolean) as GraphNode[],
+    [...visibleNodeIds].map(nodeForId).filter(Boolean) as GraphNode[],
     focusNode.id,
   );
 
@@ -272,16 +303,16 @@ function buildFocusSlice(
   }
 
   for (const edgeKeyValue of visibleEdgeKeys) {
-    const edge = edgeByKey.get(edgeKeyValue);
+    const edge = syntheticEdges.get(edgeKeyValue) ?? index.edgeByKey.get(edgeKeyValue);
     if (!edge || !visibleNodeIds.has(edge.from) || !visibleNodeIds.has(edge.to)) continue;
-    addGraphEdge(graph, edge, document, selectedEdgeKey);
+    addGraphEdge(graph, edge, document);
   }
 
   function addNeighborGroups(edges: GraphEdge[], ownerId: string, limitPerType: number) {
     const byType = new Map<string, Array<{ edge: GraphEdge; neighborId: string }>>();
     for (const edge of edges) {
       const neighborId = edge.from === ownerId ? edge.to : edge.from;
-      const neighbor = nodeById.get(neighborId);
+      const neighbor = nodeForId(neighborId);
       if (!neighbor) continue;
       if (hiddenNodeTypes.has(neighbor.type)) {
         hiddenNeighborCount += 1;
@@ -294,15 +325,15 @@ function buildFocusSlice(
 
     for (const [type, items] of byType) {
       const sorted = items.sort((left, right) => {
-        const leftNode = nodeById.get(left.neighborId);
-        const rightNode = nodeById.get(right.neighborId);
+        const leftNode = nodeForId(left.neighborId);
+        const rightNode = nodeForId(right.neighborId);
         return (leftNode?.name ?? left.neighborId).localeCompare(rightNode?.name ?? right.neighborId);
       });
       const visible = sorted.slice(0, limitPerType);
       const hidden = sorted.slice(limitPerType);
       for (const item of visible) {
         visibleNodeIds.add(item.neighborId);
-        visibleEdgeKeys.add(edgeKey(item.edge));
+        visibleEdgeKeys.add(graphEdgeKey(item.edge));
       }
       if (hidden.length > 0) {
         hiddenNeighborCount += hidden.length;
@@ -310,7 +341,7 @@ function buildFocusSlice(
         syntheticNodeIds.add(clusterId);
         syntheticNodeOwners.set(clusterId, ownerId);
         visibleNodeIds.add(clusterId);
-        nodeById.set(clusterId, {
+        syntheticNodes.set(clusterId, {
           id: clusterId,
           type: "cluster",
           name: `+${hidden.length} ${type}`,
@@ -320,8 +351,8 @@ function buildFocusSlice(
           to: clusterId,
           type: "CLUSTER",
         };
-        const syntheticKey = edgeKey(syntheticEdge);
-        edgeByKey.set(syntheticKey, syntheticEdge);
+        const syntheticKey = graphEdgeKey(syntheticEdge);
+        syntheticEdges.set(syntheticKey, syntheticEdge);
         visibleEdgeKeys.add(syntheticKey);
       }
     }
@@ -334,6 +365,10 @@ function buildFocusSlice(
     syntheticNodeIds,
     visibleNodeIds,
   };
+
+  function nodeForId(nodeId: string) {
+    return syntheticNodes.get(nodeId) ?? index.nodeById.get(nodeId);
+  }
 }
 
 function layoutNodes(nodes: GraphNode[], focusNodeId: string) {
@@ -354,21 +389,16 @@ function layoutNodes(nodes: GraphNode[], focusNodeId: string) {
   ];
 }
 
-function incidentEdges(edges: GraphEdge[], nodeId: string) {
-  return edges.filter((edge) => edge.from === nodeId || edge.to === nodeId);
-}
-
 function addGraphEdge(
   graph: Graph<NodeAttributes, EdgeAttributes>,
   edge: GraphEdge,
   document: GraphDocument,
-  selectedEdgeKey: string,
 ) {
-  const key = edgeKey(edge);
+  const key = graphEdgeKey(edge);
   graph.addDirectedEdgeWithKey(key, edge.from, edge.to, {
-    color: key === selectedEdgeKey ? "#f2d06b" : edgeColor(edge.type),
+    color: edgeColor(edge.type),
     label: edgeLabel(edge, document),
-    size: key === selectedEdgeKey ? 3 : 1.4,
+    size: 1.4,
     sourceEdge: edge,
   });
 }
@@ -379,14 +409,4 @@ function edgeColor(type: string) {
   if (type === "COPIES") return "#fc8d62";
   if (type === "RUNS" || type === "RUNS-AFTER") return "#e5c75f";
   return "#48525f";
-}
-
-function edgeKey(edge: GraphEdge) {
-  return [
-    edge.from,
-    edge.to,
-    edge.type,
-    edge.site?.file ?? "",
-    edge.site?.line ?? "",
-  ].join("|");
 }

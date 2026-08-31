@@ -1,3 +1,5 @@
+import { graphIndex } from "./graphIndex";
+
 export type GraphNode = {
   id: string;
   type: string;
@@ -81,8 +83,9 @@ export function nodeLabel(node: GraphNode) {
 }
 
 export function edgeLabel(edge: GraphEdge, graph: GraphDocument) {
-  const from = graph.nodes.find((node) => node.id === edge.from)?.name ?? edge.from;
-  const to = graph.nodes.find((node) => node.id === edge.to)?.name ?? edge.to;
+  const nodes = graphIndex(graph).nodeById;
+  const from = nodes.get(edge.from)?.name ?? edge.from;
+  const to = nodes.get(edge.to)?.name ?? edge.to;
   return `${from} ${edge.type} ${to}`;
 }
 

@@ -35,6 +35,14 @@ export function useWorkspaceNavigation({
 }) {
   const [centerView, setCenterView] = useState<CenterView>("map");
 
+  function showCenterView(view: CenterView) {
+    setCenterView(view);
+    // At stacked breakpoints the shell is the page scroll surface. Returning
+    // to Map or Source must also return that surface to the canvas toolbar;
+    // otherwise keyboard focus can leave the user halfway down another pane.
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>(".shell")?.scrollTo({ top: 0 }));
+  }
+
   function focusOnNode(nodeId: string, options: FocusOptions = {}) {
     if (!nodeById.has(nodeId)) return;
     setFocusNodeId(nodeId);
@@ -62,13 +70,19 @@ export function useWorkspaceNavigation({
     clearGraphExpansion();
     clearSearch();
     onHomeReset();
+    showCenterView("map");
+  }
+
+  function focusOnMapNode(nodeId: string) {
+    focusOnNode(nodeId);
+    showCenterView("map");
   }
 
   function readNodeSource(nodeId: string, options: FocusOptions = {}) {
     focusOnNode(nodeId, options);
     if (nodeById.get(nodeId)?.file) {
-      setCenterView("source");
-      window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
+      showCenterView("source");
+      window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus({ preventScroll: true }));
     }
   }
 
@@ -93,8 +107,8 @@ export function useWorkspaceNavigation({
   }
 
   function showSourcePanel() {
-    setCenterView("source");
-    window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
+    showCenterView("source");
+    window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus({ preventScroll: true }));
   }
 
   function openRelationshipEdge(edge: GraphEdge) {
@@ -126,8 +140,8 @@ export function useWorkspaceNavigation({
     // Evidence -> code is the core trust interaction: bring Source forward in the
     // center workspace so the cited line is visible immediately, then move
     // keyboard focus to the reader.
-    setCenterView("source");
-    window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus());
+    showCenterView("source");
+    window.requestAnimationFrame(() => document.getElementById("code-panel")?.focus({ preventScroll: true }));
   }
 
   function openAskCitation(citation: Citation) {
@@ -136,8 +150,9 @@ export function useWorkspaceNavigation({
 
   return {
     centerView,
-    setCenterView,
+    setCenterView: showCenterView,
     focusOnNode,
+    focusOnMapNode,
     syncAskFocusNode,
     goHome,
     readNodeSource,

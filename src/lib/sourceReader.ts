@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SourceExcerpt, SourceFileContent } from "./graph";
 import { canUseTauri } from "./tauri";
+import { sampleForGraphUrl } from "../samples/catalog";
 
 export function sourceBaseForGraphUrl(graphUrl: string) {
-  return graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source.json" : "";
+  return sampleForGraphUrl(graphUrl)?.sourceUrl ?? (graphUrl.includes("m6-bakeoff-graph.json") ? "/m6-bakeoff-source.json" : "");
 }
 
 export const MAX_SOURCE_READER_BYTES = 2 * 1024 * 1024;
@@ -16,7 +17,7 @@ export async function readSourceFile(
   line: number,
   encoding: string,
 ): Promise<SourceFileContent> {
-  if (root && canUseTauri()) {
+  if (!sourceBase && root && canUseTauri()) {
     return invoke<SourceFileContent>("read_source_file", {
       root,
       file,
@@ -57,7 +58,7 @@ export async function readSourceExcerpt(
   maxLines: number,
   encoding: string,
 ): Promise<SourceExcerpt> {
-  if (root && canUseTauri()) {
+  if (!sourceBase && root && canUseTauri()) {
     return invoke<SourceExcerpt>("read_source_excerpt", {
       root,
       file,

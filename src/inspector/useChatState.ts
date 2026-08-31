@@ -14,6 +14,14 @@ export function useChatState({ onTabChange }: { onTabChange: (tab: InspectorTab)
     setChatHistory((current) => rememberRecentChatAnswer(current, answer));
   }
 
+  function updateChatQuestion(question: string) {
+    setChatQuestion(question);
+    if (chatStatus === "error") {
+      setChatError("");
+      setChatStatus("idle");
+    }
+  }
+
   function resetChatDraftForNavigation() {
     setChatQuestion("");
     setChatAnswer(null);
@@ -26,7 +34,7 @@ export function useChatState({ onTabChange }: { onTabChange: (tab: InspectorTab)
     setChatAnswer(null);
     setChatStatus("idle");
     setChatError("");
-    onTabChange("summary");
+    onTabChange("ask");
   }
 
   function resetChatForProjectLoad() {
@@ -35,12 +43,13 @@ export function useChatState({ onTabChange }: { onTabChange: (tab: InspectorTab)
     setChatQuestion("");
     setChatStatus("idle");
     setChatError("");
-    onTabChange("summary");
+    onTabChange("ask");
   }
 
   return {
     chatQuestion,
     setChatQuestion,
+    updateChatQuestion,
     chatStatus,
     setChatStatus,
     chatAnswer,

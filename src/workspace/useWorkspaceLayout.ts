@@ -24,6 +24,9 @@ export function useWorkspaceLayout() {
     setInspectorCollapsed((collapsed) => !collapsed);
   }, []);
 
+  const openInspector = useCallback(() => setInspectorCollapsed(false), []);
+  const closeInspector = useCallback(() => setInspectorCollapsed(true), []);
+
   function startInspectorResize(event: ReactPointerEvent) {
     event.preventDefault();
     if (inspectorCollapsed) setInspectorCollapsed(false);
@@ -53,6 +56,8 @@ export function useWorkspaceLayout() {
     toggleRailCollapsed,
     inspectorCollapsed,
     toggleInspectorCollapsed,
+    openInspector,
+    closeInspector,
     rightWidth,
     rightWidthPx: Math.round(clampRightWidth(rightWidth, railCollapsed)),
     startInspectorResize,

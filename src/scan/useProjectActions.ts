@@ -6,6 +6,7 @@ import { analyzeBrowserProject, type BrowserProjectImport } from "../lib/browser
 import type { GraphDocument } from "../lib/graph";
 import { firstFocusableNode } from "../lib/graphSelectors";
 import { sourceBaseForGraphUrl } from "../lib/sourceReader";
+import { DEFAULT_SAMPLE_ID, sampleById, sampleForGraphUrl, sampleForRoot } from "../samples/catalog";
 import type { ProjectState } from "./useProjectState";
 
 declare global {
@@ -24,6 +25,7 @@ export function useProjectActions({
   resetChatForProjectLoad,
   clearExportStatus,
   showExportStatus,
+  onProjectLoad,
 }: {
   desktopAvailable: boolean;
   scanSettings: ScanSettings;
@@ -34,6 +36,7 @@ export function useProjectActions({
   resetChatForProjectLoad: () => void;
   clearExportStatus: () => void;
   showExportStatus: (message: string) => void;
+  onProjectLoad: () => void;
 }) {
   const {
     graph,
@@ -52,6 +55,7 @@ export function useProjectActions({
   const browserImportInputRef = useRef<HTMLInputElement | null>(null);
 
   function beginScan(nextRoot: string, nextSourceBase = "") {
+    onProjectLoad();
     setRoot(nextRoot);
     setSourceBase(nextSourceBase);
     setBrowserSourceFiles({});
@@ -64,6 +68,7 @@ export function useProjectActions({
   }
 
   function acceptGraph(nextGraph: GraphDocument, nextRoot: string, nextSourceBase = "") {
+    onProjectLoad();
     const initialFocus = firstFocusableNode(nextGraph);
     setRoot(nextRoot);
     setSourceBase(nextSourceBase);
@@ -129,38 +134,27 @@ export function useProjectActions({
     }
   }
 
-  async function openSample() {
-    if (!desktopAvailable) {
-      setRoot("Demo graph: M6 fixture");
-      setSourceBase("/m6-bakeoff-source.json");
-      setSelectedEdge(null);
-      setSourceFocus(null);
-      setError("");
-      setStatus("running");
+  async function openSample(sampleId = DEFAULT_SAMPLE_ID) {
+    const sample = sampleById(sampleId) ?? sampleById(DEFAULT_SAMPLE_ID);
+    if (!sample) return;
 
-      try {
-        const response = await fetch("/m6-bakeoff-graph.json");
-        if (!response.ok) {
-          throw new Error(
-            `Could not load browser demo graph (${response.status}). Regenerate it with: npm run m6:fixture-graph`,
-          );
-        }
-        const result = (await response.json()) as GraphDocument;
-        acceptGraph(result, "Demo graph: M6 fixture", "/m6-bakeoff-source.json");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
-      }
-      return;
-    }
-
-    beginScan("Bundled sample: Mini Bank");
-
+    // Keep the current graph mounted while the bundled JSON is fetched. This
+    // makes switching from a long Source view stable and avoids a blank
+    // intermediate workspace before the next sample is ready.
+    onProjectLoad();
+    setSelectedEdge(null);
+    setSourceFocus(null);
+    setError("");
+    setStatus("running");
     try {
-      const result = await invoke<GraphDocument>("analyze_sample_codebase", {
-        scan: normalizedScanSettings(scanSettings),
-      });
-      acceptGraph(result, "Bundled sample: Mini Bank");
+      const response = await fetch(sample.graphUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Could not load ${sample.name} (${response.status}). Regenerate the sample library with: npm run samples:build`,
+        );
+      }
+      const result = (await response.json()) as GraphDocument;
+      acceptGraph(result, sample.rootLabel, sample.sourceUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
@@ -170,21 +164,14 @@ export function useProjectActions({
   async function rescanCurrent() {
     if (!graph) return;
     if (!desktopAvailable) {
-      await openSample();
+      const sample = sampleForRoot(root);
+      if (sample) await openSample(sample.id);
       return;
     }
 
-    if (root === "Bundled sample: Mini Bank") {
-      beginScan(root);
-      try {
-        const result = await invoke<GraphDocument>("analyze_sample_codebase", {
-          scan: normalizedScanSettings(scanSettings),
-        });
-        acceptGraph(result, root);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
-      }
+    const sample = sampleForRoot(root);
+    if (sample) {
+      await openSample(sample.id);
       return;
     }
 
@@ -211,7 +198,14 @@ export function useProjectActions({
     fetch(graphUrl)
       .then((response) => response.json() as Promise<GraphDocument>)
       .then((loadedGraph) => {
-        if (!cancelled) acceptGraph(loadedGraph, "Demo graph: M6 fixture", sourceBaseForGraphUrl(graphUrl));
+        if (!cancelled) {
+          const sample = sampleById(new URLSearchParams(window.location.search).get("sample") ?? "") ?? sampleForGraphUrl(graphUrl);
+          acceptGraph(
+            loadedGraph,
+            sample?.rootLabel ?? "Loaded graph",
+            sample?.sourceUrl ?? sourceBaseForGraphUrl(graphUrl),
+          );
+        }
       })
       .catch((err) => {
         if (!cancelled) {

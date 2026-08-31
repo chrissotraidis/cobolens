@@ -1,22 +1,17 @@
-export type InspectorTab = "ask" | "summary" | "impact";
-
-type SummaryStatus = "idle" | "running" | "ready" | "error";
+export type InspectorTab = "ask" | "impact";
 
 export function InspectorTabs({
   activeTab,
-  summaryStatus,
   dependencyCount,
   selectedRelationship,
   onChange,
 }: {
   activeTab: InspectorTab;
-  summaryStatus?: SummaryStatus;
   dependencyCount: number;
   selectedRelationship: boolean;
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
-    { id: "summary", label: "Overview", badge: summaryStatus === "running" ? "..." : undefined },
     { id: "ask", label: "Chat" },
     { id: "impact", label: "Dependencies", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
   ];

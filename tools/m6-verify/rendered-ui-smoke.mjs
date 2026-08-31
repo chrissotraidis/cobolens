@@ -39,16 +39,12 @@ async function main() {
 
     const initial = await pageState();
     assertEqual(initial.importProjectButtons, 1, "first run shows one Import Project action");
-    assertEqual(initial.sampleButtons, 1, "first run shows one Sample action");
-    assertEqual(initial.firstRunGuideLabel, "First run path", "first run guide is labeled in the navigator");
-    assertEqual(initial.firstRunStepCount, 3, "first run guide gives a short path");
-    assert(initial.firstRunGuideText.includes("Import Project"), "first run guide points to project import");
-    assert(initial.firstRunGuideText.includes("Sample"), "first run guide points to the sample graph");
-    assert(initial.firstRunGuideText.includes("AI"), "first run guide explains AI is optional");
-    assertEqual(initial.graphEmptyStepCount, 3, "empty graph canvas gives a short getting-started path");
-    assert(initial.graphEmptyText.includes("Import"), "empty graph canvas points to import");
-    assert(initial.graphEmptyText.includes("Sample"), "empty graph canvas points to sample");
+    assertEqual(initial.sampleButtons, 1, "first run shows one Samples action");
+    assert(initial.firstRunGuideText.includes("Choose a project from the welcome"), "navigator defers setup to the central welcome");
+    assert(initial.graphEmptyText.includes("Understand unfamiliar COBOL without guessing"), "empty graph canvas states the product promise");
+    assert(initial.graphEmptyText.includes("Explore samples"), "empty graph canvas offers the sample library");
     assert(initial.graphEmptyText.includes("AI"), "empty graph canvas explains AI is optional");
+    assert(initial.inspectorText.includes("HOW AN INVESTIGATION WORKS"), "first-run inspector explains the evidence loop");
     assertEqual(initial.sourceTabDisabled, "true", "Source starts disabled until a source-backed symbol is selected");
     assertEqual(initial.browserImportInputHidden, "true", "browser folder input stays hidden behind Import Project");
     assertEqual(initial.searchLabel, "", "top search has no redundant visible label");
@@ -72,8 +68,8 @@ async function main() {
     await waitFor(() => evaluate("document.activeElement?.id === 'inspector-panel'"), "skip link focuses inspector");
     assertEqual(initial.navigatorTogglePressed, "false", "navigator toggle starts expanded");
     assertEqual(initial.navigatorToggleLabel, "Hide navigator panel", "navigator toggle names the expanded action");
-    assertEqual(initial.inspectorTogglePressed, "true", "inspector toggle starts expanded");
-    assertEqual(initial.inspectorToggleLabel, "Hide inspector panel", "inspector toggle names the expanded action");
+    assertEqual(initial.inspectorTogglePressed, "true", "Chat control reflects the open inspector");
+    assertEqual(initial.inspectorToggleLabel, "Close Chat", "Chat control names the open-state action");
     assert(initial.navigatorPanelWidth > 200, "navigator starts as a usable side panel");
     assert(initial.inspectorPanelWidth > 300, "inspector starts as a usable side panel");
     assert(!initial.topbarText.includes("Local: no code leaves"), "top bar no longer spends visible space on the local privacy sentence");
@@ -87,17 +83,12 @@ async function main() {
     assertEqual(
       settingsOpen.settingsReadinessLabels,
       "Ollama server|Generation model|Embedding model|Semantic index|Test",
-      "settings exposes the local AI readiness steps",
+      "settings keeps local AI diagnostics available behind disclosure",
     );
     assertEqual(settingsOpen.settingsUsageLabel, "AI usage and token estimate", "settings keeps AI usage labeled");
-    assert(
-      settingsOpen.settingsText.includes("Graph answers need no model"),
-      "settings states that graph answers do not require AI",
-    );
-    assert(
-      settingsOpen.settingsText.includes("Scan settings apply when Cobolens is running as the desktop app."),
-      "browser settings explain that scan controls belong to the desktop app",
-    );
+    assert(settingsOpen.settingsText.includes("Graph answers remain available without AI"), "settings states that graph answers do not require AI");
+    assert(settingsOpen.settingsText.includes("Provider") && settingsOpen.settingsText.includes("Model"), "settings leads with provider and model");
+    assertEqual(settingsOpen.settingsOpenDisclosures, 0, "secondary settings start collapsed");
     await pressKey(".settings-dialog", "Escape");
     await waitFor(() => evaluate("!document.querySelector('.settings-dialog')"), "settings dialog closes with Escape");
     await waitFor(
@@ -116,14 +107,14 @@ async function main() {
     const navigatorRestored = await pageState();
     assert(navigatorRestored.navigatorPanelWidth > 200, "navigator restore returns the navigator panel");
     assert(navigatorRestored.centerPanelWidth < navigatorCollapsed.centerPanelWidth, "navigator restore returns workspace width");
-    await click(".topbar-actions .rail-toggle");
+    await click(".topbar-actions .inspector-toggle");
     await waitFor(() => evaluate("document.querySelector('.shell')?.classList.contains('inspector-collapsed')"), "inspector panel collapses");
     const inspectorCollapsed = await pageState();
-    assertEqual(inspectorCollapsed.inspectorTogglePressed, "false", "inspector toggle reports collapsed state");
-    assertEqual(inspectorCollapsed.inspectorToggleLabel, "Show inspector panel", "inspector toggle names the collapsed action");
-    assertEqual(inspectorCollapsed.inspectorPanelDisplay, "none", "inspector collapse hides the inspector panel");
+    assertEqual(inspectorCollapsed.inspectorTogglePressed, "false", "Chat control reports the collapsed inspector");
+    assertEqual(inspectorCollapsed.inspectorToggleLabel, "Open Chat", "Chat control remains a stable entry point");
+    assertEqual(inspectorCollapsed.inspectorPanelDisplay, "", "inspector collapse unmounts the inspector panel");
     assert(inspectorCollapsed.centerPanelWidth > navigatorRestored.centerPanelWidth, "inspector collapse gives workspace more room");
-    await click(".topbar-actions .rail-toggle");
+    await click(".topbar-actions .inspector-toggle");
     await waitFor(() => evaluate("!document.querySelector('.shell')?.classList.contains('inspector-collapsed')"), "inspector panel restores");
     const inspectorRestored = await pageState();
     assert(inspectorRestored.inspectorPanelWidth > 300, "inspector restore returns the inspector panel");
@@ -136,57 +127,74 @@ async function main() {
       resolve(repoRoot, "fixtures/m6-bakeoff/jcl/DAILYLN.jcl"),
     ]);
     await waitFor(() => evaluate("document.body.innerText.includes('Imported project')"), "browser project import");
+    const imported = await pageState();
+    assert(imported.leftText.includes("Imported project"), "browser import labels the loaded project");
+    assert(imported.leftText.includes("LINEAGE"), "browser import discovers the LINEAGE program");
+    await clickButtonStartingWith(".source-tree-group-toggle", "Copybooks");
     await waitFor(
       () => evaluate("Boolean(document.querySelector('button[aria-label=\"Focus CUSTOMER, Copybook\"]'))"),
       "imported codebase tree",
     );
-    const imported = await pageState();
-    assert(imported.leftText.includes("Imported project"), "browser import labels the loaded project");
-    assert(imported.leftText.includes("LINEAGE"), "browser import discovers the LINEAGE program");
-    assert(imported.leftText.includes("CUSTOMER"), "browser import discovers the CUSTOMER copybook");
+    assert(await evaluate("Boolean(document.querySelector('button[aria-label=\"Focus CUSTOMER, Copybook\"]'))"), "browser import discovers the CUSTOMER copybook");
     await click('button[aria-label="Focus CUSTOMER, Copybook"]');
-    await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "imported source opens");
+    await waitFor(() => evaluate("document.querySelector('.graph-context-bar')?.innerText.includes('CUSTOMER')"), "imported symbol focuses on the map");
+    await clickButtonStartingWith(".graph-context-actions button", "Open source");
+    await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "imported source opens from the selected-symbol action");
 
     await click(".topbar-sample");
+    await waitFor(() => evaluate("Boolean(document.querySelector('.sample-library-dialog'))"), "sample library dialog");
+    assertEqual(await evaluate("document.querySelectorAll('.sample-card').length"), 4, "sample library offers four scenarios");
+    assert(
+      (await evaluate("document.querySelector('.sample-library-dialog')?.innerText ?? ''")).includes("CardDemo system"),
+      "sample library includes the large public corpus",
+    );
+    await click(".sample-card:first-child .primary-action");
+    await waitFor(
+      () => evaluate("document.querySelector('.project-strip')?.innerText.includes('Sample · Lineage quick tour')"),
+      "browser sample graph label",
+    );
+    await clickButtonStartingWith(".source-tree-group-toggle", "Copybooks");
     await waitFor(
       () => evaluate("Boolean(document.querySelector('button[aria-label=\"Focus CUSTOMER, Copybook\"]'))"),
       "sample codebase tree",
     );
     const loaded = await pageState();
     assertEqual(loaded.importProjectButtons, 1, "loaded sample keeps one Import Project action");
-    assertEqual(loaded.sampleButtons, 1, "loaded sample keeps one Sample action");
+    assertEqual(loaded.sampleButtons, 1, "loaded sample keeps one Samples action");
     assert(!loaded.topbarText.includes("Local: no code leaves"), "loaded sample keeps privacy as a compact status dot");
     assert(!loaded.leftText.includes("INGEST"), "left rail no longer shows ingest block");
     assert(!loaded.leftText.includes("Demo mode"), "left rail does not carry browser-mode filler copy");
     assert(!loaded.leftText.includes("SEARCH RESULTS"), "idle left rail hides search results");
+    assert(loaded.leftText.toLocaleLowerCase().includes("guided trace"), "bundled sample exposes a guided three-stop trace");
+    assert(loaded.leftText.toLocaleLowerCase().includes("trace the customer dataset"), "sample tour names the strongest input lineage path");
     assert(
       loaded.leftText.indexOf("CODEBASE") >= 0 && loaded.leftText.indexOf("CODEBASE") < loaded.leftText.indexOf("LEGEND & FILTERS"),
       "left rail prioritizes Codebase before filters",
     );
-    await clickButtonStartingWith(".summary-action-buttons button", "Ask follow-up");
-    await waitFor(() => evaluate("document.querySelector('.inspector-tabs button[aria-selected=\"true\"] span')?.textContent?.trim() === 'Chat'"), "Overview Ask follow-up opens Chat");
-    await waitFor(() => evaluate("document.activeElement?.matches('.chat-composer textarea')"), "Overview Ask follow-up focuses Chat composer");
+    assertEqual(loaded.activeInspectorTab, "Chat", "sample opens directly in Chat");
+    assertEqual(loaded.inspectorTabLabels, "Chat|Dependencies", "inspector keeps one primary Chat surface");
+    assertEqual(loaded.chatComposerVisible, "true", "Ask keeps its composer visible beside starting context");
+    assert(loaded.inspectorText.includes("CONTEXT"), "Ask starts with compact investigation context");
+    assert(loaded.inspectorText.includes("What does this do?"), "Ask offers a contextual first question");
+    assertEqual(loaded.visibleEvidenceRows, 0, "Ask keeps evidence collapsed by default");
+    await click(".investigation-details > summary");
+    await waitFor(() => evaluate("Array.from(document.querySelectorAll('.evidence-block .citation-list button')).some((button) => button.getClientRects().length > 0)"), "context evidence opens on demand");
     const followUp = await pageState();
-    assert(!followUp.shellClass.includes("is-ask-focused"), "Ask tab does not add focused styling to the workspace shell");
-    assert(followUp.rightPaneClass.includes("is-ask-focused"), "Ask tab styling is scoped to the inspector pane");
-    assert(Math.abs(followUp.centerPanelWidth - loaded.centerPanelWidth) <= 1, "Ask tab does not resize the workspace");
-    assert(followUp.chatQuestionValue.startsWith("Explain "), "Overview Ask follow-up drafts an explain question");
-    assert(followUp.chatQuestionValue.endsWith(" in plain English."), "Overview Ask follow-up drafts a plain-English prompt");
-    await click('button[aria-label="Overview"]');
-    await waitFor(() => evaluate("document.querySelector('.inspector-tabs button[aria-selected=\"true\"] span')?.textContent?.trim() === 'Overview'"), "Overview tab restores after follow-up check");
-    const overviewRestored = await pageState();
-    assert(!overviewRestored.rightPaneClass.includes("is-ask-focused"), "Overview tab removes inspector-only Ask styling");
-    assert(Math.abs(overviewRestored.centerPanelWidth - loaded.centerPanelWidth) <= 1, "Overview restore keeps workspace width stable");
-    await clickButtonStartingWith(".summary-action-buttons button", "View source");
-    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(2)')?.className.includes('is-active')"), "Overview View source opens Source");
-    await waitFor(() => evaluate("document.activeElement?.id === 'code-panel'"), "Overview View source focuses source panel");
+    assert(followUp.visibleEvidenceRows > 0, "opened context exposes clickable evidence");
+    assert(!followUp.shellClass.includes("is-ask-focused"), "Ask does not add focused styling to the workspace shell");
+    assert(followUp.rightPaneClass.includes("is-ask-focused"), "Ask styling is scoped to the inspector pane");
+    assert(Math.abs(followUp.centerPanelWidth - loaded.centerPanelWidth) <= 1, "Ask does not resize the workspace");
+    await clickButtonStartingWith(".summary-action-buttons button", "Open source");
+    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(2)')?.className.includes('is-active')"), "Ask Open source opens Source");
+    await waitFor(() => evaluate("document.activeElement?.id === 'code-panel'"), "Ask Open source focuses source panel");
     const overviewSource = await pageState();
-    assert(overviewSource.workspaceText.includes("LINEAGE") || overviewSource.workspaceText.includes("CUSTOMER"), "Overview View source shows selected source text");
+    assert(overviewSource.workspaceText.includes("LINEAGE") || overviewSource.workspaceText.includes("CUSTOMER"), "Ask Open source shows selected source text");
     assertEqual(overviewSource.sourceLineNumberCount, 47, "Source renders the complete LINEAGE file rather than a window");
     assert(overviewSource.workspaceText.includes("DONE-PARA"), "Source includes the end of the selected file");
     await click(".view-toggle button:nth-child(1)");
-    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(1)')?.className.includes('is-active')"), "Map toggle restores map after Overview View source");
+    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(1)')?.className.includes('is-active')"), "Map toggle restores map after Explore View source");
     assert(await evaluate("Boolean(document.querySelector('#code-panel[hidden]'))"), "Map keeps the Source reader mounted for context preservation");
+    assertEqual((await pageState()).sourcePanelDisplay, "none", "Map hides the mounted Source reader instead of painting it over the graph");
     assertEqual(loaded.secondaryNavigatorDetails, 4, "left rail groups filters and status into four secondary accordions");
     assertEqual(loaded.closedSecondaryNavigatorDetails, 4, "secondary navigator accordions start collapsed");
     await clickNavigatorSummary("Inventory");
@@ -227,6 +235,15 @@ async function main() {
     assertEqual(nodeListOpen.nodeListTogglePressed, "true", "graph node-list toggle reports the open state");
     assertEqual(nodeListOpen.nodeListToggleLabel, "Hide the list of visible nodes", "graph node-list toggle names the open action");
     assert(nodeListOpen.visibleNodeControlCount > 0, "graph node list exposes keyboard-accessible node controls");
+    assert(
+      await evaluate(`(() => {
+        const list = document.querySelector('.graph-node-list')?.getBoundingClientRect();
+        const selection = document.querySelector('.graph-context-bar')?.getBoundingClientRect();
+        if (!list || !selection) return true;
+        return list.right <= selection.left || list.left >= selection.right || list.bottom <= selection.top || list.top >= selection.bottom;
+      })()`),
+      "visible-node list does not cover the selected-symbol action bar",
+    );
     const allVisibleNodeCount = nodeListOpen.visibleNodeControlCount;
     await clickLegendFilter("Data items");
     await waitFor(async () => (await pageState()).legendFilterStatus === "1 type hidden", "legend filter reports one hidden type");
@@ -256,10 +273,12 @@ async function main() {
     await waitFor(() => evaluate("!document.querySelector('.graph-node-list')"), "graph node list closes");
 
     await click('button[aria-label="Focus CUSTOMER, Copybook"]');
-    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(2)')?.className.includes('is-active')"), "Source tab after tree click");
-    await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "CUSTOMER source text after tree click");
+    await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(1)')?.className.includes('is-active')"), "Map remains active after tree focus");
+    await waitFor(() => evaluate("document.querySelector('.graph-context-bar')?.innerText.includes('CUSTOMER')"), "CUSTOMER focus exposes next actions");
+    await clickButtonStartingWith(".graph-context-actions button", "Open source");
+    await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "CUSTOMER source opens explicitly");
     const customerSource = await pageState();
-    assert(customerSource.workspaceText.includes("CUSTOMER-RECORD"), "CUSTOMER tree click opens source text");
+    assert(customerSource.workspaceText.includes("CUSTOMER-RECORD"), "CUSTOMER context action opens source text");
     assertEqual(customerSource.sourceLineChip, "lines 1-6 / 6", "source toolbar names the selected symbol range and full-file length");
     assertEqual(customerSource.sourceInlineHeaderDisplay, "none", "center Source hides duplicate in-snippet header");
     assertEqual(customerSource.sourceLineTextWhiteSpace, "pre", "Source line text preserves COBOL columns");
@@ -267,13 +286,17 @@ async function main() {
     assert(customerSource.sourceLineNumberCount >= 6, "Source view renders line numbers with the source text");
     assert(customerSource.selectedSourceRangeRows >= 6, "source view highlights the selected symbol range");
     assertEqual(customerSource.sourceFileValue, "copybook/CUSTOMER.cpy", "source file picker reflects the selected source");
-    await selectOption(".source-file-picker select", "copybook/REPORT.cpy");
+    await click(".source-file-picker-trigger");
+    await fill('.source-file-popover input[type="search"]', "REPORT");
+    await clickButtonStartingWith(".source-file-group button", "REPORT");
     await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('REPORT-RECORD')"), "source picker opens REPORT copybook");
     const reportSource = await pageState();
     assertEqual(reportSource.sourceFileValue, "copybook/REPORT.cpy", "source file picker switches to REPORT");
     assertEqual(reportSource.sourceLineChip, "lines 1-6 / 6", "source toolbar names the switched source range and full-file length");
     assert(reportSource.workspaceText.includes("REPORT-AMOUNT"), "source picker loads the switched file text");
-    await selectOption(".source-file-picker select", "copybook/CUSTOMER.cpy");
+    await click(".source-file-picker-trigger");
+    await fill('.source-file-popover input[type="search"]', "CUSTOMER");
+    await clickButtonStartingWith(".source-file-group button", "CUSTOMER");
     await waitFor(() => evaluate("document.querySelector('#dependency-graph')?.innerText.includes('CUSTOMER-RECORD')"), "source picker returns to CUSTOMER copybook");
     await click(".view-toggle button:nth-child(1)");
     await waitFor(() => evaluate("document.querySelector('.view-toggle button:nth-child(1)')?.className.includes('is-active')"), "Map toggle activates");
@@ -294,7 +317,7 @@ async function main() {
     assertEqual(relationshipDetail.relationshipSourceButtonLabel, "Focus relationship source LINEAGE", "relationship detail can refocus source endpoint");
     assertEqual(relationshipDetail.relationshipTargetButtonLabel, "Focus relationship target CUSTOMER", "relationship detail can refocus target endpoint");
     await click('button[aria-label="Focus relationship target CUSTOMER"]');
-    await waitFor(() => evaluate("document.querySelector('.source-file-picker select')?.value === 'copybook/CUSTOMER.cpy'"), "relationship target endpoint refocuses CUSTOMER");
+    await waitFor(() => evaluate("document.querySelector('.source-file-picker-trigger')?.innerText.includes('copybook/CUSTOMER.cpy')"), "relationship target endpoint refocuses CUSTOMER");
     const relationshipTarget = await pageState();
     assertEqual(relationshipTarget.sourceLineChip, "lines 1-6 / 6", "relationship target endpoint restores selected source range and full-file length");
     await click('button[aria-label="Used by: show LINEAGE COPIES CUSTOMER at src/LINEAGE.cbl:11"]');
@@ -312,6 +335,7 @@ async function main() {
     const keyboardSearch = await pageState();
     assertEqual(keyboardSearch.searchValue, "", "Enter clears symbol search after opening the top result");
 
+    await clickButtonStartingWith(".source-tree-group-toggle", "Copybooks");
     await click('button[aria-label="Focus CUSTOMER, Copybook"]');
     await click('button[aria-label="Chat"]');
     await fill(".chat-composer textarea", "What uses CUSTOMER?");
@@ -323,33 +347,46 @@ async function main() {
     assertEqual(chat.chatComposerInputDisabled, "false", "Ask composer input is ready for another question");
     assert(chat.answerResponseText.includes("What uses CUSTOMER?"), "plain chat keeps the question visible");
     assert(chat.answerResponseText.includes("CUSTOMER"), "plain chat keeps the answer visible");
-    assertEqual(chat.visibleEvidenceRows, 0, "Chat answer does not render evidence rows");
-    assertEqual(chat.evidenceMoreText, "", "Chat answer does not render evidence controls");
-    await fill(".chat-composer textarea", "What is this copybook?");
+    assert(chat.visibleEvidenceRows > 0, "Ask answer exposes source evidence");
+    await fill(".chat-composer textarea", "Who uses this copybook?");
     await click(".chat-send-button");
     await waitFor(() => evaluate("document.querySelectorAll('.chat-turn').length >= 2"), "second chat turn appears");
     const secondChat = await pageState();
     assert(secondChat.answerResponseText.includes("What uses CUSTOMER?"), "second Ask keeps the previous question visible");
-    assert(secondChat.answerResponseText.includes("What is this copybook?"), "second Ask adds the new question");
+    assert(secondChat.answerResponseText.includes("Who uses this copybook?"), "second Ask adds the new question");
+    assert(secondChat.answerResponseText.includes("Asked while inspecting CUSTOMER"), "Chat turns retain the symbol context in which they were asked");
     assertEqual(secondChat.chatComposerVisible, "true", "Ask composer remains visible after multiple turns");
     assertEqual(secondChat.chatComposerAfterAnswer, "true", "Ask composer stays below multiple turns");
+    await fill(".chat-composer textarea", "what?");
+    await click(".chat-send-button");
+    await waitFor(() => evaluate("document.querySelector('.chat-turn.is-error')?.innerText.includes('Write a complete question')"), "incomplete question shows inline validation");
+    await fill(".chat-composer textarea", "What does this do?");
+    await waitFor(() => evaluate("!document.querySelector('.chat-turn.is-error')"), "editing clears inline validation immediately");
+    const recoveredQuestion = await pageState();
+    assertEqual(recoveredQuestion.chatQuestionValue, "What does this do?", "contextual recovery keeps the edited draft");
+    await clickButtonStartingWith(".source-tree-group-toggle", "Programs");
+    await click('button[aria-label="Focus LINEAGE, Program"]');
+    await click('button[aria-label="Chat"]');
+    await waitFor(() => evaluate("document.querySelector('.chat-context-banner')?.innerText.includes('Context · LINEAGE')"), "Chat explains preserved history after focus changes");
+    const changedChatContext = await pageState();
+    assert(changedChatContext.answerResponseText.includes("Asked while inspecting CUSTOMER"), "older Chat answers keep their original context after navigation");
 
     await loadAskExpansionSmokeGraph();
     await click(".view-toggle button:nth-child(1)");
-    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.startsWith('Expand')"), "synthetic graph exposes expansion control");
+    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.startsWith('More relationships')"), "synthetic graph exposes expansion control");
     await click(".graph-toolbar-actions .toggle-button");
     await waitFor(() => evaluate("Boolean(document.querySelector('.graph-node-list[aria-label=\"Visible graph nodes\"]'))"), "synthetic graph node list opens before expansion");
     const syntheticBeforeExpand = await pageState();
     assert(syntheticBeforeExpand.visibleNodeControlCount > 0, "synthetic graph exposes visible node controls before expansion");
-    assert(syntheticBeforeExpand.graphExpandButtonText.startsWith("Expand +"), "synthetic graph names the hidden-neighbor expansion");
-    await clickButtonStartingWith(".graph-toolbar-actions button", "Expand");
-    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.trim() === 'Collapse'"), "synthetic graph expanded");
+    assert(syntheticBeforeExpand.graphExpandButtonText.startsWith("More relationships +"), "synthetic graph names the hidden-neighbor expansion");
+    await clickButtonStartingWith(".graph-toolbar-actions button", "More relationships");
+    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.trim() === 'Fewer relationships'"), "synthetic graph expanded");
     await waitFor(
       () => evaluate(`document.querySelectorAll('.graph-node-list[aria-label="Visible graph nodes"] button').length > ${syntheticBeforeExpand.visibleNodeControlCount}`),
       "synthetic graph expansion increases visible node controls",
     );
     const syntheticExpanded = await pageState();
-    assertEqual(syntheticExpanded.graphExpandButtonText, "Collapse", "synthetic graph switches expansion control to Collapse");
+    assertEqual(syntheticExpanded.graphExpandButtonText, "Fewer relationships", "synthetic graph switches expansion control to the compact state");
     assert(
       syntheticExpanded.visibleNodeControlCount > syntheticBeforeExpand.visibleNodeControlCount,
       "synthetic graph expansion reveals additional nodes",
@@ -358,7 +395,7 @@ async function main() {
     await fill(".chat-composer textarea", "What uses HUB?");
     await click(".chat-send-button");
     await waitFor(() => evaluate("document.querySelector('.chat-answer-bubble')?.innerText.includes('Matched HUB')"), "synthetic graph Ask answer");
-    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.trim() === 'Collapse'"), "graph Ask preserves expanded context");
+    await waitFor(() => evaluate("document.querySelector('.graph-toolbar-actions button')?.innerText.trim() === 'Fewer relationships'"), "graph Ask preserves expanded context");
 
     console.log(JSON.stringify({
       checks: {
@@ -371,9 +408,9 @@ async function main() {
         "legend filters hide and reset node types": true,
         "browser project import": true,
         "single sample action": true,
-        "Overview Ask follow-up focuses Chat composer": true,
-        "Ask tab styling stays scoped to the inspector": true,
-        "Overview View source focuses source reader": true,
+        "Explore starts with facts, evidence, suggestions, and composer": true,
+        "Explore styling stays scoped to the inspector": true,
+        "Explore View source focuses source reader": true,
         "navigator status sections are secondary accordions": true,
         "Inventory accordion reports loaded counts": true,
         "Parse Health accordion reports loaded status": true,
@@ -390,7 +427,8 @@ async function main() {
         "symbol search keyboard flow is honest": true,
         "Ask composer stays available while reading answers": true,
         "Ask preserves previous Q&A turns": true,
-        "Chat stays plain without evidence chrome": true,
+        "Explore answers expose source evidence": true,
+        "validation clears while editing a recovered question": true,
         "graph expansion reveals hidden visible-node controls": true,
         "graph toolbar hides Expand when complete": true,
         "graph Ask preserves expanded context": true,
@@ -422,8 +460,7 @@ async function pageState() {
     const buttons = Array.from(document.querySelectorAll('button')).map((button) => button.innerText.trim());
     const leftText = document.querySelector('.left-pane')?.innerText ?? '';
     const workspaceText = document.querySelector('#dependency-graph')?.innerText ?? '';
-    const firstRunGuide = document.querySelector('.first-run-guide');
-    const graphEmptySteps = document.querySelector('.graph-empty-steps');
+    const firstRunGuide = document.querySelector('.graph-empty-note');
     const skipLinks = Array.from(document.querySelectorAll('.skip-links a'))
       .map((link) => (link.textContent?.trim() ?? '') + '=>' + (link.getAttribute('href') ?? ''))
       .join('|');
@@ -456,15 +493,12 @@ async function pageState() {
     const chatComposerInput = document.querySelector('.chat-composer textarea');
     const answerResponse = document.querySelector('.chat-answer-bubble');
     const navigatorToggle = document.querySelector('.brand .rail-toggle');
-    const inspectorToggle = document.querySelector('.topbar-actions .rail-toggle');
+    const inspectorToggle = document.querySelector('.topbar-actions .inspector-toggle');
     return {
       importProjectButtons: buttons.filter((text) => text === 'Import Project').length,
-      sampleButtons: buttons.filter((text) => text === 'Sample').length,
-      firstRunGuideLabel: firstRunGuide?.getAttribute('aria-label') ?? '',
+      sampleButtons: buttons.filter((text) => text === 'Samples').length,
       firstRunGuideText: firstRunGuide?.innerText ?? '',
-      firstRunStepCount: firstRunGuide?.querySelectorAll('li').length ?? 0,
       graphEmptyText: document.querySelector('.graph-empty-card')?.innerText ?? '',
-      graphEmptyStepCount: graphEmptySteps?.querySelectorAll('li').length ?? 0,
       sourceTabDisabled: String(document.querySelector('.view-toggle button:nth-child(2)')?.disabled ?? false),
       browserImportInputHidden: String(document.querySelector('.project-import-input')?.getAttribute('aria-hidden') === 'true'),
       searchLabel: document.querySelector('.global-search span')?.textContent?.trim() ?? '',
@@ -491,10 +525,15 @@ async function pageState() {
         .map((element) => element.textContent?.trim() ?? '')
         .join('|'),
       settingsUsageLabel: document.querySelector('.ai-usage')?.getAttribute('aria-label') ?? '',
+      settingsOpenDisclosures: document.querySelectorAll('.settings-disclosure[open], .readiness-disclosure[open]').length,
       settingsText: document.querySelector('.settings-dialog')?.innerText ?? '',
       topbarText: document.querySelector('.topbar')?.innerText ?? '',
       leftText,
       workspaceText,
+      inspectorText: document.querySelector('#inspector-panel')?.innerText ?? '',
+      inspectorTabLabels: Array.from(document.querySelectorAll('.inspector-tabs button span'))
+        .map((element) => element.textContent?.trim() ?? '')
+        .join('|'),
       secondaryNavigatorDetails: document.querySelectorAll('.navigator-secondary details.navigator-details').length,
       closedSecondaryNavigatorDetails: document.querySelectorAll('.navigator-secondary details.navigator-details:not([open])').length,
       inventoryMetrics,
@@ -504,7 +543,8 @@ async function pageState() {
       legendResetDisabled: String(legendDetails?.querySelector('.pane-heading-row button')?.disabled ?? false),
       dataItemsFilterChecked: String(dataItemsFilter?.checked ?? false),
       sourceLineChip: document.querySelector('.source-line-chip')?.textContent?.trim() ?? '',
-      sourceFileValue: document.querySelector('.source-file-picker select')?.value ?? '',
+      sourceFileValue: document.querySelector('.source-file-picker-trigger span')?.textContent?.trim() ?? '',
+      sourcePanelDisplay: document.querySelector('.center-source-view') ? getComputedStyle(document.querySelector('.center-source-view')).display : '',
       sourceInlineHeaderDisplay: document.querySelector('.center-source-view .source-header') ? getComputedStyle(document.querySelector('.center-source-view .source-header')).display : '',
       sourceLineTextWhiteSpace: document.querySelector('.source-line-text') ? getComputedStyle(document.querySelector('.source-line-text')).whiteSpace : '',
       sourcePreOverflowX: document.querySelector('.center-source-view pre') ? getComputedStyle(document.querySelector('.center-source-view pre')).overflowX : '',
@@ -521,7 +561,8 @@ async function pageState() {
         .map((button) => button.textContent?.trim() ?? '')
         .find(Boolean) ?? '',
       visibleNodeControlCount: document.querySelectorAll('.graph-node-list[aria-label="Visible graph nodes"] button').length,
-      visibleEvidenceRows: document.querySelectorAll('.evidence-block .citation-list button').length,
+      visibleEvidenceRows: Array.from(document.querySelectorAll('.evidence-block .citation-list button'))
+        .filter((button) => button.getClientRects().length > 0).length,
       evidenceMoreText: document.querySelector('.evidence-more-toggle')?.textContent?.trim() ?? '',
       activeElementId: document.activeElement?.id ?? '',
       activeInspectorTab: document.querySelector('.inspector-tabs button[aria-selected="true"] span')?.textContent?.trim() ?? '',
@@ -719,17 +760,17 @@ async function verifyResponsiveLayout() {
   await waitFor(async () => (await responsiveLayoutState()).singleColumn, "tablet uses workspace-first single-column layout");
   const tablet = await responsiveLayoutState();
   assertEqual(tablet.paneDividerDisplay, "none", "tablet layout hides horizontal resize handle");
-  assert(tablet.centerBeforeInspector, "tablet layout puts workspace before inspector");
-  assert(tablet.inspectorBeforeNavigator, "tablet layout puts navigator after inspector");
-  assert(tablet.majorPanelsUseViewportWidth, "tablet layout gives major panels the single column width");
+  assert(tablet.inspectorOverlay, "tablet layout opens Ask as an overlay drawer");
+  assert(tablet.centerFillsShell, "tablet layout keeps the workspace full-height behind the drawer");
   assert(tablet.toolbarInsideViewport, "tablet layout keeps the workspace toolbar inside the viewport");
   assertEqual(tablet.sourceLineWhiteSpace, "pre", "tablet Source preserves code line integrity");
+  assert(tablet.chatSuggestionsFit, "tablet Chat suggestions wrap inside the inspector");
 
   await setViewport(430, 820);
   await waitFor(async () => (await responsiveLayoutState()).phoneBreakpoint, "phone breakpoint applies");
   const phone = await responsiveLayoutState();
   assert(phone.singleColumn, "phone layout stays single-column");
-  assertEqual(phone.inspectorToggleDisplay, "none", "phone layout hides the inspector collapse toggle");
+  assert(phone.inspectorToggleDisplay !== "none", "phone layout keeps the Ask toggle available");
   assertEqual(phone.brandNameDisplay, "none", "phone layout hides the brand wordmark");
   assertEqual(phone.sourceSymbolDisplay, "none", "phone Source toolbar hides the symbol label");
   assertEqual(phone.sourceSwatchDisplay, "none", "phone Source toolbar hides the color swatch");
@@ -740,6 +781,7 @@ async function verifyResponsiveLayout() {
     `phone layout keeps top-bar controls inside the viewport (${JSON.stringify(phone.topbarControls)})`,
   );
   assert(phone.noPageHorizontalOverflow, "phone layout avoids page-level horizontal overflow");
+  assert(phone.chatSuggestionsFit, "phone Chat suggestions stay inside the drawer");
 
   await setViewport(1365, 900);
   await waitFor(async () => !(await responsiveLayoutState()).singleColumn, "desktop viewport restores three-pane layout");
@@ -800,29 +842,37 @@ async function responsiveLayoutState() {
         visibility: style.visibility,
       };
     });
-    const majorWidths = [center, inspector, navigator].filter(Boolean).map((rect) => rect.width);
-    const widestPanel = Math.max(...majorWidths);
-    const narrowestPanel = Math.min(...majorWidths);
     const shellStyle = getComputedStyle(document.querySelector('.shell'));
+    const inspectorStyle = document.querySelector('.right-pane') ? getComputedStyle(document.querySelector('.right-pane')) : null;
+    const shellRect = document.querySelector('.shell')?.getBoundingClientRect();
+    const suggestionContainer = document.querySelector('.explore-suggestions');
+    const suggestionRect = suggestionContainer?.getBoundingClientRect();
+    const chatSuggestionsFit = !suggestionContainer || !suggestionRect || (
+      suggestionContainer.scrollWidth <= suggestionContainer.clientWidth + 1 &&
+      Array.from(suggestionContainer.querySelectorAll('button')).every((button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.left >= suggestionRect.left - 1 && rect.right <= suggestionRect.right + 1;
+      })
+    );
 
     return {
       viewportWidth: window.innerWidth,
       phoneBreakpoint: window.innerWidth <= 560,
       singleColumn: shellStyle.gridTemplateColumns.split(' ').length === 1,
       paneDividerDisplay: getComputedStyle(document.querySelector('.pane-divider')).display,
-      centerBeforeInspector: Boolean(center && inspector && center.top < inspector.top),
-      inspectorBeforeNavigator: Boolean(inspector && navigator && inspector.top < navigator.top),
-      majorPanelsUseViewportWidth: widestPanel - narrowestPanel <= 2 && narrowestPanel >= window.innerWidth - 24,
+      inspectorOverlay: inspectorStyle?.position === 'fixed',
+      centerFillsShell: Boolean(center && shellRect && Math.abs(center.width - shellRect.width) <= 2 && Math.abs(center.height - shellRect.height) <= 2),
       toolbarInsideViewport: toolbarControls.every(insideViewport),
       topbarControlsInsideViewport: topbarControls.every(insideViewport),
       topbarControls,
       noPageHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1,
       sourceLineWhiteSpace: getComputedStyle(document.querySelector('.source-line-text')).whiteSpace,
-      inspectorToggleDisplay: getComputedStyle(document.querySelector('.topbar-actions .rail-toggle')).display,
+      inspectorToggleDisplay: getComputedStyle(document.querySelector('.topbar-actions .inspector-toggle')).display,
       brandNameDisplay: getComputedStyle(document.querySelector('.brand-name')).display,
       sourceSymbolDisplay: getComputedStyle(document.querySelector('.source-meta-symbol')).display,
       sourceSwatchDisplay: getComputedStyle(document.querySelector('.center-toolbar-meta.is-source .swatch')).display,
       sourceFilePickerVisible: Boolean(document.querySelector('.source-file-picker')?.getBoundingClientRect().width > 40),
+      chatSuggestionsFit,
     };
   })()`);
 }

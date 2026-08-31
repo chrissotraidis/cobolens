@@ -6,6 +6,8 @@ This guide orients coding agents and contributors. Read this file first, then re
 
 Cobolens is a free, open-source, local-first desktop app for understanding COBOL, copybooks, and JCL.
 
+Its product thesis is **Trace the system. Prove every answer.** Read [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md) before changing information architecture, visual hierarchy, copy, onboarding, or interaction states.
+
 It lets a developer:
 
 - open a local COBOL/JCL codebase or bundled sample;
@@ -33,14 +35,16 @@ Tauri shell + React UI + analyzer sidecar + local graph/cache files
 
 The UI is a three-pane workspace:
 
-- Top bar: brand, Search codebase, current focus, local/cloud indicator, Export, Settings.
-- Left navigator: ingest, codebase browser, filters/legend, inventory, parse health, graph hints.
-- Center: focus-and-expand dependency graph.
-- Right: Source panel plus inspector tabs: Overview, Ask, Dependencies, Source.
+- Top bar: brand, codebase search, ingest/sample actions, privacy status, Export, Settings.
+- Left navigator — **Orient**: guided trace, codebase browser, filters/legend, inventory, parse health, graph hints.
+- Center canvas — **Trace and Prove**: focus-and-expand dependency map or cited source.
+- Right inspector — **Explain**: evidence-led Explore conversation plus compact Dependencies.
 
 Settings are intentionally simple: one drawer in the top bar. AI provider setup and scan settings live there.
 
 Graph answers work without AI. AI actions are opt-in and should open Settings or show setup guidance until the selected provider is ready.
+
+The design should feel calm, precise, archival, and humane. Avoid tiny all-caps prose, decorative console styling, repeated setup guidance, stacked bordered cards, and exposing internal model pipeline steps. Monospace is for code, symbols, paths, and source locations—not ordinary interface copy.
 
 ## Source Of Truth
 
@@ -108,6 +112,8 @@ npm run v1:readiness
 Useful focused checks:
 
 ```sh
+npm run samples:build
+node tools/m6-verify/sample-library-smoke.mjs
 npm run m6:fixture-graph
 npm run desktop:smoke
 npm run desktop:packaged-smoke
@@ -133,7 +139,7 @@ A v1-quality change should preserve the core loop:
 1. Open sample or folder.
 2. See a usable dependency graph.
 3. Select a symbol.
-4. Read source and Overview evidence.
-5. Ask a graph question and get a cited answer without AI.
+4. Read exact source and Explore evidence.
+5. Ask in context and get a cited graph answer without AI.
 6. Configure AI only if desired.
 7. Export useful documentation.

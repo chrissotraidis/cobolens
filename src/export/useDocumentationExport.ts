@@ -27,12 +27,12 @@ export function useDocumentationExport({
 
   useEffect(() => {
     if (!exportStatus || exportStatus === "Exporting") return;
-    const timeout = window.setTimeout(() => setExportStatus(""), 8000);
+    const timeout = window.setTimeout(() => setExportStatus(""), 20_000);
     return () => window.clearTimeout(timeout);
   }, [exportStatus]);
 
   const showExportStatus = useCallback((message: string) => {
-    setExportStatus(message);
+    setExportStatus(/^(Downloaded|Exported)\b/.test(message) ? `Export complete. ${message}` : message);
   }, []);
 
   const clearExportStatus = useCallback(() => {
@@ -63,7 +63,7 @@ export function useDocumentationExport({
       desktopAvailable,
       options: exportOptions,
     });
-    setExportStatus(message);
+    setExportStatus(/^(Downloaded|Exported)\b/.test(message) ? `Export complete. ${message}` : message);
     setExportDialogOpen(false);
   }, [desktopAvailable, exportOptions, focusNodeId, graph, summaries]);
 

@@ -7,7 +7,7 @@ import { groundedAnswerSystemPrompt } from "./prompts";
 
 // Local stays below cloud to keep CPU answers quick, but needs headroom for
 // thinking-capable local models whose reasoning counts against the budget.
-const LOCAL_ASK_MAX_OUTPUT_TOKENS = 512;
+const LOCAL_ASK_MAX_OUTPUT_TOKENS = 720;
 const CLOUD_ASK_MAX_OUTPUT_TOKENS = 520;
 
 export type GroundedAnswer = {
@@ -36,7 +36,7 @@ export async function generateGroundedAnswer({
   onTextDelta?: (text: string) => void;
 }): Promise<GroundedAnswer> {
   const allowedEvidence = context.citations
-    .slice(0, 12)
+    .slice(0, 18)
     .map((citation) => `- ${formatCitation(citation)}: ${citation.label}`)
     .join("\n");
   const model = createLanguageModel(settings, apiKey);
@@ -65,8 +65,12 @@ export async function generateGroundedAnswer({
   const answerPrompt = [
       context.prompt,
       "",
-      "Answer the user's question with concise cited bullets.",
+      "Answer the user's actual question with concise cited bullets.",
       answerLengthInstruction(settings),
+      "Synthesize across the planned graph paths and source excerpts; do not merely list matched artifacts.",
+      "For a data-flow question, order the answer from input through transformations to output and name where business data is added.",
+      "Use the Key evidence section as the answer outline. Cover every part of the question before adding secondary details.",
+      "When one bullet names several artifacts, cite each relationship line that supports those artifact names.",
       "Do not write an introduction, heading, conclusion, or citation list.",
       "Allowed evidence and citations:",
       allowedEvidence || "- none",
@@ -76,13 +80,14 @@ export async function generateGroundedAnswer({
       "Keep one factual claim per bullet.",
       "Do not use [1], [2], or any other footnote-style citations.",
       "Do not include a claim unless you can cite it from the context.",
+      "Do not infer a schedule or run frequency from artifact names such as DAILYLN or datasets containing DAILY.",
       "If context is thin, say what is known and what is not shown.",
       `User question: ${question}`,
     ].join("\n");
 
   let text = await streamDraft(answerPrompt);
   let guarded = enforceGroundedAnswerCitations(text, context, {
-    maxClaims: settings.provider === "ollama" ? 3 : 4,
+    maxClaims: 4,
   });
   let retried = false;
   if (settings.provider === "ollama" && guarded.guarded && !abortSignal?.aborted) {
@@ -92,14 +97,14 @@ export async function generateGroundedAnswer({
       context.prompt,
       "",
       "The first draft could not be used because it lacked an allowed exact citation.",
-      "Return one to three bullet lines and nothing else.",
+      "Return one to four bullet lines and nothing else.",
       "Restate only the evidence below in plain language.",
       "Allowed evidence and citations:",
       allowedEvidence || "- none",
       "Use one evidence item per bullet and copy its citation exactly in parentheses at the end.",
       `User question: ${question}`,
     ].join("\n"));
-    guarded = enforceGroundedAnswerCitations(text, context, { maxClaims: 3 });
+    guarded = enforceGroundedAnswerCitations(text, context, { maxClaims: 4 });
   }
   return {
     text: guarded.text,
@@ -116,7 +121,7 @@ export function askMaxOutputTokens(settings: Pick<ModelSettings, "provider">) {
 
 function answerLengthInstruction(settings: Pick<ModelSettings, "provider">) {
   if (settings.provider === "ollama") {
-    return "Use 1-3 short bullets; keep local Ollama answers brief so they return quickly.";
+    return "Use 2-4 short bullets; keep local Ollama answers brief but preserve the important path through the code.";
   }
   return "Use 2-4 short bullets or sentences unless the question asks for more detail.";
 }

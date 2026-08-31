@@ -4,7 +4,7 @@ import type { ChatStatus } from "./ChatAnswerPanel";
 import type { InspectorTab } from "./InspectorTabs";
 
 export function useInspectorTabState() {
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("summary");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("ask");
   const showInspectorImpact = useCallback(() => setInspectorTab("impact"), []);
 
   return {

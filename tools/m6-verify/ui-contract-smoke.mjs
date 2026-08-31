@@ -27,6 +27,7 @@ const workspaceNavigationSource = await readFile(resolve(repoRoot, "src", "works
 const modelRuntimeSource = await readFile(resolve(repoRoot, "src", "model", "modelRuntime.ts"), "utf8");
 const projectActionsSource = await readFile(resolve(repoRoot, "src", "scan", "useProjectActions.ts"), "utf8");
 const sourceFileViewSource = await readFile(resolve(repoRoot, "src", "source", "SourceFileView.tsx"), "utf8");
+const sourceFilePickerSource = await readFile(resolve(repoRoot, "src", "source", "SourceFilePicker.tsx"), "utf8");
 const sourceFileHookSource = await readFile(resolve(repoRoot, "src", "source", "useSourceFile.ts"), "utf8");
 const sourceReaderSource = await readFile(resolve(repoRoot, "src", "lib", "sourceReader.ts"), "utf8");
 const sourceLineLabelsSource = await readFile(resolve(repoRoot, "src", "source", "sourceLineLabels.ts"), "utf8");
@@ -36,6 +37,7 @@ const inspectorPaneSource = await readFile(resolve(repoRoot, "src", "inspector",
 const inspectorRoutingSource = await readFile(resolve(repoRoot, "src", "inspector", "useInspectorRouting.ts"), "utf8");
 const inspectorTabsSource = await readFile(resolve(repoRoot, "src", "inspector", "InspectorTabs.tsx"), "utf8");
 const askGenerationSource = await readFile(resolve(repoRoot, "src", "inspector", "useAskGeneration.ts"), "utf8");
+const questionQualitySource = await readFile(resolve(repoRoot, "src", "inspector", "questionQuality.ts"), "utf8");
 const chatAnswerPanelSource = await readFile(resolve(repoRoot, "src", "inspector", "ChatAnswerPanel.tsx"), "utf8");
 const chatHistorySource = await readFile(resolve(repoRoot, "src", "inspector", "chatHistory.ts"), "utf8");
 const chatStateSource = await readFile(resolve(repoRoot, "src", "inspector", "useChatState.ts"), "utf8");
@@ -51,7 +53,6 @@ const semanticIndexSource = await readFile(resolve(repoRoot, "src", "retrieval",
 const semanticStoreSource = await readFile(resolve(repoRoot, "src", "retrieval", "semanticStore.ts"), "utf8");
 const appCss = await readFile(resolve(repoRoot, "src", "App.css"), "utf8");
 const graphViewSource = await readFile(resolve(repoRoot, "src", "graph", "GraphView.tsx"), "utf8");
-
 const checks = [
   [
     "Ask thread owns the answer space and the composer stays at the bottom",
@@ -61,14 +62,16 @@ const checks = [
     ]),
   ],
   [
-    "Chat thread contains progress, error, answer, and compact empty states",
+    "Explore thread contains grounded starting context, progress, errors, and answers",
     includesAll(chatAnswerPanelSource, [
       'className="chat-thread"',
       'status === "running"',
       'status === "error"',
       "<ChatTurn",
-      'className="chat-empty-state"',
-      "Type a question below when you want to inspect this selection.",
+      "{!hasConversation ? overview : null}",
+    ]) && includesAll(summaryDockSource, [
+      'className="explore-suggestions"',
+      '"What does this do?"',
     ]),
   ],
   [
@@ -84,15 +87,13 @@ const checks = [
       !chatAnswerPanelSource.includes("Copy with citations"),
   ],
   [
-    "Chat empty state does not preload suggested graph answers",
-    !chatAnswerPanelSource.includes("QuestionStarterGroups") &&
-      !chatAnswerPanelSource.includes("Best next questions") &&
-      !chatAnswerPanelSource.includes("suggestedQuestionGroups") &&
-      !chatAnswerPanelSource.includes("Trace what ${name} reads and writes.") &&
+    "Explore starting context offers selected-symbol questions without a separate preset panel",
+    includesAll(summaryDockSource, ["suggestedQuestions(node)", '"What does this do?"', "onAskSuggestion(question)"]) &&
+      !chatAnswerPanelSource.includes("QuestionStarterGroups") &&
       !chatAnswerPanelSource.includes("onAskPreset"),
   ],
   [
-    "Ask route controls expose graph and Local AI modes clearly",
+    "Answer routing is automatic by default with overrides embedded in the composer",
     includesAll(chatAnswerPanelSource, [
       '(["auto", "graph", "ai"] as ChatMode[])',
       'const isLocalAiRoute = route === "ai"',
@@ -101,39 +102,42 @@ const checks = [
       "routeNeedsModel(questionText, mode)",
       "isRoutedToLocalAi",
       "chat-mode-status-dot",
+      'className="answer-route-menu"',
+      'className="answer-route-popover"',
+      'aria-label={`Answer route: ${routeLabel}`}',
+      'routeMenuRef.current?.removeAttribute("open")',
     ]) &&
       includesAll(askGenerationSource, [
-      "shouldSyncAskFocus(question)",
       'mode: ChatMode = "auto"',
       'const useGraphRoute = mode === "graph" || (mode === "auto" && isGraphQuestion(question))',
     ]) &&
-      includesAll(askFocusSource, ["function shouldSyncAskFocus", "codebase\\s+overview"]) &&
+      !askGenerationSource.includes("shouldSyncAskFocus") &&
       includesAll(appCss, [".chat-mode-control", ".chat-mode-status-dot"]),
   ],
   [
-    "Chat and Settings explain how graph, Local AI, and semantic answers work",
+    "The composer explains its active route while Settings owns the full answer explanation",
     includesAll(chatAnswerPanelSource, [
-      "function AnswerModeDisclosure",
-      "How answers work",
-      "Graph uses the parsed dependency graph and source lines. No AI.",
-      "Semantic retrieval uses local embeddings when the index is ready.",
+      "activeRouteDetail",
+      "Auto chooses graph for structural questions and Local AI for open-ended ones.",
+      "semanticIndex.message",
     ]) &&
       includesAll(settingsSource, [
-        "settings-answer-mode",
-        "How answers work",
-        "Graph uses the parsed dependency graph and source lines. No AI.",
-        "Semantic retrieval uses local embeddings when the index is ready.",
+        "Chat &amp; AI",
+        "Structural questions use the graph. AI is only used for broader explanations.",
+        "Connection details",
+        "Retrieval &amp; explanation",
       ]) &&
-      includesAll(appCss, [".answer-mode-help", ".settings-answer-mode"]),
+      includesAll(appCss, [".answer-route-popover", ".settings-disclosure"]),
   ],
   [
-    "Ask blocks vague prompts before model calls",
-    includesAll(askGenerationSource, [
+    "Ask accepts selected-context questions while blocking incomplete prompts",
+    includesAll(questionQualitySource, [
       "const COMPLETE_QUESTION_MESSAGE",
-      "function inputQualityMessage",
-      "const qualityMessage = inputQualityMessage(question)",
+      "export function inputQualityMessage",
+      "hasSelectedNode && usesSelectedContext && hasQuestionIntent",
+    ]) && includesAll(askGenerationSource, [
+      "const qualityMessage = inputQualityMessage(question, Boolean(selectedNode))",
       "setChatStatus(\"error\")",
-      "Ask a complete question",
     ]) &&
       includesAll(chatAnswerPanelSource, [
         "const errorLabel = isStoppedError(error) ? \"Stopped\" : \"Check question\"",
@@ -141,13 +145,15 @@ const checks = [
       ]),
   ],
   [
-    "Semantic retrieval warms a local chunk index before Ask uses it",
+    "Semantic retrieval prepares a local chunk index on demand before Ask uses it",
     includesAll(semanticIndexSource, [
       "const SEMANTIC_INDEX_TIMEOUT_MS = 30_000",
-      "const SEMANTIC_QUERY_TIMEOUT_MS = 8_000",
+      "const SEMANTIC_QUERY_TIMEOUT_MS = 30_000",
       "buildSemanticChunkVectorIndex",
       "buildSemanticSourceChunks",
       "warmSemanticIndex",
+      "Cobolens semantic retrieval readiness probe",
+      "Semantic search is optional.",
       "state.status !== \"ready\"",
       "requireCachedIndex: true",
     ]) &&
@@ -196,12 +202,13 @@ const checks = [
     ]),
   ],
   [
-    "Ask response has a visible chat-message style without evidence chrome",
+    "Ask response keeps a simple message style with compact evidence",
     includesAll(appCss, [
       ".chat-user-message",
       ".chat-answer-bubble",
       "background: rgba(17, 21, 26, 0.72)",
     ]) &&
+      chatAnswerPanelSource.includes("<EvidenceList citations={answer.citations} onOpenCitation={onOpenCitation} />") &&
       !appCss.includes(".chat-answer-summary") &&
       !appCss.includes("Show evidence") &&
       !appCss.includes(".chat-evidence-groups"),
@@ -259,14 +266,14 @@ const checks = [
     ]) && includesAll(appCss, [".chat-user-message", ".chat-answer-bubble"]),
   ],
   [
-    "Overview can show a cited graph explanation for the selected node",
+    "Ask starts with compact cited context and can deepen it with Local AI",
     includesAll(summaryGenerationSource, [
       "function explainSelectedNode()",
       "storeSummary(selectedNode.id, summary)",
       'provider: "graph"',
       'model: "deterministic"',
       "answered from graph facts without a model",
-      'onTabChange("summary")',
+      'onTabChange("ask")',
     ]) &&
       includesAll(askGenerationSource, [
       "function askAboutSelectedNode()",
@@ -279,18 +286,20 @@ const checks = [
       "${node.name} at a glance:",
     ]) &&
       includesAll(summaryDockSource, [
-      "Show the deterministic graph overview",
-      "Graph overview",
-      "Ask follow-up",
+      'className="summary-card investigation-card"',
+      'className="summary-context-meta"',
+      "Restore graph facts",
+      "Open source",
+      "Explain with ${providerLabel}",
+      "Context &amp; evidence",
+      "suggestedQuestions(node)",
       "modelReadiness.status",
       "Set up ${providerLabel}",
-      "Summarize all with ${providerLabel}",
-      "plain-English follow-up for this symbol",
+      "Explain all with ${providerLabel}",
     ]) &&
       includesAll(appSource, [
       "onExplainNode: explainSelectedNode",
-      "onAskFollowUp: askAboutSelectedNode",
-    ]) && includesAll(appCss, [".summary-action-buttons", ".summary-ai-row", ".summary-ai-status", ".summary-primary-action"]),
+    ]) && includesAll(appCss, [".investigation-card", ".summary-action-buttons", ".summary-ai-status", ".investigation-details"]),
   ],
   [
     "Guarded AI summaries are clearly labeled as graph fallbacks",
@@ -316,12 +325,12 @@ const checks = [
     ]) &&
       includesAll(summaryDockSource, [
       "draftText?: string",
-      'className="summary-draft"',
-      "Draft summary",
+      'className="summary-live-output"',
+      "MessageText text={state.draftText}",
     ]) &&
       includesAll(aiProgressSource, [
       "Final citations are checked before the answer is trusted.",
-    ]) && includesAll(appCss, [".summary-draft", ".summary-draft > span"]),
+    ]) && includesAll(appCss, [".summary-live-output"]),
   ],
   [
     "Bulk summaries continue after model fallback but stop on explicit cancel",
@@ -344,7 +353,7 @@ const checks = [
       ]),
   ],
   [
-    "Chat clearly distinguishes graph mode from Local AI questions",
+    "Advanced answer settings distinguish graph mode from Local AI questions",
     includesAll(chatAnswerPanelSource, [
       "export type ChatMode",
       "const [mode, setMode] = useState<ChatMode>(\"auto\")",
@@ -362,14 +371,13 @@ const checks = [
       "Graph answer",
       'className="chat-mode-control"',
       "<textarea",
-      "rows={3}",
-      'className="chat-stream-stages"',
-      "Finding graph context",
-      "Retrieving cited source",
-      "Checking citations",
-      "Writing answer",
+      "rows={2}",
+      'label={progressLabel}',
+      'focus({ preventScroll: true })',
       "Local AI",
     ]) &&
+      !chatAnswerPanelSource.includes('className="chat-stream-stages"') &&
+      includesAll(appCss, ['.progress-note', '.progress-spinner']) &&
       includesAll(aiProgressSource, [
         "Waiting for first local model text",
         "Streaming draft text. Final citations are checked before the answer is trusted.",
@@ -383,7 +391,7 @@ const checks = [
         "if (isStoppedModelCall(fallbackReason))",
         'setChatError(fallbackReason)',
         'setChatStatus("error")',
-      "runStreamingModelCall(\"Ask\"",
+      "runStreamingModelCall(\"Chat\"",
       "onFirstToken: noteFirstToken",
       "onTextDelta: (draft) => {",
     ]) &&
@@ -417,10 +425,10 @@ const checks = [
     "Settings shows honest AI usage and bulk token estimate before model calls",
     includesAll(settingsSource, [
       'aria-label="AI usage and token estimate"',
-      "Cloud calls this session",
-      "Bulk summary input estimate",
+      "Cloud calls",
+      "Explain-all input estimate",
       "Graph answers need no model",
-      "send cited context to",
+      "Only requested explanations send cited context to",
     ]) && includesAll(appCss, [".ai-usage", ".ai-usage p"]),
   ],
   [
@@ -442,6 +450,7 @@ const checks = [
         "documentationExportPackageName",
         "selectedDocumentationExportCount",
         "openExportDialog",
+        "Export complete.",
       ]),
   ],
   [
@@ -479,13 +488,13 @@ const checks = [
       'from "../model/readiness"',
     ]) &&
     includesAll(settingsSource, [
-        "Refresh models",
-        "Test semantic",
+        "Refresh list",
+        "Prepare semantic search",
         "RECOMMENDED_SMALL_OLLAMA_MODEL",
         "For a smaller local test model, run:",
         "isSameOllamaModel(model, settings.model)",
       ]) &&
-      includesAll(appCss, [".model-install-hint", ".button-row.three"]),
+      includesAll(appCss, [".model-install-hint", ".settings-primary-actions"]),
   ],
   [
     "Settings presents AI setup as a lightweight readiness stepper",
@@ -498,13 +507,13 @@ const checks = [
       "Generation model",
       "Embedding model",
       "Semantic index",
-      "Run Check AI before relying on model-backed Ask or summaries.",
+      "Check the connection before relying on model-backed Chat or summaries.",
       "ollama serve",
       "ollama pull ${configuredModel}",
       "ollama pull ${embeddingModel}",
       "semanticStepStatus",
       "API key",
-      "Save a key before cloud Ask or summaries.",
+      "Save a key before cloud Chat or summaries.",
       "localGenerationTestStatus",
       "localModelStatus",
     ]) &&
@@ -520,7 +529,8 @@ const checks = [
     "Model field is a picklist of locally installed models, auto-refreshed on open",
     includesAll(settingsSource, [
       'className="model-picker"',
-      "installedModels.map((model) => (",
+      "generationModels.map((model) => (",
+      "isEmbeddingOnlyOllamaModel",
       '<option value="__custom__">Custom name…</option>',
       "Refresh list",
     ]) &&
@@ -561,12 +571,12 @@ const checks = [
     "Evidence and View source bring Source forward in the center workspace",
     includesAll(workspaceNavigationSource, [
       "function jumpToCitation(citation: Citation",
-      'setCenterView("source")',
+      'showCenterView("source")',
       "function showSourcePanel()",
     ]),
   ],
   [
-    "Inspector column collapses and the workspace/inspector split is drag-resizable",
+    "Ask toggles, unmounts when closed, and keeps the desktop split drag-resizable",
     includesAll(workspaceLayoutSource, [
       'readLayoutFlag("cobolens.inspectorCollapsed"',
       'readLayoutNumber("cobolens.rightWidth"',
@@ -574,13 +584,12 @@ const checks = [
       "clampRightWidth",
       "toggleInspectorCollapsed",
     ]) &&
-      includesAll(workspaceShellSource, ['inspectorCollapsed ? " inspector-collapsed" : ""', 'style={{ ["--right-w" as string]']) &&
-      includesAll(topBarSource, [
-        'aria-label={inspectorCollapsed ? "Show inspector panel" : "Hide inspector panel"}',
-      ]) &&
+      includesAll(workspaceShellSource, ['inspectorCollapsed ? " inspector-collapsed" : ""', 'style={{ ["--right-w" as string]', "inspectorCollapsed ? null : <InspectorPane"]) &&
+      includesAll(topBarSource, ['className="inspector-toggle"', 'aria-label={askOpen ? "Close Chat" : "Open Chat"}', "onClick={onToggleAsk}"]) &&
       includesAll(inspectorPaneSource, [
         'className="pane-divider"',
         'aria-label="Resize inspector panel"',
+        'aria-label="Close inspector"',
         "onPointerDown={onStartResize}",
         "onDoubleClick={onResetWidth}",
       ]) &&
@@ -593,9 +602,15 @@ const checks = [
     // range labels. This source check keeps the durable component hooks.
     includesAll(workspaceSource, [
       "sourceLineLabel(selectedNode?.lines",
-      'className="source-file-picker"',
+      "<SourceFilePicker",
       'className="source-line-chip"',
     ]) &&
+      includesAll(sourceFilePickerSource, [
+        'className="source-file-picker"',
+        'role="dialog" aria-label="Switch source file"',
+        'aria-label="Filter source files"',
+        "groupedEntries(entries, selectedFile, query)",
+      ]) &&
       includesAll(sourceFileViewSource, [
         'className="source-header"',
         'className="source-line-marker"',
@@ -614,9 +629,9 @@ const checks = [
       ]),
   ],
   [
-    "Tablet and mobile breakpoints keep code and workspace toolbar usable",
-    // The rendered browser smoke proves the actual stacked layout at tablet and
-    // phone widths. This source check only guards durable responsive hooks.
+    "Tablet and mobile breakpoints keep the canvas full-height and use overlay panes",
+    // The live browser audit proves the overlay drawer behavior. This source
+    // check keeps the responsive contract from regressing to stacked panes.
     includesAll(appCss, [
       "@media (max-width: 1024px)",
       "@media (max-width: 560px)",
@@ -629,7 +644,20 @@ const checks = [
       ".center-toolbar .graph-toolbar-actions button",
       ".topbar-actions .rail-toggle",
       ".center-toolbar-meta.is-source",
-    ]),
+    ]) &&
+    includesAll(appCss, [
+        "position: relative;",
+        "grid-template-columns: minmax(0, 1fr);",
+        "grid-template-rows: minmax(0, 1fr);",
+        "position: fixed;",
+        "top: 52px;",
+        "width: min(480px, calc(100vw - 12px));",
+      ]) &&
+      includesAll(workspaceNavigationSource, [
+        "function showCenterView(view: CenterView)",
+        'document.querySelector<HTMLElement>(".shell")?.scrollTo({ top: 0 })',
+        "focus({ preventScroll: true })",
+      ]),
   ],
   [
     "Ask composer remains available while reading answers",
@@ -639,7 +667,7 @@ const checks = [
     includesAll(inspectorPaneSource, ['activeTab === "ask" ? " is-ask-focused"']) &&
       includesAll(chatAnswerPanelSource, [
         'className="chat-composer"',
-        'aria-label="Ask a question"',
+        'aria-label="Chat about the codebase"',
         "autoFocus",
         "<textarea",
         "chat-send-button",
@@ -657,7 +685,7 @@ const checks = [
       ]),
   ],
   [
-    "Ask tab styling is scoped to the inspector and does not resize the workspace shell",
+    "Explore styling is scoped to the inspector and does not resize the workspace shell",
     // The rendered browser smoke verifies Chat tab changes only the inspector
     // pane class and keeps workspace width stable.
     includesAll(inspectorPaneSource, ['activeTab === "ask" ? " is-ask-focused"', 'className={`right-pane']) &&
@@ -665,17 +693,17 @@ const checks = [
       includesAll(appCss, [".right-pane.is-ask-focused"]),
   ],
   [
-    "Inspector opens on Overview and keeps Ask as the conversational follow-up",
+    "Inspector opens on Ask with Dependencies as the only secondary view",
     includesAll(inspectorRoutingSource, [
-      'useState<InspectorTab>("summary")',
+      'useState<InspectorTab>("ask")',
     ]) &&
       includesAll(inspectorTabsSource, [
-      'label: "Overview"',
       'label: "Chat"',
       'label: "Dependencies"',
       "aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}",
     ]) &&
-      appearsInOrder(inspectorTabsSource, ['{ id: "summary", label: "Overview"', '{ id: "ask", label: "Chat" }']) &&
+      !inspectorTabsSource.includes('label: "Overview"') &&
+      !inspectorTabsSource.includes('label: "Overview"') &&
       includesAll(appCss, [".inspector-tabs", "flex-wrap: wrap"]) &&
       !cssBlock(appCss, ".inspector-tabs span").includes("text-overflow"),
   ],
@@ -689,9 +717,9 @@ const checks = [
       "aria-label={`${title}: show ${edgeLabel(edge, graph)}",
       "edgeLabel(edge, graph)",
       "edge.site.file",
-      'title="Data flow & runtime links"',
       "onOpenEdge(edge)",
-    ]),
+      "nodeTypeLabel(related?.type",
+    ]) && !dependencyPanelsSource.includes('title="Data flow & runtime links"'),
   ],
   [
     "Relationship citations open the dependencies detail",
@@ -710,12 +738,10 @@ const checks = [
     ]),
   ],
   [
-    "Overview and relationship evidence citations focus code without Chat evidence chrome",
-    // Chat is a plain conversation surface; source evidence is handled by
-    // Overview and Dependencies, where citation clicks focus Source.
+    "Explore and relationship evidence citations focus the cited source",
     includesAll(workspaceNavigationSource, [
       "function jumpToCitation(citation: Citation, keepEdge = false, preserveInspectorTab = false)",
-      'setCenterView("source")',
+      'showCenterView("source")',
     ]) &&
       includesAll(summaryDockSource, [
         "<EvidenceList citations={evidence} onOpenCitation={onOpenCitation} />",
@@ -734,7 +760,8 @@ const checks = [
       !chatAnswerPanelSource.includes("<GroupedEvidence") &&
       !chatAnswerPanelSource.includes("Copy with citations") &&
       includesAll(sourceFileViewSource, [
-        'className={`source-view${focusedCitation ? " has-focused-citation" : ""}`}',
+        'pageCount === 1 ? " is-single-page" : ""',
+        'focusedCitation ? " has-focused-citation" : ""',
         'className="source-focus-note"',
         "Focused citation: {source.file}:{source.highlightLine}",
         "Focused citation line",
@@ -743,7 +770,7 @@ const checks = [
       includesAll(appCss, [".source-view.has-focused-citation", ".source-focus-note", ".source-line.is-citation-line", ".sr-only"]),
   ],
   [
-    "Source is a size-capped full-file trust surface",
+    "Source is a size-capped, paged trust surface",
     includesAll(sourceReaderSource, [
       "export const MAX_SOURCE_READER_BYTES",
       'invoke<SourceFileContent>("read_source_file"',
@@ -751,7 +778,10 @@ const checks = [
     ]) &&
       includesAll(sourceFileHookSource, ["export function useSourceFile", "highlightLine: Math.min"]) &&
       includesAll(sourceFileViewSource, [
-        "source.lines.map",
+        "SOURCE_PAGE_SIZE = 240",
+        "source?.lines.slice(pageStart, pageStart + SOURCE_PAGE_SIZE)",
+        "visibleLines.map",
+        'aria-label="Source pages"',
         "scrollIntoView({ block: \"center\", inline: \"nearest\" })",
         "Loading source file...",
       ]) &&
@@ -762,8 +792,9 @@ const checks = [
     // The rendered browser smoke proves the selected relationship detail is
     // visible, explains source/target roles, and exposes both endpoint buttons.
     includesAll(dependencyPanelsSource, [
-      "const fromNode = graph.nodes.find",
-      "const toNode = graph.nodes.find",
+      "const nodes = graphIndex(graph).nodeById",
+      "const fromNode = nodes.get(edge.from)",
+      "const toNode = nodes.get(edge.to)",
       'className="relationship-flow"',
       'aria-label="Relationship endpoints"',
       "aria-label={`Focus relationship source ${fromName}`}",
@@ -776,12 +807,15 @@ const checks = [
     "Empty graph canvas guides first-run through import and sample actions",
     includesAll(graphViewSource, [
       'className="graph-empty-card"',
-      'className="graph-empty-steps"',
-      'aria-label="Getting-started steps"',
+      'className="graph-empty-kicker"',
+      'className="graph-empty-actions"',
+      "Understand unfamiliar COBOL without guessing.",
+      "onImportProject",
+      "onOpenSample",
       "if (!graph)",
     ]) &&
       includesAll(workspaceSource, ['className={`center-pane center-${centerView}${centerView === "map" && !focusedNode ? " is-empty" : ""}`}']) &&
-      includesAll(appCss, [".graph-empty-card", ".graph-empty-steps"]),
+      includesAll(appCss, [".graph-empty-card", ".graph-empty-kicker", ".graph-empty-actions"]),
   ],
   [
     "Browser preview keeps import and sample actions in the top bar and shows the first-run path",
@@ -800,8 +834,8 @@ const checks = [
       "acceptBrowserProject",
     ]) &&
       includesAll(navigatorRailSource, [
-      'className="first-run-guide"',
-      'aria-label="First run path"',
+      'className="graph-empty-note"',
+      "Choose a project from the welcome in the map.",
     ]) &&
       includesAll(settingsSource, [
       "desktopAvailable ?",
@@ -883,15 +917,17 @@ const checks = [
       "node.file && !node.external",
     ]) &&
       includesAll(navigatorSource, [
-      "function SourceTree",
-      'aria-label="Codebase browser"',
-      'className="source-tree-group"',
-      'className="source-tree-heading"',
-      'className="source-tree-list"',
-      "onSelectNode(node.id)",
-    ]) &&
+        "function SourceTree",
+        'aria-label="Codebase browser"',
+        'className="source-tree-group"',
+        'className="source-tree-group-toggle"',
+        'className="source-tree-list"',
+        "SOURCE_TREE_PREVIEW_LIMIT = 12",
+        "Show {remainingCount} more",
+        "onSelectNode(node.id)",
+      ]) &&
       includesAll(navigatorRailSource, ["<SourceTree groups={codebaseGroups} selectedNodeId={selectedNodeId} onSelectNode={onSelectSourceNode} />"]) &&
-      includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-heading"]),
+      includesAll(appCss, [".source-tree-list button.is-active", ".source-tree-group-toggle", ".source-tree-list button.source-tree-more"]),
   ],
   [
     "Symbol search keeps fuzzy matching focused on symbol names",

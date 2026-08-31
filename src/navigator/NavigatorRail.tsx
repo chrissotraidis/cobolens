@@ -4,6 +4,7 @@ import { nodeColor } from "../lib/graph";
 import type { CodebaseInventoryCounts, SourceTreeGroup } from "../lib/graphSelectors";
 import type { AnalysisProgress } from "../scan/useAnalysisProgress";
 import { GraphHints, LegendItem, Metric, NavigatorDetails, ParseHealth, SourceTree } from "./NavigatorPanels";
+import { sampleForRoot } from "../samples/catalog";
 
 type NavigatorStatus = "idle" | "running" | "ready" | "error";
 
@@ -36,6 +37,7 @@ export function NavigatorRail({
   onRescan,
   onFocusSearchResult,
   onSelectSourceNode,
+  onOpenGuideStop,
   onResetNodeTypeFilters,
   onToggleNodeTypeFilter,
   onOpenWarning,
@@ -57,6 +59,7 @@ export function NavigatorRail({
   onRescan: () => void;
   onFocusSearchResult: (nodeId: string) => void;
   onSelectSourceNode: (nodeId: string) => void;
+  onOpenGuideStop: (nodeId: string) => void;
   onResetNodeTypeFilters: () => void;
   onToggleNodeTypeFilter: (type: string) => void;
   onOpenWarning: (citation: Citation) => void;
@@ -64,6 +67,11 @@ export function NavigatorRail({
 }) {
   const projectLabel = root || "No codebase selected";
   const projectStatus = statusLabel(status);
+  const activeSample = sampleForRoot(root);
+  const guideStops = activeSample?.guide.stops.map((stop) => ({
+    ...stop,
+    node: graph?.nodes.find((node) => node.id === stop.nodeId),
+  })) ?? [];
 
   return (
     <aside id="navigator-panel" className="left-pane" aria-label="Navigator" tabIndex={-1}>
@@ -73,14 +81,7 @@ export function NavigatorRail({
           <span className="path-label">{projectLabel}</span>
         </div>
         {!graph ? (
-          <div className="first-run-guide" aria-label="First run path">
-            <span>First run</span>
-            <ol>
-              <li>Use Import Project to choose a COBOL folder, or Sample to load the demo.</li>
-              <li>Explore the map and cited source without AI.</li>
-              <li>Add Ollama or a cloud key only when you want AI summaries or AI Ask.</li>
-            </ol>
-          </div>
+          <p className="graph-empty-note">Choose a project from the welcome in the map. Its programs, jobs, and copybooks will appear here.</p>
         ) : desktopAvailable ? (
           <button type="button" onClick={onRescan} disabled={status === "running"} title="Re-scan the current folder">
             Re-scan
@@ -89,6 +90,31 @@ export function NavigatorRail({
         {status === "running" ? <div className="scan-progress">{scanProgressLabel(scanProgress)}</div> : null}
         {status === "error" && error ? <div className="inline-error">{error}</div> : null}
       </section>
+
+      {graph && activeSample ? (
+        <details className="pane-block sample-guide" aria-label={`${activeSample.name} guided trace`} open>
+          <summary>
+            <span>Guided trace</span>
+            <small>{guideStops.length} stops</small>
+          </summary>
+          <div className="sample-guide-body">
+          <div className="pane-heading-row">
+            <h2>{activeSample.guide.title}</h2>
+          </div>
+          <p>{activeSample.guide.description}</p>
+          <ol>
+            {guideStops.map((stop) => (
+              <li key={stop.nodeId}>
+                <button type="button" disabled={!stop.node} onClick={() => stop.node && onOpenGuideStop(stop.node.id)}>
+                  {stop.label}
+                </button>
+              </li>
+            ))}
+          </ol>
+          <small>{activeSample.guide.footnote}</small>
+          </div>
+        </details>
+      ) : null}
 
       {query.trim() ? (
         <section className="pane-block">

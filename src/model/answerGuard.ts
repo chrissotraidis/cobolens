@@ -64,6 +64,8 @@ function citationGuardReason(text: string, context: CitationGuardContext) {
   if (claims.some((claim) => hasExactInlineSourceCitation(claim) && !hasOnlyAllowedCitations(claim, context))) {
     return "citations outside retrieved context";
   }
+  const unsupportedClaim = claims.map((claim) => unsupportedClaimReason(claim, context)).find(Boolean);
+  if (unsupportedClaim) return unsupportedClaim;
   if (claims.some((claim) => !hasExactInlineSourceCitation(claim))) return "uncited explanation lines";
   return "";
 }
@@ -88,20 +90,20 @@ function isSubstantiveClaimBlock(block: string) {
 
 function repairGroundedAnswer(text: string, context: CitationGuardContext, maxClaims?: number) {
   const allSafeClaims = claimUnits(text)
-    .filter((claim) => hasOnlyAllowedCitations(claim, context))
+    .filter((claim) => hasOnlyAllowedCitations(claim, context) && !unsupportedClaimReason(claim, context))
     .map((claim) => `- ${claim.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "").trim()}`);
   const safeClaims = maxClaims ? allSafeClaims.slice(0, maxClaims) : allSafeClaims;
   if (!safeClaims.length) return "";
 
   const safeText = safeClaims.join("\n");
-  const supplementCount = Math.max(0, 3 - safeClaims.length);
+  const supplementCount = Math.max(0, 6 - safeClaims.length);
   const supplements = graphEvidenceLines(context)
     .filter((line) => !safeText.includes(sourceSiteFromLine(line)))
     .slice(0, supplementCount);
 
   return [
     ...safeClaims,
-    ...(supplements.length ? ["", "Additional graph evidence:", ...supplements] : []),
+    ...(supplements.length ? ["", "Grounded path evidence:", ...supplements] : []),
   ].join("\n");
 }
 
@@ -152,6 +154,39 @@ function hasOnlyAllowedCitations(text: string, context: CitationGuardContext) {
   return citations.every((citation) => allowed.some(
     (range) => range.file === citation.file && citation.startLine >= range.startLine && citation.endLine <= range.endLine,
   ));
+}
+
+function unsupportedClaimReason(claim: string, context: CitationGuardContext) {
+  const citedLabels = citedEvidenceLabels(claim, context).join(" ");
+  const namedArtifacts = namedArtifactTokens(claim);
+  const supportedArtifacts = new Set(namedArtifactTokens(citedLabels));
+  const unsupportedArtifacts = namedArtifacts.filter((artifact) => !supportedArtifacts.has(artifact));
+  if (unsupportedArtifacts.length) {
+    return `citation does not support named artifacts: ${unsupportedArtifacts.join(", ")}`;
+  }
+
+  const scheduling = claim.match(/\b(?:(?:scheduled?|runs?|executes?)\s+(?:every\s+)?(daily|nightly|weekly|monthly|hourly)|(daily|nightly|weekly|monthly|hourly)\s+(?:schedule|run|job|batch))\b/i);
+  if (!scheduling) return "";
+  const frequency = (scheduling[1] || scheduling[2]).toLocaleLowerCase();
+  const labelSupportsSchedule = new RegExp(`\\b(?:schedule|calendar|trigger|cron|every)\\w*\\b[^.]*\\b${frequency}\\b|\\b${frequency}\\b[^.]*\\b(?:schedule|calendar|trigger|cron|every)\\w*\\b`, "i").test(citedLabels);
+  return labelSupportsSchedule ? "" : "unsupported scheduling claim";
+}
+
+const ARTIFACT_TOKEN_EXCLUSIONS = new Set(["AI", "API", "COBOL", "CICS", "DB2", "DD", "JCL", "SQL"]);
+
+function namedArtifactTokens(text: string) {
+  const withoutCitations = text.replace(/[\w./-]*\.[A-Za-z][A-Za-z0-9]*:\d+(?:-\d+)?/g, "");
+  return [...new Set(withoutCitations.match(/\b(?:[A-Z][A-Z0-9]*(?:[.-][A-Z0-9]+)+|[A-Z][A-Z0-9]{2,})\b/g) ?? [])]
+    .filter((token) => !ARTIFACT_TOKEN_EXCLUSIONS.has(token));
+}
+
+function citedEvidenceLabels(text: string, context: CitationGuardContext) {
+  return inlineSourceCitations(text).flatMap((inline) => context.citations
+    .filter((citation) => {
+      const endLine = citation.endLine ?? citation.line;
+      return citation.file === inline.file && inline.startLine <= endLine && inline.endLine >= citation.line;
+    })
+    .map((citation) => citation.label));
 }
 
 function inlineSourceCitations(text: string) {

@@ -22,26 +22,26 @@ const checks = {
     runtimeSource.includes("export async function runStreamingModelCall") &&
     runtimeSource.includes("timedOutBeforeFirstToken") &&
     runtimeSource.includes("did not receive any model text within ${seconds}s"),
-  "Ask generation hook streams drafts through the chat answer": askGenerationSource.includes('runStreamingModelCall("Ask"') &&
+  "Chat generation hook streams drafts through the chat answer": askGenerationSource.includes('runStreamingModelCall("Chat"') &&
     askGenerationSource.includes("onFirstToken: noteFirstToken") &&
     askGenerationSource.includes("onTextDelta: (draft) => {") &&
-    !askGenerationSource.includes('runTimedModelCall("Ask"'),
+    !askGenerationSource.includes('runTimedModelCall("Chat"'),
   "Chat panel renders streamed Ask in the plain chat surface": chatPanelSource.includes('className="chat-answer-bubble"') &&
     chatPanelSource.includes('className="chat-answer-text"') &&
-    chatPanelSource.includes('className="chat-stream-stages"') &&
+    chatPanelSource.includes("<ProgressNote") &&
+    chatPanelSource.includes("label={progressLabel}") &&
     aiProgressSource.includes("Final citations are checked before the answer is trusted."),
-  "local Ask budget is smaller than cloud budget":
-    chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 512") &&
+  "local Ask budget supports bounded multi-hop answers":
+    chatSource.includes("const LOCAL_ASK_MAX_OUTPUT_TOKENS = 720") &&
     chatSource.includes("const CLOUD_ASK_MAX_OUTPUT_TOKENS = 520"),
   "Ask generation uses provider-aware budget": chatSource.includes("maxOutputTokens: askMaxOutputTokens(settings)"),
-  "Ollama prompt asks for brief answers": chatSource.includes("Use 1-3 short bullets; keep local Ollama answers brief so they return quickly"),
+  "Ollama prompt keeps multi-hop answers concise": chatSource.includes("Use 2-4 short bullets; keep local Ollama answers brief but preserve the important path through the code"),
   "Ask prompt supplies an exact citation whitelist":
     chatSource.includes("Allowed evidence and citations:") &&
     chatSource.includes("Use only facts from that evidence and the source excerpts above.") &&
     chatSource.includes("Copy citations only from the allowed evidence, exactly as shown.") &&
     chatSource.includes("End every bullet with exactly one allowed citation in parentheses."),
-  "local Ask enforces the requested three-claim limit":
-    chatSource.includes('maxClaims: settings.provider === "ollama" ? 3 : 4'),
+  "Ask enforces a bounded four-claim limit": chatSource.includes("maxClaims: 4"),
   "Local AI retries citation formatting once before graph fallback":
     chatSource.includes('settings.provider === "ollama" && guarded.guarded && !abortSignal?.aborted') &&
     chatSource.includes("The first draft could not be used because it lacked an allowed exact citation.") &&

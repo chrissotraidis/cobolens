@@ -1,5 +1,6 @@
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import { edgeLabel } from "../lib/graph";
+import { graphIndex, incidentEdges, incomingEdges, outgoingEdges, type GraphIndex } from "../lib/graphIndex";
 import type { UnitSummary } from "../model/summaries";
 import type { Citation } from "../retrieval/context";
 
@@ -17,8 +18,7 @@ export function summaryEvidenceCitations(node: GraphNode, graph: GraphDocument) 
     });
   }
 
-  for (const edge of graph.edges) {
-    if (edge.from !== node.id && edge.to !== node.id) continue;
+  for (const edge of incidentEdges(graphIndex(graph), node.id)) {
     if (!edge.site) continue;
     citations.push({
       file: edge.site.file,
@@ -33,10 +33,11 @@ export function summaryEvidenceCitations(node: GraphNode, graph: GraphDocument) 
 }
 
 export function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
-  const incoming = graph.edges.filter((edge) => edge.to === node.id);
-  const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+  const index = graphIndex(graph);
+  const incoming = incomingEdges(index, node.id);
+  const outgoing = outgoingEdges(index, node.id);
   const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
-  const bridgeInsight = cobolFileBridgeInsight(node, graph, incoming, outgoing);
+  const bridgeInsight = cobolFileBridgeInsight(node, index, incoming, outgoing);
   const location = node.file ? `${node.file}:${node.lines?.[0] ?? 1}` : "external";
   const parts = [
     `${node.name} is a ${node.type}${node.external ? " outside this codebase" : ""}.`,
@@ -53,13 +54,14 @@ export function nodeGraphOverview(node: GraphNode, graph: GraphDocument) {
 }
 
 export function selectedNodeGraphAnswer(node: GraphNode, graph: GraphDocument): { text: string; citations: Citation[] } {
-  const incoming = graph.edges.filter((edge) => edge.to === node.id);
-  const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+  const index = graphIndex(graph);
+  const incoming = incomingEdges(index, node.id);
+  const outgoing = outgoingEdges(index, node.id);
   const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
   const relatedNames = (edges: GraphEdge[], side: "from" | "to") =>
     compactNodeNames(
       edges
-        .map((edge) => graph.nodes.find((candidate) => candidate.id === edge[side])?.name)
+        .map((edge) => index.nodeById.get(edge[side])?.name)
         .filter((name): name is string => Boolean(name)),
     );
   const relationshipCitations = [...outgoing, ...incoming]
@@ -122,16 +124,15 @@ export function graphBackedSummaryFallback(
 
 function cobolFileBridgeInsight(
   node: GraphNode,
-  graph: GraphDocument,
+  index: GraphIndex,
   incoming: GraphEdge[],
   outgoing: GraphEdge[],
 ) {
-  const nodes = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]));
   const assignedOut = outgoing.find((edge) => edge.type.toLocaleLowerCase() === "assigned-to");
   if (assignedOut) {
-    const dd = nodes.get(assignedOut.to);
-    const datasetEdge = graph.edges.find((edge) => edge.from === assignedOut.to && edge.type.toLocaleLowerCase() === "uses-dd");
-    const dataset = datasetEdge ? nodes.get(datasetEdge.to) : null;
+    const dd = index.nodeById.get(assignedOut.to);
+    const datasetEdge = outgoingEdges(index, assignedOut.to).find((edge) => edge.type.toLocaleLowerCase() === "uses-dd");
+    const dataset = datasetEdge ? index.nodeById.get(datasetEdge.to) : null;
     return dataset && dd
       ? `COBOL SELECT maps this logical file to DD ${dd.name}, which resolves to dataset ${dataset.name}.`
       : dd
@@ -141,10 +142,10 @@ function cobolFileBridgeInsight(
 
   const usesOut = outgoing.find((edge) => edge.type.toLocaleLowerCase() === "uses-dd");
   if (node.type === "jcl-dd" && usesOut) {
-    const dataset = nodes.get(usesOut.to);
+    const dataset = index.nodeById.get(usesOut.to);
     const logicalFiles = incoming
       .filter((edge) => edge.type.toLocaleLowerCase() === "assigned-to")
-      .map((edge) => nodes.get(edge.from)?.name)
+      .map((edge) => index.nodeById.get(edge.from)?.name)
       .filter((name): name is string => Boolean(name));
     if (dataset && logicalFiles.length) {
       return `This DD bridges COBOL ${logicalFiles.join(", ")} to physical dataset ${dataset.name}.`;
@@ -154,11 +155,11 @@ function cobolFileBridgeInsight(
 
   if (node.type === "dataset") {
     const ddEdge = incoming.find((edge) => edge.type.toLocaleLowerCase() === "uses-dd");
-    const dd = ddEdge ? nodes.get(ddEdge.from) : null;
+    const dd = ddEdge ? index.nodeById.get(ddEdge.from) : null;
     const logicalFiles = dd
-      ? graph.edges
-          .filter((edge) => edge.to === dd.id && edge.type.toLocaleLowerCase() === "assigned-to")
-          .map((edge) => nodes.get(edge.from)?.name)
+      ? incomingEdges(index, dd.id)
+          .filter((edge) => edge.type.toLocaleLowerCase() === "assigned-to")
+          .map((edge) => index.nodeById.get(edge.from)?.name)
           .filter((name): name is string => Boolean(name))
       : [];
     if (dd && logicalFiles.length) {

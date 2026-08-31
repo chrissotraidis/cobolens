@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import { edgeLabel, nodeColor } from "../lib/graph";
 import { nodeTypeLabel } from "../lib/graphLabels";
-
-const LINEAGE_EDGE_TYPES = new Set(["reads", "writes", "moves-to", "queries", "updates", "links", "xctls", "uses-dd", "assigned-to", "executes"]);
+import { graphIndex, incomingEdges, outgoingEdges } from "../lib/graphIndex";
 
 export function LineageImpactPanel({
   node,
@@ -18,13 +17,12 @@ export function LineageImpactPanel({
 }) {
   const relationships = useMemo(() => {
     if (!node || !graph) return null;
-    const incoming = graph.edges.filter((edge) => edge.to === node.id);
-    const outgoing = graph.edges.filter((edge) => edge.from === node.id);
-    const lineage = [...incoming, ...outgoing].filter(isLineageEdge);
+    const index = graphIndex(graph);
+    const incoming = incomingEdges(index, node.id);
+    const outgoing = outgoingEdges(index, node.id);
     return {
       dependents: incoming,
       dependencies: outgoing,
-      lineage,
     };
   }, [graph, node]);
 
@@ -68,16 +66,6 @@ export function LineageImpactPanel({
         onFocusNode={onFocusNode}
         onOpenEdge={onOpenEdge}
       />
-      <RelationshipList
-        title="Data flow & runtime links"
-        empty="No parsed data-flow or runtime links for this item."
-        edges={relationships.lineage}
-        graph={graph}
-        selectedNodeId={node.id}
-        direction="either"
-        onFocusNode={onFocusNode}
-        onOpenEdge={onOpenEdge}
-      />
     </section>
   );
 }
@@ -101,7 +89,7 @@ function RelationshipList({
   onFocusNode: (nodeId: string) => void;
   onOpenEdge: (edge: GraphEdge) => void;
 }) {
-  const nodes = useMemo(() => new Map(graph.nodes.map((candidate) => [candidate.id, candidate])), [graph]);
+  const nodes = useMemo(() => graphIndex(graph).nodeById, [graph]);
 
   return (
     <div className="lineage-group">
@@ -118,7 +106,10 @@ function RelationshipList({
               <div key={`${edge.from}:${edge.to}:${edge.type}:${edge.site?.file ?? ""}:${edge.site?.line ?? 0}`} className="lineage-row">
                 <button type="button" className="lineage-node" onClick={() => onFocusNode(relatedId)}>
                   <span className="swatch" style={{ background: nodeColor(related?.type ?? "") }} />
-                  <span>{related?.name ?? relatedId}</span>
+                  <span>
+                    <strong>{related?.name ?? relatedId}</strong>
+                    <small>{nodeTypeLabel(related?.type ?? "")}</small>
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -128,8 +119,8 @@ function RelationshipList({
                   disabled={!edge.site}
                   title={edge.site ? `Show cited relationship at ${edge.site.file}:${edge.site.line}` : "No source location recorded"}
                 >
-                  {edge.type}
-                  {edge.site ? ` ${edge.site.file}:${edge.site.line}` : ""}
+                  <span>{edge.type}</span>
+                  <small>{edge.site ? `${edge.site.file}:${edge.site.line}` : "No source site"}</small>
                 </button>
               </div>
             );
@@ -157,8 +148,9 @@ export function RelationshipDetails({
 }) {
   const relationships = useMemo(() => {
     if (!node || !graph) return null;
-    const incoming = graph.edges.filter((edge) => edge.to === node.id);
-    const outgoing = graph.edges.filter((edge) => edge.from === node.id);
+    const index = graphIndex(graph);
+    const incoming = incomingEdges(index, node.id);
+    const outgoing = outgoingEdges(index, node.id);
     return { incoming, outgoing };
   }, [graph, node]);
 
@@ -209,8 +201,9 @@ function EdgeExplanation({
   graph: GraphDocument;
   onFocusNode: (nodeId: string) => void;
 }) {
-  const fromNode = graph.nodes.find((candidate) => candidate.id === edge.from);
-  const toNode = graph.nodes.find((candidate) => candidate.id === edge.to);
+  const nodes = graphIndex(graph).nodeById;
+  const fromNode = nodes.get(edge.from);
+  const toNode = nodes.get(edge.to);
   const fromName = fromNode?.name ?? edge.from;
   const toName = toNode?.name ?? edge.to;
 
@@ -282,8 +275,4 @@ function nodeLocationLabel(node: GraphNode) {
   const start = node.lines?.[0] ?? 1;
   const end = node.lines?.[1];
   return end && end !== start ? `${node.file}:${start}-${end}` : `${node.file}:${start}`;
-}
-
-function isLineageEdge(edge: GraphEdge) {
-  return LINEAGE_EDGE_TYPES.has(edge.type.toLocaleLowerCase());
 }

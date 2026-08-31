@@ -1,5 +1,6 @@
 import type { GraphDocument, GraphNode } from "./graph";
 import { matchesFuzzy, potentiallyUnreferencedSourceUnits } from "./graph";
+import { graphIndex, incidentEdges, incomingEdges, outgoingEdges } from "./graphIndex";
 
 const FOCUS_DIRECT_LIMIT_PER_TYPE = 14;
 
@@ -18,8 +19,9 @@ export type CodebaseInventoryCounts = {
 
 export function dependencyCounts(node: GraphNode, graph: GraphDocument | null) {
   if (!graph) return { incoming: 0, outgoing: 0, total: 0 };
-  const incoming = graph.edges.filter((edge) => edge.to === node.id).length;
-  const outgoing = graph.edges.filter((edge) => edge.from === node.id).length;
+  const index = graphIndex(graph);
+  const incoming = incomingEdges(index, node.id).length;
+  const outgoing = outgoingEdges(index, node.id).length;
   return { incoming, outgoing, total: incoming + outgoing };
 }
 
@@ -63,12 +65,11 @@ export function sourceTreeGroups(graph: GraphDocument | null): SourceTreeGroup[]
 
 export function graphExpansionState(graph: GraphDocument | null, focusNodeId: string, hiddenNodeTypes: Set<string>) {
   if (!graph || !focusNodeId) return { hiddenByLimit: 0 };
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const index = graphIndex(graph);
   const countsByType = new Map<string, number>();
-  for (const edge of graph.edges) {
-    if (edge.from !== focusNodeId && edge.to !== focusNodeId) continue;
+  for (const edge of incidentEdges(index, focusNodeId)) {
     const neighborId = edge.from === focusNodeId ? edge.to : edge.from;
-    const neighbor = nodeById.get(neighborId);
+    const neighbor = index.nodeById.get(neighborId);
     if (!neighbor || hiddenNodeTypes.has(neighbor.type)) continue;
     countsByType.set(neighbor.type, (countsByType.get(neighbor.type) ?? 0) + 1);
   }
@@ -125,13 +126,20 @@ export function searchResultScore(node: GraphNode, query: string) {
 }
 
 export function graphSearchResults(graph: GraphDocument | null, query: string, limit = 12) {
-  if (!graph || !query.trim()) return [];
-  return graph.nodes
-    .map((node) => ({ node, score: searchResultScore(node, query) }))
-    .filter((result): result is { node: GraphNode; score: number } => result.score !== null)
-    .sort((left, right) => left.score - right.score)
-    .slice(0, limit)
-    .map((result) => result.node);
+  if (!graph || !query.trim() || limit <= 0) return [];
+  const best: Array<{ node: GraphNode; score: number }> = [];
+  for (const node of graph.nodes) {
+    const score = searchResultScore(node, query);
+    if (score === null) continue;
+    const insertionIndex = best.findIndex((result) => result.score > score);
+    if (insertionIndex === -1) {
+      if (best.length < limit) best.push({ node, score });
+      continue;
+    }
+    best.splice(insertionIndex, 0, { node, score });
+    if (best.length > limit) best.pop();
+  }
+  return best.map((result) => result.node);
 }
 
 export function isSummaryUnit(node: GraphNode) {

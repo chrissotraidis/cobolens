@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { GraphNode } from "../lib/graph";
 import { PROVIDER_LABELS, type ModelSettings } from "../model/config";
 import type { Citation } from "../retrieval/context";
@@ -6,7 +6,8 @@ import { isGraphQuestion } from "../retrieval/graphAnswer";
 import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import type { ModelReadiness } from "../settings/SettingsDialog";
 import { aiProgressDetail, useElapsedSeconds } from "./aiProgress";
-import { MessageText, ProgressNote } from "./MessageParts";
+import { EvidenceList, MessageText, ProgressNote } from "./MessageParts";
+import { inputQualityMessage } from "./questionQuality";
 
 export type ChatStatus = "idle" | "running" | "ready" | "error";
 export type ChatMode = "auto" | "graph" | "ai";
@@ -15,6 +16,7 @@ export type ChatAnswer = {
   text: string;
   citations: Citation[];
   source: "graph" | "model";
+  contextLabel?: string;
   guarded?: boolean;
   citationFiltered?: boolean;
   fallbackReason?: string;
@@ -33,10 +35,12 @@ export function ChatAnswerPanel({
   question,
   aiConfigured,
   canAsk,
+  overview,
   onOpenSettings,
   onQuestionChange,
   onAsk,
   onCancel,
+  onOpenCitation,
 }: {
   status: ChatStatus;
   answer: ChatAnswer | null;
@@ -49,16 +53,20 @@ export function ChatAnswerPanel({
   question: string;
   aiConfigured: boolean;
   canAsk: boolean;
+  overview: ReactNode;
   onOpenSettings: () => void;
   onQuestionChange: (question: string) => void;
   onAsk: (mode?: ChatMode) => void;
   onCancel: () => void;
+  onOpenCitation: (citation: Citation) => void;
 }) {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+  const routeMenuRef = useRef<HTMLDetailsElement>(null);
   const [mode, setMode] = useState<ChatMode>("auto");
   const elapsedSeconds = useElapsedSeconds(status === "running");
   const questionText = question.trim();
+  const qualityMessage = inputQualityMessage(questionText, Boolean(node));
   const autoIdle = mode === "auto" && !questionText;
   const workingWithModel = routeNeedsModel(questionText, mode);
   const activeRouteDetail = autoIdle
@@ -69,8 +77,9 @@ export function ChatAnswerPanel({
         : `${PROVIDER_LABELS[settings.provider]} is not ready. Structural questions still answer without it.`
       : "Instant, cited answer from the dependency graph — no AI needed.";
   const progressLabel = workingWithModel ? `${PROVIDER_LABELS[settings.provider]} is thinking` : "Reading the graph";
-  const askButtonLabel = status === "running" ? "Stop" : workingWithModel && !aiConfigured ? "Set up AI" : "Send";
+  const askButtonLabel = status === "running" ? "Stop" : !qualityMessage && workingWithModel && !aiConfigured ? "Set up AI" : "Send";
   const providerLabel = PROVIDER_LABELS[settings.provider];
+  const routeLabel = mode === "ai" ? "Local AI" : mode[0].toUpperCase() + mode.slice(1);
   const aiStatusTooltip =
     modelReadiness.status === "ready"
       ? modelReadiness.message || `${providerLabel} is live`
@@ -81,16 +90,13 @@ export function ChatAnswerPanel({
           : aiConfigured
             ? `${providerLabel} is configured. Cobolens will check it when you send.`
             : "Set up local AI in Settings to chat with open-ended questions";
-  const emptyResponseText = questionText
-    ? workingWithModel
-      ? aiConfigured
-        ? `Send to ${PROVIDER_LABELS[settings.provider]} with only retrieved, cited code.`
-        : `${PROVIDER_LABELS[settings.provider]} is not ready. Check Settings, or switch to Graph for structural answers.`
-      : "Ready for an instant answer from the dependency graph."
-    : "Type a question below when you want to inspect this selection.";
   const submitAsk = () => {
     if (status === "running") {
       onCancel();
+      return;
+    }
+    if (qualityMessage) {
+      onAsk(mode);
       return;
     }
     if (workingWithModel && !aiConfigured) {
@@ -103,7 +109,7 @@ export function ChatAnswerPanel({
     const composer = composerRef.current;
     if (!composer) return;
     composer.style.height = "auto";
-    composer.style.height = `${Math.min(Math.max(composer.scrollHeight, 76), 150)}px`;
+    composer.style.height = `${Math.min(Math.max(composer.scrollHeight, 54), 132)}px`;
   };
   const localAiRouteTitle = workingWithModel
     ? `${activeRouteDetail} ${aiStatusTooltip}`
@@ -115,33 +121,41 @@ export function ChatAnswerPanel({
 
   useEffect(() => {
     resizeComposer();
-  }, [question]);
+    if (question && status !== "running") composerRef.current?.focus({ preventScroll: true });
+  }, [question, status]);
 
   useEffect(() => {
     const thread = threadRef.current;
     if (!thread) return;
+    if (status === "ready" || (!visibleAnswers.length && !pendingAnswer && status === "idle")) {
+      thread.scrollTop = 0;
+      return;
+    }
     thread.scrollTop = thread.scrollHeight;
-  }, [visibleAnswers.length, pendingAnswer?.text, status]);
+  }, [visibleAnswers.length, pendingAnswer, status]);
 
   return (
     <section className="answer-card chat-workspace">
       <div className="chat-thread" ref={threadRef} aria-live="polite">
-        {!hasConversation ? <AnswerModeDisclosure providerLabel={providerLabel} semanticIndex={semanticIndex} /> : null}
+        {hasConversation && node ? <div className="chat-context-banner">Context · {node.name}</div> : null}
+        {!hasConversation ? overview : null}
         {visibleAnswers.map((item, index) => (
-          <ChatTurn key={`${item.question}:${item.text}:${index}`} answer={item} providerLabel={providerLabel} />
+          <ChatTurn
+            key={`${item.question}:${item.text}:${index}`}
+            answer={item}
+            providerLabel={providerLabel}
+            onOpenCitation={onOpenCitation}
+          />
         ))}
         {status === "running" ? (
-          <>
-            <ProgressNote
-              label={progressLabel}
-              detail={aiProgressDetail(settings, elapsedSeconds, Boolean(answer?.text && answer.source === "model"))}
-              elapsedSeconds={elapsedSeconds}
-            />
-            <StreamingStages workingWithModel={workingWithModel} providerLabel={providerLabel} hasDraft={Boolean(answer?.text)} />
-          </>
+          <ProgressNote
+            label={progressLabel}
+            detail={aiProgressDetail(settings, elapsedSeconds, Boolean(answer?.text && answer.source === "model"))}
+            elapsedSeconds={elapsedSeconds}
+          />
         ) : status === "error" ? (
           <div className="chat-turn is-error">
-            <div className="chat-user-message">{questionText || "Ask"}</div>
+            <div className="chat-user-message">{questionText || "Chat"}</div>
             <div className="chat-answer-bubble">
               <span className="chat-route-label stopped">{errorLabel}</span>
               <p className="error-text">{error}</p>
@@ -149,23 +163,17 @@ export function ChatAnswerPanel({
           </div>
         ) : null}
         {pendingAnswer ? (
-          <ChatTurn answer={pendingAnswer} providerLabel={providerLabel} />
-        ) : null}
-        {!hasConversation ? (
-          <div className="chat-empty-state">
-            <strong>{node ? `Ask about ${node.name}` : "Ask about this codebase"}</strong>
-            <span>{emptyResponseText}</span>
-          </div>
+          <ChatTurn answer={pendingAnswer} providerLabel={providerLabel} onOpenCitation={onOpenCitation} />
         ) : null}
       </div>
-      <div className="chat-composer" aria-label="Ask a question">
+      <div className="chat-composer" aria-label="Chat about the codebase">
         <div className="chat-composer-box">
           <textarea
             autoFocus
             ref={composerRef}
-            rows={3}
-            aria-label="Ask about the codebase"
-            placeholder="Ask about data flow, dependencies, files, behavior, or what to inspect next..."
+            rows={2}
+            aria-label="Message about the codebase"
+            placeholder={node ? `Message about ${node.name}…` : "Message about this codebase…"}
             value={question}
             onChange={(event) => {
               onQuestionChange(event.currentTarget.value);
@@ -180,32 +188,45 @@ export function ChatAnswerPanel({
             disabled={!canAsk || status === "running"}
           />
           <div className="chat-composer-footer">
-            <div className="chat-mode-control" aria-label="Answer route">
-              {(["auto", "graph", "ai"] as ChatMode[]).map((route) => {
-                const isLocalAiRoute = route === "ai";
-                const isRoutedToLocalAi = isLocalAiRoute && workingWithModel;
-                const className = [
-                  mode === route ? "is-active" : "",
-                  isLocalAiRoute ? "chat-route-ai" : "",
-                  isRoutedToLocalAi ? `is-routed ai-${modelReadiness.status}` : "",
-                ].filter(Boolean).join(" ");
-                return (
-                  <button
-                    key={route}
-                    type="button"
-                    className={className}
-                    onClick={() => setMode(route)}
-                    disabled={status === "running"}
-                    aria-pressed={mode === route}
-                    title={isLocalAiRoute ? localAiRouteTitle : undefined}
-                    aria-label={isLocalAiRoute && isRoutedToLocalAi ? `Local AI. ${localAiRouteTitle}` : undefined}
-                  >
-                    {isRoutedToLocalAi ? <i className="chat-mode-status-dot" aria-hidden="true" /> : null}
-                    <span>{isLocalAiRoute ? "Local AI" : route[0].toUpperCase() + route.slice(1)}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <details className="answer-route-menu" ref={routeMenuRef}>
+              <summary aria-label={`Answer route: ${routeLabel}`}>{routeLabel}</summary>
+              <div className="answer-route-popover">
+                <span>Answer route</span>
+                <div className="chat-mode-control" aria-label="Answer route">
+                  {(["auto", "graph", "ai"] as ChatMode[]).map((route) => {
+                    const isLocalAiRoute = route === "ai";
+                    const isRoutedToLocalAi = isLocalAiRoute && workingWithModel;
+                    const className = [
+                      mode === route ? "is-active" : "",
+                      isLocalAiRoute ? "chat-route-ai" : "",
+                      isRoutedToLocalAi ? `is-routed ai-${modelReadiness.status}` : "",
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <button
+                        key={route}
+                        type="button"
+                        className={className}
+                        onClick={() => {
+                          setMode(route);
+                          routeMenuRef.current?.removeAttribute("open");
+                        }}
+                        disabled={status === "running"}
+                        aria-pressed={mode === route}
+                        title={isLocalAiRoute ? localAiRouteTitle : undefined}
+                      >
+                        {isRoutedToLocalAi ? <i className="chat-mode-status-dot" aria-hidden="true" /> : null}
+                        <span>{isLocalAiRoute ? "Local AI" : route[0].toUpperCase() + route.slice(1)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p>{activeRouteDetail}</p>
+                {workingWithModel ? <small>{semanticIndex.message}</small> : null}
+              </div>
+            </details>
+            <span className={`chat-grounding-cue${workingWithModel ? " is-model" : ""}`}>
+              {workingWithModel ? `${providerLabel} + cited code` : "Dependency graph + source"}
+            </span>
             <button
               type="button"
               className="chat-send-button"
@@ -221,15 +242,27 @@ export function ChatAnswerPanel({
   );
 }
 
-function ChatTurn({ answer, providerLabel }: { answer: ChatAnswer; providerLabel: string }) {
+function ChatTurn({
+  answer,
+  providerLabel,
+  onOpenCitation,
+}: {
+  answer: ChatAnswer;
+  providerLabel: string;
+  onOpenCitation: (citation: Citation) => void;
+}) {
   return (
     <article className="chat-turn">
-      <div className="chat-user-message">{answer.question}</div>
+      <div className="chat-user-message">
+        <span>{answer.question}</span>
+        {answer.contextLabel ? <small>Asked while inspecting {answer.contextLabel}</small> : null}
+      </div>
       <div className="chat-answer-bubble">
         <span className={`chat-route-label ${answerRouteClass(answer)}`}>{answerRouteLabel(answer, providerLabel)}</span>
         <div className="chat-answer-text">
           <MessageText text={answer.text} />
         </div>
+        <EvidenceList citations={answer.citations} onOpenCitation={onOpenCitation} />
         {answer.semanticNote ? (
           <div className="answer-semantic-note" role="status">
             {answer.semanticNote}
@@ -243,50 +276,6 @@ function ChatTurn({ answer, providerLabel }: { answer: ChatAnswer; providerLabel
         ) : null}
       </div>
     </article>
-  );
-}
-
-function AnswerModeDisclosure({
-  providerLabel,
-  semanticIndex,
-}: {
-  providerLabel: string;
-  semanticIndex: SemanticIndexState;
-}) {
-  return (
-    <details className="answer-mode-help">
-      <summary>How answers work</summary>
-      <ul>
-        <li>Graph uses the parsed dependency graph and source lines. No AI.</li>
-        <li>{providerLabel} uses retrieved graph and source context.</li>
-        <li>Semantic retrieval uses local embeddings when the index is ready.</li>
-      </ul>
-      <p>{semanticIndex.message}</p>
-    </details>
-  );
-}
-
-function StreamingStages({
-  workingWithModel,
-  providerLabel,
-  hasDraft,
-}: {
-  workingWithModel: boolean;
-  providerLabel: string;
-  hasDraft: boolean;
-}) {
-  const stages = workingWithModel
-    ? ["Finding graph context", "Retrieving cited source", `Asking ${providerLabel}`, "Checking citations", "Writing answer"]
-    : ["Finding graph context", "Retrieving cited source", "Writing graph answer"];
-
-  return (
-    <ol className="chat-stream-stages" aria-label="Answer progress">
-      {stages.map((stage, index) => (
-        <li key={stage} className={index === 0 || (hasDraft && index >= stages.length - 2) ? "is-active" : ""}>
-          {stage}
-        </li>
-      ))}
-    </ol>
   );
 }
 

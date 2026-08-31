@@ -11,7 +11,7 @@ const BROWSER_DIRECTORY_INPUT_PROPS = {
 
 export function TopBar({
   railCollapsed,
-  inspectorCollapsed,
+  askOpen,
   status,
   desktopAvailable,
   graphLoaded,
@@ -26,12 +26,12 @@ export function TopBar({
   onChooseFolder,
   onBrowserImport,
   onOpenSample,
-  onToggleInspector,
+  onToggleAsk,
   onExport,
   onOpenSettings,
 }: {
   railCollapsed: boolean;
-  inspectorCollapsed: boolean;
+  askOpen: boolean;
   status: TopBarStatus;
   desktopAvailable: boolean;
   graphLoaded: boolean;
@@ -46,7 +46,7 @@ export function TopBar({
   onChooseFolder: () => void;
   onBrowserImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onOpenSample: () => void;
-  onToggleInspector: () => void;
+  onToggleAsk: () => void;
   onExport: () => void;
   onOpenSettings: () => void;
 }) {
@@ -66,8 +66,17 @@ export function TopBar({
             <rect x="3.7" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
           </svg>
         </button>
-        <img className="brand-mark" src="/favicon.png" alt="" aria-hidden="true" />
-        <span className="brand-name">Cobolens</span>
+        <button
+          type="button"
+          className="brand-home"
+          onClick={onHome}
+          disabled={!graphLoaded}
+          aria-label="Go to Cobolens Home"
+          title="Return to the map home"
+        >
+          <img className="brand-mark" src="/favicon.png" alt="" aria-hidden="true" />
+          <span className="brand-name">Cobolens</span>
+        </button>
         <span
           className={`privacy-dot ${modelSettings.privacyMode}`}
           role="img"
@@ -124,21 +133,22 @@ export function TopBar({
           tabIndex={-1}
           onChange={onBrowserImport}
         />
-        <button type="button" className="topbar-sample" onClick={onOpenSample} disabled={status === "running"} title="Open the bundled sample graph">
-          Sample
+        <button type="button" className="topbar-sample" onClick={onOpenSample} disabled={status === "running"} title="Choose a sample project">
+          Samples
         </button>
         <button
           type="button"
-          className="rail-toggle"
-          onClick={onToggleInspector}
-          aria-pressed={!inspectorCollapsed}
-          aria-label={inspectorCollapsed ? "Show inspector panel" : "Hide inspector panel"}
-          title={inspectorCollapsed ? "Show inspector" : "Hide inspector"}
+          className="inspector-toggle"
+          onClick={onToggleAsk}
+          aria-pressed={askOpen}
+          aria-label={askOpen ? "Close Chat" : "Open Chat"}
+          title={askOpen ? "Close Chat" : "Chat about the current selection"}
         >
           <svg viewBox="0 0 18 18" width="17" height="17" aria-hidden="true">
             <rect x="2.5" y="3.5" width="13" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
             <rect x="11.3" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
           </svg>
+          <span>Chat</span>
         </button>
         <button type="button" onClick={onExport} disabled={!graphLoaded} title="Choose export package options">
           Export

@@ -3,7 +3,9 @@ import type { GraphDocument, GraphNode } from "../lib/graph";
 import { nodeColor } from "../lib/graph";
 import { nodeTypeLabel } from "../lib/graphLabels";
 import type { SourceTreeGroup } from "../lib/graphSelectors";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
+const SOURCE_TREE_PREVIEW_LIMIT = 12;
 
 export function Metric({ label, value }: { label: string; value: number }) {
   return (
@@ -52,8 +54,7 @@ export function ParseHealth({
   return (
     <NavigatorDetails
       title="Parse Health"
-      badge={graph ? `${parsed}/${total}` : "No graph"}
-      defaultOpen={parseErrors.length > 0}
+      badge={graph ? (parseErrors.length ? `${parseErrors.length} warnings` : `${parsed}/${total}`) : "No graph"}
     >
       <div className="parse-health">
         <div className={`status-pill ${parseErrors.length ? "running" : graph ? "ready" : "idle"}`}>
@@ -106,7 +107,6 @@ export function GraphHints({
     <NavigatorDetails
       title="Graph Hints"
       badge={graph ? `${unreferencedSourceUnits.length}` : "No graph"}
-      defaultOpen={unreferencedSourceUnits.length > 0}
     >
       <div className="graph-hints" aria-label="Graph hints">
         {graph ? (
@@ -148,6 +148,12 @@ export function SourceTree({
   onSelectNode: (nodeId: string) => void;
 }) {
   const totalNodes = groups.reduce((total, group) => total + group.nodes.length, 0);
+  const selectedGroupTitle = groups.find((group) => group.nodes.some((node) => node.id === selectedNodeId))?.title;
+  const [openGroupTitle, setOpenGroupTitle] = useState(groups[0]?.title ?? "");
+
+  useEffect(() => {
+    if (selectedGroupTitle) setOpenGroupTitle(selectedGroupTitle);
+  }, [selectedGroupTitle]);
 
   return (
     <section className="pane-block source-tree" aria-label="Codebase browser">
@@ -157,33 +163,84 @@ export function SourceTree({
       </div>
       {groups.length ? (
         groups.map((group) => (
-          <div className="source-tree-group" key={group.title}>
-            <div className="source-tree-heading">
-              <span>{group.title}</span>
-              <strong>{group.nodes.length}</strong>
-            </div>
-            <div className="source-tree-list">
-              {group.nodes.map((node) => (
-                <button
-                  key={node.id}
-                  type="button"
-                  className={node.id === selectedNodeId ? "is-active" : undefined}
-                  onClick={() => onSelectNode(node.id)}
-                  title={`Focus ${node.name} (${nodeTypeLabel(node.type)})${node.file ? ` — ${node.file}` : ""}`}
-                  aria-label={`Focus ${node.name}, ${nodeTypeLabel(node.type)}`}
-                >
-                  <span className="swatch" style={{ background: nodeColor(node.type) }} />
-                  <span>{node.name}</span>
-                  <small>{node.file ?? "external"}</small>
-                </button>
-              ))}
-            </div>
-          </div>
+          <SourceTreeGroupPanel
+            key={group.title}
+            group={group}
+            open={openGroupTitle === group.title}
+            onToggle={() => setOpenGroupTitle((current) => current === group.title ? "" : group.title)}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={onSelectNode}
+          />
         ))
       ) : (
         <div className="empty-copy">Open a folder or sample to browse programs, copybooks, and JCL.</div>
       )}
     </section>
+  );
+}
+
+function SourceTreeGroupPanel({
+  group,
+  open,
+  onToggle,
+  selectedNodeId,
+  onSelectNode,
+}: {
+  group: SourceTreeGroup;
+  open: boolean;
+  onToggle: () => void;
+  selectedNodeId: string;
+  onSelectNode: (nodeId: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const selectedNode = group.nodes.find((node) => node.id === selectedNodeId);
+
+  const previewNodes = showAll ? group.nodes : group.nodes.slice(0, SOURCE_TREE_PREVIEW_LIMIT);
+  const visibleNodes = selectedNode && !previewNodes.some((node) => node.id === selectedNode.id)
+    ? [...previewNodes, selectedNode]
+    : previewNodes;
+  const remainingCount = Math.max(0, group.nodes.length - visibleNodes.length);
+
+  return (
+    <div className="source-tree-group">
+      <button
+        type="button"
+        className="source-tree-group-toggle"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span>{group.title}</span>
+        <strong>{group.nodes.length}</strong>
+        <small>{open ? "Hide" : "Show"}</small>
+      </button>
+      {open ? (
+        <div className="source-tree-list">
+          {visibleNodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              className={node.id === selectedNodeId ? "is-active" : undefined}
+              onClick={() => onSelectNode(node.id)}
+              title={`Focus ${node.name} (${nodeTypeLabel(node.type)})${node.file ? ` — ${node.file}` : ""}`}
+              aria-label={`Focus ${node.name}, ${nodeTypeLabel(node.type)}`}
+            >
+              <span className="swatch" style={{ background: nodeColor(node.type) }} />
+              <span>{node.name}</span>
+              <small>{node.file ?? "external"}</small>
+            </button>
+          ))}
+          {remainingCount ? (
+            <button type="button" className="source-tree-more" onClick={() => setShowAll(true)}>
+              Show {remainingCount} more {group.title.toLowerCase()}
+            </button>
+          ) : showAll && group.nodes.length > SOURCE_TREE_PREVIEW_LIMIT ? (
+            <button type="button" className="source-tree-more" onClick={() => setShowAll(false)}>
+              Show fewer
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

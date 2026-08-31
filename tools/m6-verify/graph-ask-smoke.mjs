@@ -100,6 +100,13 @@ try {
     readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
   });
   const writeAnswer = graphAnswerFallback(graph, writeQuestion, writeContext);
+  const readWriteQuestion = "What does LINEAGE read and write?";
+  const readWriteContext = await retrieveQuestionContext({
+    graph,
+    question: readWriteQuestion,
+    readExcerpt: async (node) => sourceExcerpt(sourceBundle, node),
+  });
+  const readWriteAnswer = graphAnswerFallback(graph, readWriteQuestion, readWriteContext);
   const writtenByQuestion = "Who writes REPORT-RECORD?";
   const writtenByContext = await retrieveQuestionContext({
     graph,
@@ -194,7 +201,7 @@ try {
     ["written-by question classified as graph-only", isGraphQuestion(writtenByQuestion)],
     ["orientation question classified as graph-only", isGraphQuestion(orientationQuestion)],
     ["codebase overview question classified as graph-only", isGraphQuestion(codebaseOverviewQuestion)],
-    ["selected-symbol overview question classified as graph-only", isGraphQuestion(selectedProgramQuestion)],
+    ["selected-symbol overview question uses model route", !isGraphQuestion(selectedProgramQuestion)],
     ["explicit graph explanation stays graph-only", isGraphQuestion(explainQuestion)],
     ["typed business logic explanation uses model route", !isGraphQuestion(typedBusinessLogicQuestion)],
     ["typed plain-English explanation uses model route", !isGraphQuestion(typedPlainEnglishQuestion)],
@@ -228,6 +235,9 @@ try {
     ["read-by answer reports incoming reader", readByAnswer.text.includes("Read by: LINEAGE.")],
     ["read-by answer cites incoming read", readByAnswer.text.includes("- LINEAGE reads CUSTOMER-FILE at src/LINEAGE.cbl:21")],
     ["write answer reports recorded writes", writeAnswer.text.includes("Writes or updates: REPORT-RECORD.")],
+    ["compound read-write answer reports reads", readWriteAnswer.text.includes("Reads: CUSTOMER-FILE.")],
+    ["compound read-write answer reports writes", readWriteAnswer.text.includes("Writes or updates: REPORT-RECORD.")],
+    ["compound read-write answer cites both relationships", readWriteAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 21) && readWriteAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 26)],
     ["write answer reports no incoming writers for program", writeAnswer.text.includes("Written or updated by: none recorded.")],
     ["write answer omits read/call relationships", !writeAnswer.text.includes("reads CUSTOMER-FILE") && !writeAnswer.text.includes("executes LINK RATEAPI")],
     ["written-by question matches report record", writtenByContext.focusNodes[0]?.name === "REPORT-RECORD"],
@@ -241,7 +251,7 @@ try {
     ["explain answer cites matched source", explainAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["natural customer master phrase matches physical dataset", customerMasterContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER"],
     ["customer master answer cites JCL DD mapping", customerMasterAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
-    ["feed-into dataset question classified as graph-only", isGraphQuestion(customerMasterFeedQuestion)],
+    ["multi-hop feed-into question uses model route", !isGraphQuestion(customerMasterFeedQuestion)],
     ["feed-into question matches dataset then program", customerMasterFeedContext.focusNodes[0]?.name === "BANK.CUSTOMER.MASTER" && customerMasterFeedContext.focusNodes[1]?.name === "LINEAGE"],
     ["feed-into answer shows connection path", customerMasterFeedAnswer.text.includes("Connection path from BANK.CUSTOMER.MASTER to LINEAGE:")],
     ["feed-into path includes JCL DD mapping", customerMasterFeedAnswer.text.includes("CUSTIN uses-dd BANK.CUSTOMER.MASTER at jcl/DAILYLN.jcl:3")],
@@ -263,7 +273,7 @@ try {
     ["codebase overview gives inventory", codebaseOverviewAnswer.text.includes("I found 1 source program, 2 copybooks, and 1 JCL job.")],
     ["codebase overview has citations", codebaseOverviewAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],
     ["selected-symbol pronoun question focuses selected node", selectedProgramContext.focusNodes[0]?.id === selectedLineage?.id],
-    ["selected-symbol pronoun question uses selected node only", selectedProgramContext.focusNodes.length === 1],
+    ["selected-symbol pronoun context keeps related evidence", selectedProgramContext.focusNodes.length > 1],
     ["selected-symbol overview answer is graph-only", selectedProgramAnswer.text.includes("From the dependency graph:")],
     ["selected-symbol overview answer includes graph brief", selectedProgramAnswer.text.includes("Graph-derived brief:")],
     ["selected-symbol overview answer cites source", selectedProgramAnswer.citations.some((citation) => citation.file === "src/LINEAGE.cbl" && citation.line === 1)],

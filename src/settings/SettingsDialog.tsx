@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_OLLAMA_EMBEDDING_MODEL, ModelProvider, ModelSettings, PROVIDER_LABELS, isCloudProvider } from "../model/config";
-import { RECOMMENDED_SMALL_OLLAMA_MODEL, isSameOllamaModel } from "../model/readiness";
+import { RECOMMENDED_SMALL_OLLAMA_MODEL, isEmbeddingOnlyOllamaModel, isSameOllamaModel } from "../model/readiness";
 import type { SemanticIndexState } from "../retrieval/useSemanticIndex";
 import type { ScanFormat, ScanSettings } from "../lib/appSettings";
 
@@ -95,7 +95,7 @@ export function SettingsDialog({
         <div className="settings-dialog-header">
           <div>
             <h2 id="settings-title">Settings</h2>
-            <p>Graph answers work without AI. Configure AI only for generated summaries and broader Ask answers.</p>
+            <p>Choose how Chat explains code. Graph answers remain available without AI.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close settings">
             Close
@@ -119,14 +119,19 @@ export function SettingsDialog({
           modelCallCount={modelCallCount}
           bulkTokenEstimate={bulkTokenEstimate}
         />
-        <section className="settings-section">
-          <h2>Scanning</h2>
-          {desktopAvailable ? (
-            <ScanSettingsPanel settings={scanSettings} disabled={scanDisabled} onSettingsChange={onScanSettingsChange} />
-          ) : (
-            <div className="desktop-preview-note">Scan settings apply when Cobolens is running as the desktop app.</div>
-          )}
-        </section>
+        <details className="settings-disclosure settings-scan-disclosure">
+          <summary>
+            <span>Scanning</span>
+            <small>{desktopAvailable ? `${scanSettings.format} · ${scanSettings.encoding}` : "Desktop app"}</small>
+          </summary>
+          <div className="settings-disclosure-body">
+            {desktopAvailable ? (
+              <ScanSettingsPanel settings={scanSettings} disabled={scanDisabled} onSettingsChange={onScanSettingsChange} />
+            ) : (
+              <div className="desktop-preview-note">Scan settings are available in the desktop app.</div>
+            )}
+          </div>
+        </details>
       </section>
     </div>
   );
@@ -216,7 +221,8 @@ function ModelSettingsPanel({
 }) {
   const cloud = isCloudProvider(settings.provider);
   const installedModels = cloud ? [] : modelReadiness.installedModels ?? [];
-  const modelInList = installedModels.some((model) => isSameOllamaModel(model, settings.model));
+  const generationModels = installedModels.filter((model) => !isEmbeddingOnlyOllamaModel(model));
+  const modelInList = generationModels.some((model) => isSameOllamaModel(model, settings.model));
   const loadingModels = !cloud && modelReadiness.status === "checking";
   const [customMode, setCustomMode] = useState(false);
   const suggestedModel = !cloud && modelReadiness.status === "error" ? modelReadiness.suggestedModel : "";
@@ -232,32 +238,18 @@ function ModelSettingsPanel({
     semanticIndex,
   });
   const semanticBusy = semanticIndex.status === "warming";
+  const readyStepCount = readinessSteps.filter((step) => step.status === "ready").length;
+  const readinessComplete = readyStepCount === readinessSteps.length;
 
   return (
     <section className="pane-block model-settings">
-      <h2>AI</h2>
-      <details className="answer-mode-help settings-answer-mode">
-        <summary>How answers work</summary>
-        <ul>
-          <li>Graph uses the parsed dependency graph and source lines. No AI.</li>
-          <li>{PROVIDER_LABELS[settings.provider]} uses retrieved graph and source context.</li>
-          <li>Semantic retrieval uses local embeddings when the index is ready.</li>
-        </ul>
-      </details>
-      <ol className="readiness-stepper" aria-label="AI setup readiness">
-        {readinessSteps.map((step, index) => (
-          <li key={step.label} className={`readiness-step ${step.status}`}>
-            <span className="readiness-step-index" aria-hidden="true">
-              {index + 1}
-            </span>
-            <div>
-              <strong>{step.label}</strong>
-              <span>{step.detail}</span>
-              {step.command ? <code>{step.command}</code> : null}
-            </div>
-          </li>
-        ))}
-      </ol>
+      <div className="settings-section-heading">
+        <div>
+          <h2>Chat &amp; AI</h2>
+          <p>Structural questions use the graph. AI is only used for broader explanations.</p>
+        </div>
+        <span className={`settings-summary-status ${modelReadiness.status}`}>{modelStatusLabel(modelReadiness, installedModels.length)}</span>
+      </div>
       <label className="form-row">
         <span>Provider</span>
         <select
@@ -296,8 +288,8 @@ function ModelSettingsPanel({
                 onSettingsChange({ ...settings, model: value });
               }}
             >
-              {installedModels.length ? (
-                installedModels.map((model) => (
+              {generationModels.length ? (
+                generationModels.map((model) => (
                   <option key={model} value={model}>
                     {model}
                     {isSameOllamaModel(model, RECOMMENDED_SMALL_OLLAMA_MODEL) ? "  (fast)" : ""}
@@ -326,8 +318,8 @@ function ModelSettingsPanel({
             <span>
               {loadingModels
                 ? "Reading models installed on this machine…"
-                : installedModels.length
-                  ? `${installedModels.length} model${installedModels.length === 1 ? "" : "s"} installed locally`
+                : generationModels.length
+                  ? `${generationModels.length} generation model${generationModels.length === 1 ? "" : "s"} installed locally`
                   : "No models listed yet. Run Check AI or Refresh to confirm local Ollama."}
             </span>
             <button
@@ -347,30 +339,7 @@ function ModelSettingsPanel({
           <code>ollama pull {suggestedModel}</code>
         </div>
       ) : null}
-      {settings.provider === "ollama" ? (
-        <>
-          <label className="form-row">
-            <span>Embedding model</span>
-            <input
-              value={settings.embeddingModel}
-              spellCheck={false}
-              placeholder={DEFAULT_OLLAMA_EMBEDDING_MODEL}
-              onChange={(event) => onSettingsChange({ ...settings, embeddingModel: event.currentTarget.value })}
-            />
-          </label>
-          <div className="settings-footnote">
-            Semantic Ask retrieval embeds locally with this model. Install it with:{" "}
-            <code>ollama pull {settings.embeddingModel.trim() || DEFAULT_OLLAMA_EMBEDDING_MODEL}</code>
-          </div>
-          <label className="form-row">
-            <span>Host</span>
-            <input
-              value={settings.baseUrl}
-              onChange={(event) => onSettingsChange({ ...settings, baseUrl: event.currentTarget.value })}
-            />
-          </label>
-        </>
-      ) : (
+      {cloud ? (
         <label className="form-row">
           <span>API key</span>
           <input
@@ -380,22 +349,10 @@ function ModelSettingsPanel({
             onChange={(event) => onKeyDraftChange(event.currentTarget.value)}
           />
         </label>
-      )}
-      <label className="form-row">
-        <span>Rosetta</span>
-        <select
-          value={settings.rosettaLanguage}
-          onChange={(event) => onSettingsChange({ ...settings, rosettaLanguage: event.currentTarget.value })}
-        >
-          <option value="python">Python</option>
-          <option value="javascript">JavaScript</option>
-          <option value="java">Java</option>
-          <option value="c#">C#</option>
-        </select>
-      </label>
-      <div className="button-row three">
-        <button type="button" onClick={onCheckModel} disabled={modelReadiness.status === "checking"}>
-          {modelReadiness.status === "checking" ? "Checking" : "Check AI"}
+      ) : null}
+      <div className="settings-primary-actions">
+        <button type="button" className="primary-action" onClick={onCheckModel} disabled={modelReadiness.status === "checking"}>
+          {modelReadiness.status === "checking" ? "Checking…" : "Check connection"}
         </button>
         {cloud ? (
           <>
@@ -406,43 +363,106 @@ function ModelSettingsPanel({
               Clear
             </button>
           </>
-        ) : (
-          <>
-            <button type="button" onClick={onWarmSemanticIndex} disabled={semanticBusy} aria-label="Test semantic retrieval">
-              {semanticBusy ? "Warming" : "Test semantic"}
-            </button>
-            <button
-              type="button"
-              onClick={onRefreshModels}
-              disabled={modelReadiness.status === "checking"}
-              aria-label="Refresh models"
-              title="Refresh installed Ollama models"
-            >
-              Refresh
-            </button>
-          </>
-        )}
+        ) : null}
       </div>
-      <div className={`settings-footnote ${modelReadiness.status}`}>
+      <div className={`settings-status-line ${modelReadiness.status}`} role="status">
         {modelReadiness.message || (cloud ? message || (hasProviderKey ? "Key ready" : "No key") : "Local mode: model calls stay on this machine.")}
       </div>
-      <div className="ai-usage" aria-label="AI usage and token estimate">
-        <div>
-          <span>{cloud ? "Cloud calls this session" : "Local calls this session"}</span>
-          <strong>{modelCallCount}</strong>
+      <details className={`readiness-disclosure${readinessComplete ? " is-ready" : ""}`}>
+        <summary>
+          <span>Connection details</span>
+          <small>{readyStepCount}/{readinessSteps.length} checks</small>
+        </summary>
+        <ol className="readiness-stepper" aria-label="AI setup readiness">
+          {readinessSteps.map((step, index) => (
+            <li key={step.label} className={`readiness-step ${step.status}`}>
+              <span className="readiness-step-index" aria-hidden="true">{index + 1}</span>
+              <div>
+                <strong>{step.label}</strong>
+                <span>{step.detail}</span>
+                {step.command ? <code>{step.command}</code> : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </details>
+      <details className="settings-disclosure">
+        <summary>
+          <span>Retrieval &amp; explanation</span>
+          <small>{settings.provider === "ollama" ? settings.embeddingModel : settings.rosettaLanguage}</small>
+        </summary>
+        <div className="settings-disclosure-body">
+          {settings.provider === "ollama" ? (
+            <>
+              <label className="form-row">
+                <span>Embedding model</span>
+                <input
+                  value={settings.embeddingModel}
+                  spellCheck={false}
+                  placeholder={DEFAULT_OLLAMA_EMBEDDING_MODEL}
+                  onChange={(event) => onSettingsChange({ ...settings, embeddingModel: event.currentTarget.value })}
+                />
+              </label>
+              <label className="form-row">
+                <span>Ollama host</span>
+                <input
+                  value={settings.baseUrl}
+                  onChange={(event) => onSettingsChange({ ...settings, baseUrl: event.currentTarget.value })}
+                />
+              </label>
+              <button type="button" onClick={onWarmSemanticIndex} disabled={semanticBusy} aria-label="Prepare semantic retrieval">
+                {semanticBusy ? "Preparing semantic search…" : "Prepare semantic search"}
+              </button>
+              <div className={`settings-footnote ${semanticIndex.status}`}>{semanticIndex.message}</div>
+            </>
+          ) : null}
+          <label className="form-row">
+            <span>Explain concepts using</span>
+            <select
+              value={settings.rosettaLanguage}
+              onChange={(event) => onSettingsChange({ ...settings, rosettaLanguage: event.currentTarget.value })}
+            >
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
+              <option value="java">Java</option>
+              <option value="c#">C#</option>
+            </select>
+          </label>
+          <p className="settings-footnote">Cobolens may compare concepts with this language; it never translates or changes the source.</p>
         </div>
-        <div>
-          <span>Bulk summary input estimate</span>
-          <strong>{bulkTokenEstimate.toLocaleString()}</strong>
+      </details>
+      <details className="settings-disclosure">
+        <summary>
+          <span>Usage this session</span>
+          <small>{modelCallCount} call{modelCallCount === 1 ? "" : "s"}</small>
+        </summary>
+        <div className="settings-disclosure-body">
+          <div className="ai-usage" aria-label="AI usage and token estimate">
+            <div>
+              <span>{cloud ? "Cloud calls" : "Local calls"}</span>
+              <strong>{modelCallCount}</strong>
+            </div>
+            <div>
+              <span>Explain-all input estimate</span>
+              <strong>{bulkTokenEstimate.toLocaleString()}</strong>
+            </div>
+            <p>
+              {cloud
+                ? `Only requested explanations send cited context to ${PROVIDER_LABELS[settings.provider]}.`
+                : "Graph answers need no model. Local AI runs only when you request an explanation."}
+            </p>
+          </div>
         </div>
-        <p>
-          {cloud
-            ? `Non-graph Ask and summaries send cited context to ${PROVIDER_LABELS[settings.provider]} only when you run them.`
-            : "Graph answers need no model; summaries and non-graph Ask use localhost Ollama only when you run them."}
-        </p>
-      </div>
+      </details>
     </section>
   );
+}
+
+function modelStatusLabel(readiness: ModelReadiness, installedModelCount: number) {
+  if (readiness.status === "checking") return "Checking";
+  if (readiness.status === "ready") return "Connected";
+  if (readiness.status === "error") return "Needs attention";
+  return installedModelCount ? "Models found" : "Not checked";
 }
 
 function aiReadinessSteps({
@@ -472,7 +492,7 @@ function aiReadinessSteps({
       {
         label: "API key",
         status: hasProviderKey ? "ready" : "pending",
-        detail: hasProviderKey ? "Saved in the desktop keychain." : "Save a key before cloud Ask or summaries.",
+        detail: hasProviderKey ? "Saved in the desktop keychain." : "Save a key before cloud Chat or summaries.",
       },
       {
         label: "Test",
@@ -509,7 +529,7 @@ function aiReadinessSteps({
       label: "Generation model",
       status: localModelStatus(modelReadiness, hasModelList, modelInList),
       detail: modelInList
-        ? `${configuredModel} is available for Ask and summaries.`
+        ? `${configuredModel} is available for Chat and summaries.`
         : hasModelList
           ? `${configuredModel} is not in the installed model list.`
           : "Run Check AI or Refresh to confirm the configured generation model.",
@@ -528,7 +548,7 @@ function aiReadinessSteps({
     {
       label: "Semantic index",
       status: semanticStepStatus(semanticIndex, embeddingInList),
-      detail: semanticIndex.message || "Load a graph and warm local embeddings for semantic Ask retrieval.",
+      detail: semanticIndex.message || "Load a graph and prepare local embeddings for semantic Chat retrieval.",
     },
     {
       label: "Test",
@@ -537,7 +557,7 @@ function aiReadinessSteps({
         ? "A quick local generation returned text."
         : modelReadiness.status === "checking"
           ? "Checking local generation with the configured model."
-          : "Run Check AI before relying on model-backed Ask or summaries.",
+          : "Check the connection before relying on model-backed Chat or summaries.",
     },
   ];
 }

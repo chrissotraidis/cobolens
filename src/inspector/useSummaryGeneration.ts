@@ -41,13 +41,13 @@ export function useSummaryGeneration({
 
   async function generateSelectedSummary() {
     if (!graph || !selectedNode) return;
-    onTabChange("summary");
+    onTabChange("ask");
     await generateSummaryForNode(selectedNode);
   }
 
   async function generateAllSummaries() {
     if (!graph || !summaryNodes.length) return;
-    onTabChange("summary");
+    onTabChange("ask");
     setBulkSummaryStatus(`0/${summaryNodes.length}`);
     let fallbackCount = 0;
     for (let index = 0; index < summaryNodes.length; index += 1) {
@@ -156,7 +156,7 @@ export function useSummaryGeneration({
     };
     storeSummary(selectedNode.id, summary);
     onFocusNode(selectedNode.id, { preserveChat: true });
-    onTabChange("summary");
+    onTabChange("ask");
   }
 
   function cancelSummary() {

@@ -32,16 +32,17 @@ export function InspectorPane({
   aiConfigured,
   onStartResize,
   onResetWidth,
+  onClose,
   onTabChange,
   onOpenSettings,
   onQuestionChange,
   onAsk,
+  onAskSuggestion,
   onCancelAsk,
   onGenerateSelected,
   onGenerateAll,
   onCancelSummary,
   onExplainNode,
-  onAskFollowUp,
   onViewSource,
   onOpenSummaryCitation,
   onFocusNode,
@@ -67,16 +68,17 @@ export function InspectorPane({
   aiConfigured: boolean;
   onStartResize: (event: ReactPointerEvent) => void;
   onResetWidth: () => void;
+  onClose: () => void;
   onTabChange: (tab: InspectorTab) => void;
   onOpenSettings: () => void;
   onQuestionChange: (question: string) => void;
   onAsk: (mode?: ChatMode) => void;
+  onAskSuggestion: (question: string) => void;
   onCancelAsk: () => void;
   onGenerateSelected: () => void;
   onGenerateAll: () => void;
   onCancelSummary: () => void;
   onExplainNode: () => void;
-  onAskFollowUp: () => void;
   onViewSource: () => void;
   onOpenSummaryCitation: (citation: Citation) => void;
   onFocusNode: (nodeId: string) => void;
@@ -110,20 +112,22 @@ export function InspectorPane({
               <small>No selection</small>
             </>
           )}
+          <button type="button" className="inspector-close" onClick={onClose} aria-label="Close inspector">Close</button>
         </div>
         {!graph ? (
-          <div className="inspector-empty">
-            <p>
-              {desktopAvailable
-                ? "Open the bundled sample or a COBOL folder to inspect symbols, dependencies, and cited source here."
-                : "Open the bundled sample to inspect symbols, dependencies, and cited source here."}
-            </p>
+          <div className="inspector-empty inspector-welcome">
+            <span>How an investigation works</span>
+            <ol>
+              <li><strong>Trace</strong><small>Select a symbol and follow its direct relationships.</small></li>
+              <li><strong>Prove</strong><small>Open the exact source line behind an edge or claim.</small></li>
+              <li><strong>Explain</strong><small>Chat in context; every useful answer stays tied to evidence.</small></li>
+            </ol>
+            <p>{desktopAvailable ? "Import a project or open the sample to begin." : "Open the sample to begin."}</p>
           </div>
         ) : (
           <>
             <InspectorTabs
               activeTab={activeTab}
-              summaryStatus={summaryState?.status}
               dependencyCount={dependencyCount}
               selectedRelationship={Boolean(selectedEdge)}
               onChange={onTabChange}
@@ -142,29 +146,30 @@ export function InspectorPane({
                   question={chatQuestion}
                   aiConfigured={aiConfigured}
                   canAsk={Boolean(graph)}
+                  overview={(
+                    <SummaryDock
+                      node={selectedNode}
+                      graph={graph}
+                      state={summaryState}
+                      settings={modelSettings}
+                      modelReadiness={modelReadiness}
+                      summaryUnitCount={summaryUnitCount}
+                      bulkStatus={bulkSummaryStatus}
+                      aiConfigured={aiConfigured}
+                      onGenerateSelected={onGenerateSelected}
+                      onGenerateAll={onGenerateAll}
+                      onCancelSummary={onCancelSummary}
+                      onExplainNode={onExplainNode}
+                      onAskSuggestion={onAskSuggestion}
+                      onOpenSettings={onOpenSettings}
+                      onViewSource={onViewSource}
+                      onOpenCitation={onOpenSummaryCitation}
+                    />
+                  )}
                   onOpenSettings={onOpenSettings}
                   onQuestionChange={onQuestionChange}
                   onAsk={onAsk}
                   onCancel={onCancelAsk}
-                />
-              ) : null}
-              {activeTab === "summary" ? (
-                <SummaryDock
-                  node={selectedNode}
-                  graph={graph}
-                  state={summaryState}
-                  settings={modelSettings}
-                  modelReadiness={modelReadiness}
-                  summaryUnitCount={summaryUnitCount}
-                  bulkStatus={bulkSummaryStatus}
-                  aiConfigured={aiConfigured}
-                  onGenerateSelected={onGenerateSelected}
-                  onGenerateAll={onGenerateAll}
-                  onCancelSummary={onCancelSummary}
-                  onExplainNode={onExplainNode}
-                  onAskFollowUp={onAskFollowUp}
-                  onOpenSettings={onOpenSettings}
-                  onViewSource={onViewSource}
                   onOpenCitation={onOpenSummaryCitation}
                 />
               ) : null}

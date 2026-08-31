@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GraphNode, SourceFileContent } from "../lib/graph";
 import { readSourceFile } from "../lib/sourceReader";
 import type { SourceFocus } from "../workspace/WorkspacePane";
@@ -28,6 +28,7 @@ export function useSourceFile({
   encoding: string;
   revision: string;
 }) {
+  const sourceCacheRef = useRef(new Map<string, { sourceFilesRef: Record<string, string>; source: SourceFileContent }>());
   const target = useMemo(
     () => sourceFocus ?? (selectedNode?.file ? { file: selectedNode.file, line: selectedNode.lines?.[0] ?? 1, nodeId: selectedNode.id } : null),
     [selectedNode, sourceFocus],
@@ -52,10 +53,21 @@ export function useSourceFile({
     }
 
     let cancelled = false;
+    const cached = sourceCacheRef.current.get(fileKey);
+    if (cached?.sourceFilesRef === browserSourceFiles) {
+      setState({ fileKey, sourceFilesRef: browserSourceFiles, source: cached.source, loading: false, error: "" });
+      return;
+    }
     setState({ fileKey, sourceFilesRef: browserSourceFiles, source: null, loading: true, error: "" });
     readSourceFile(root, sourceBase, browserSourceFiles, target.file, target.line, encoding)
       .then((result) => {
         if (!cancelled) {
+          sourceCacheRef.current.set(fileKey, { sourceFilesRef: browserSourceFiles, source: result });
+          while (sourceCacheRef.current.size > 24) {
+            const oldestKey = sourceCacheRef.current.keys().next().value;
+            if (oldestKey === undefined) break;
+            sourceCacheRef.current.delete(oldestKey);
+          }
           setState({ fileKey, sourceFilesRef: browserSourceFiles, source: result, loading: false, error: "" });
         }
       })

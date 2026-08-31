@@ -66,8 +66,8 @@ const checks = {
     'aria-label={showGraphNodeList ? "Hide the list of visible nodes" : "List the nodes visible on the map"}',
     'className="toggle-button"',
   ]),
-  "Ask and citation controls remain named": includesAll(uiSource, [
-    'aria-label="Ask about the codebase"',
+  "Chat and citation controls remain named": includesAll(uiSource, [
+    'aria-label="Chat about the codebase"',
     'aria-label="Answer route"',
     "aria-label={`Open citation ${citation.label} at ${citationSite(citation)}`}",
     'aria-live="polite"',

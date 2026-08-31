@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Citation } from "../retrieval/context";
 
-const EVIDENCE_PREVIEW_LIMIT = 4;
+const EVIDENCE_PREVIEW_LIMIT = 3;
 
 export function EvidenceList({
   citations,

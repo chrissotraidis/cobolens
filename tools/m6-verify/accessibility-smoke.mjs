@@ -49,7 +49,7 @@ const checks = {
   ]),
   "landmark focus rings are visible": includesAll(appCss, [
     ".left-pane:focus-visible",
-    ".graph-pane:focus-visible",
+    ".center-pane:focus-visible",
     ".code-panel:focus-visible",
     ".chat-panel:focus-visible",
     "outline: 2px solid rgba(102, 194, 165, 0.88)",

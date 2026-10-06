@@ -1,8 +1,10 @@
-import type { ChangeEvent, KeyboardEvent, RefObject } from "react";
+import { type ChangeEvent, type KeyboardEvent, type RefObject, useEffect, useRef } from "react";
 import type { ScanSettings } from "../lib/appSettings";
 import { type ModelSettings, PROVIDER_LABELS } from "../model/config";
 
 type TopBarStatus = "idle" | "running" | "ready" | "error";
+
+const SEARCH_SHORTCUT = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
 
 const BROWSER_DIRECTORY_INPUT_PROPS = {
   directory: "",
@@ -50,6 +52,22 @@ export function TopBar({
   onExport: () => void;
   onOpenSettings: () => void;
 }) {
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Cmd/Ctrl+K jumps to symbol search from anywhere in the workspace.
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      const input = searchInputRef.current;
+      if (!input || input.disabled) return;
+      event.preventDefault();
+      input.focus();
+      input.select();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -86,15 +104,22 @@ export function TopBar({
       </div>
 
       <label className="global-search">
+        <svg className="global-search-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d="m10.4 10.4 3.1 3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
         <input
+          ref={searchInputRef}
           type="search"
           aria-label="Search symbols"
+          aria-keyshortcuts="Meta+K Control+K"
           placeholder="Find programs, copybooks, jobs..."
           value={query}
           onChange={(event) => onQueryChange(event.currentTarget.value)}
           onKeyDown={onSearchKeyDown}
           disabled={!graphLoaded}
         />
+        {graphLoaded && !query ? <kbd className="global-search-shortcut" aria-hidden="true">{SEARCH_SHORTCUT}</kbd> : null}
       </label>
 
       <nav className="breadcrumbs" aria-label="Breadcrumb history">

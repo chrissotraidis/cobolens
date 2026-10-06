@@ -70,7 +70,7 @@ export function SourceFileView({
       </div>
       {source && focusedCitation ? (
         <div className="source-focus-note" role="status">
-          Focused citation: {source.file}:{source.highlightLine}
+          Focused citation: <code>{source.file}:{source.highlightLine}</code>
         </div>
       ) : null}
       <pre>

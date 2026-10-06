@@ -38,7 +38,9 @@ jobs:
         run: cargo install cargo-audit --locked
 
       - name: Audit Tauri Rust dependencies
-        run: cargo audit --file src-tauri/Cargo.lock
+        working-directory: src-tauri
+        run: cargo audit
 
       - name: Audit analyzer Rust dependencies
-        run: cargo audit --file sidecar/cobolens-analyze/Cargo.lock
+        working-directory: sidecar/cobolens-analyze
+        run: cargo audit

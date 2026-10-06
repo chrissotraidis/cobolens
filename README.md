@@ -65,7 +65,7 @@ Open <http://127.0.0.1:1420>, choose **Explore samples**, and start with **Linea
 
 ### Open your own codebase
 
-Importing folders runs through the Tauri desktop app. Install Rust from <https://rustup.rs/>, then run:
+Importing folders runs through the Tauri desktop app. Install Rust/Cargo from <https://rustup.rs/>, then run:
 
 ```sh
 cargo build --manifest-path sidecar/cobolens-analyze/Cargo.toml
@@ -191,6 +191,13 @@ Cobolens is a **v1 release candidate** covering the planned M0 to M6 scope.
 | Desktop | macOS launch and Linux packaging validated; unsigned macOS, Windows and Linux bundles built in CI |
 | Not claimed | Signed or notarized installers, full enterprise dialect coverage, behavior equivalence |
 
+The Tauri desktop app is the v1 product.
+The browser build is a QA and demo surface: it cannot prove folder access, keychain storage, desktop caching or packaged behavior.
+GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA.
+These are unsigned QA/release-candidate bundles.
+Unsigned artifacts are not public release installers.
+Signed public installers are not claimed until platform signing and notarization are set up and checked.
+
 See the [PRD](docs/COBOL-Lens-PRD.md), [readiness audit](docs/v1-readiness-audit.md) and
 [product design contract](docs/PRODUCT-DESIGN.md) for scope and evidence.
 
@@ -234,8 +241,9 @@ project still loads. Small reproducible examples of parser gaps are very welcome
 <details>
 <summary><strong>Is there a signed installer?</strong></summary>
 
-Not yet. CI builds unsigned macOS, Windows and Linux bundles for testing. Signed and notarized installers
-will be announced once platform signing has been set up and checked.
+Not yet. CI builds unsigned macOS, Windows and Linux bundles for testing only; see the
+[release stance](#current-status) above. Signed and notarized installers will be announced once platform
+signing has been set up and checked.
 
 </details>
 
@@ -297,6 +305,11 @@ npm run v1:readiness
 ```
 
 Dependency advisories are checked weekly with `npm audit` and `cargo audit` against both Cargo lockfiles.
+
+The strict M6 compatibility assets live at `public/m6-bakeoff-graph.json` and
+`public/m6-bakeoff-source.json`. Regenerate them after analyzer changes and before a release with
+`npm run m6:fixture-graph`. If a check stops with `Missing required command: cargo`, install Rust/Cargo
+from <https://rustup.rs/> and rerun it.
 
 </details>
 

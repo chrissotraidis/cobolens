@@ -120,7 +120,7 @@ export function TopBar({
           disabled={status === "running"}
           title={desktopAvailable ? "Import a local COBOL project folder" : "Import a local COBOL project folder in this browser"}
         >
-          Import Project
+          Import<span className="topbar-label-extra"> Project</span>
         </button>
         <input
           {...BROWSER_DIRECTORY_INPUT_PROPS}

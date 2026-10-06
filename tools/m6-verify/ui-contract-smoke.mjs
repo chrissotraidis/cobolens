@@ -709,7 +709,7 @@ const checks = [
   ],
   [
     "Scrollable panes use dark native scrollbars",
-    includesAll(appCss, ["scrollbar-color: #303843 #101419", "*::-webkit-scrollbar-thumb", "background: #303843"]),
+    includesAll(appCss, ["scrollbar-color: var(--line) var(--ink-1)", "*::-webkit-scrollbar-thumb", "background: var(--line)"]),
   ],
   [
     "Relationship source buttons expose section-specific accessible labels",
@@ -842,8 +842,7 @@ const checks = [
       "{desktopAvailable ? (",
       "<ScanSettingsPanel",
     ]) && includesAll(appCss, [
-      ".topbar-import",
-      ".topbar-sample",
+      ".topbar-actions button:where(:not(.rail-toggle))",
       ".privacy-dot",
       ".home-crumb",
       ".project-import-input",

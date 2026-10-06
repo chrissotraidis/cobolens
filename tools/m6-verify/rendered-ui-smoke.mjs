@@ -36,6 +36,9 @@ async function main() {
     await setViewport(1365, 900);
     await waitFor(() => evaluate("document.title === 'Cobolens'"), "Cobolens page title");
     await waitFor(() => evaluate("Boolean(document.querySelector('.topbar-import'))"), "top-bar import action");
+    // The page can mount at the browser's default narrow size before the
+    // desktop viewport applies; drawers then settle into the desktop layout.
+    await waitFor(() => evaluate("Boolean(document.querySelector('#inspector-panel'))"), "desktop layout opens the inspector");
 
     const initial = await pageState();
     assertEqual(initial.importProjectButtons, 1, "first run shows one Import Project action");
@@ -44,7 +47,7 @@ async function main() {
     assert(initial.graphEmptyText.includes("Understand unfamiliar COBOL without guessing"), "empty graph canvas states the product promise");
     assert(initial.graphEmptyText.includes("Explore samples"), "empty graph canvas offers the sample library");
     assert(initial.graphEmptyText.includes("AI"), "empty graph canvas explains AI is optional");
-    assert(initial.inspectorText.includes("HOW AN INVESTIGATION WORKS"), "first-run inspector explains the evidence loop");
+    assert(initial.inspectorText.includes("How an investigation works"), "first-run inspector explains the evidence loop");
     assertEqual(initial.sourceTabDisabled, "true", "Source starts disabled until a source-backed symbol is selected");
     assertEqual(initial.browserImportInputHidden, "true", "browser folder input stays hidden behind Import Project");
     assertEqual(initial.searchLabel, "", "top search has no redundant visible label");
@@ -162,19 +165,19 @@ async function main() {
     assertEqual(loaded.importProjectButtons, 1, "loaded sample keeps one Import Project action");
     assertEqual(loaded.sampleButtons, 1, "loaded sample keeps one Samples action");
     assert(!loaded.topbarText.includes("Local: no code leaves"), "loaded sample keeps privacy as a compact status dot");
-    assert(!loaded.leftText.includes("INGEST"), "left rail no longer shows ingest block");
+    assert(!loaded.leftText.toUpperCase().includes("INGEST"), "left rail no longer shows ingest block");
     assert(!loaded.leftText.includes("Demo mode"), "left rail does not carry browser-mode filler copy");
-    assert(!loaded.leftText.includes("SEARCH RESULTS"), "idle left rail hides search results");
+    assert(!loaded.leftText.toUpperCase().includes("SEARCH RESULTS"), "idle left rail hides search results");
     assert(loaded.leftText.toLocaleLowerCase().includes("guided trace"), "bundled sample exposes a guided three-stop trace");
     assert(loaded.leftText.toLocaleLowerCase().includes("trace the customer dataset"), "sample tour names the strongest input lineage path");
     assert(
-      loaded.leftText.indexOf("CODEBASE") >= 0 && loaded.leftText.indexOf("CODEBASE") < loaded.leftText.indexOf("LEGEND & FILTERS"),
+      loaded.leftText.indexOf("Codebase") >= 0 && loaded.leftText.indexOf("Codebase") < loaded.leftText.indexOf("Legend & Filters"),
       "left rail prioritizes Codebase before filters",
     );
     assertEqual(loaded.activeInspectorTab, "Chat", "sample opens directly in Chat");
     assertEqual(loaded.inspectorTabLabels, "Chat|Dependencies", "inspector keeps one primary Chat surface");
     assertEqual(loaded.chatComposerVisible, "true", "Ask keeps its composer visible beside starting context");
-    assert(loaded.inspectorText.includes("CONTEXT"), "Ask starts with compact investigation context");
+    assert(loaded.inspectorText.includes("Context"), "Ask starts with compact investigation context");
     assert(loaded.inspectorText.includes("What does this do?"), "Ask offers a contextual first question");
     assertEqual(loaded.visibleEvidenceRows, 0, "Ask keeps evidence collapsed by default");
     await click(".investigation-details > summary");

@@ -51,7 +51,7 @@ export function SampleLibraryDialog({
         </header>
 
         <div className="sample-card-grid">
-          {SAMPLE_CATALOG.map((sample) => (
+          {SAMPLE_CATALOG.map((sample, index) => (
             <article className="sample-card" key={sample.id}>
               <div className="sample-card-topline">
                 <span>{sample.eyebrow}</span>
@@ -74,7 +74,13 @@ export function SampleLibraryDialog({
               <p className="sample-card-focus"><strong>Exercises</strong> {sample.focus}</p>
               <div className="sample-card-footer">
                 <span>{sample.license}</span>
-                <button type="button" className="primary-action" onClick={() => onSelect(sample.id)} disabled={Boolean(loadingSampleId)}>
+                {/* The first scenario is the recommended start, so it alone is filled. */}
+                <button
+                  type="button"
+                  className={index === 0 ? "primary-action" : undefined}
+                  onClick={() => onSelect(sample.id)}
+                  disabled={Boolean(loadingSampleId)}
+                >
                   {loadingSampleId === sample.id ? "Opening…" : "Open sample"}
                 </button>
               </div>

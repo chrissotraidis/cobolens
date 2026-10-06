@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
 
 jobs:
   dependencies:
@@ -33,14 +32,15 @@ jobs:
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 
+      # cargo-audit fails on RustSec vulnerabilities and prints informational
+      # warnings (unmaintained or unsound crates) without failing the run.
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
       - name: Audit Tauri Rust dependencies
-        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: src-tauri
+        working-directory: src-tauri
+        run: cargo audit
 
       - name: Audit analyzer Rust dependencies
-        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: sidecar/cobolens-analyze
+        working-directory: sidecar/cobolens-analyze
+        run: cargo audit

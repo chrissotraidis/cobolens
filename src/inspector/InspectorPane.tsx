@@ -122,14 +122,13 @@ export function InspectorPane({
               <li><strong>Prove</strong><small>Open the exact source line behind an edge or claim.</small></li>
               <li><strong>Explain</strong><small>Chat in context; every useful answer stays tied to evidence.</small></li>
             </ol>
-            <p>{desktopAvailable ? "Import a project or open the sample to begin." : "Open the sample to begin."}</p>
+            <p>{desktopAvailable ? "Import a project or explore a sample to begin." : "Explore a sample to begin."}</p>
           </div>
         ) : (
           <>
             <InspectorTabs
               activeTab={activeTab}
               dependencyCount={dependencyCount}
-              selectedRelationship={Boolean(selectedEdge)}
               onChange={onTabChange}
             />
             <div className="summary-stack" ref={bodyRef}>

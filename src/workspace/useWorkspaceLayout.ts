@@ -1,12 +1,22 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useState } from "react";
-import { clampRightWidth, readLayoutFlag, readLayoutNumber } from "../lib/layoutState";
+import { clampRightWidth, isOverlayLayout, OVERLAY_LAYOUT_QUERY, readLayoutFlag, readLayoutNumber } from "../lib/layoutState";
 
 export function useWorkspaceLayout() {
-  const [railCollapsed, setRailCollapsed] = useState(() => readLayoutFlag("cobolens.railCollapsed", false));
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(() => readLayoutFlag("cobolens.inspectorCollapsed", false));
+  // At tablet and phone widths both side panes are drawers over the canvas.
+  // Start those layouts with the canvas visible; desktop keeps saved panes.
+  const [railCollapsed, setRailCollapsed] = useState(() =>
+    isOverlayLayout() ? true : readLayoutFlag("cobolens.railCollapsed", false),
+  );
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(() =>
+    isOverlayLayout() ? true : readLayoutFlag("cobolens.inspectorCollapsed", false),
+  );
   const [rightWidth, setRightWidth] = useState(() => readLayoutNumber("cobolens.rightWidth", 460, 320, 860));
+  const [overlayLayout, setOverlayLayout] = useState(isOverlayLayout);
 
   useEffect(() => {
+    // Desktop preferences are the ones worth remembering; drawer state at
+    // overlay widths is transient and must not reopen a covering drawer later.
+    if (overlayLayout) return;
     try {
       window.localStorage.setItem("cobolens.railCollapsed", JSON.stringify(railCollapsed));
       window.localStorage.setItem("cobolens.inspectorCollapsed", JSON.stringify(inspectorCollapsed));
@@ -14,11 +24,37 @@ export function useWorkspaceLayout() {
     } catch {
       // Layout prefs are best-effort; never block the app.
     }
-  }, [railCollapsed, inspectorCollapsed, rightWidth]);
+  }, [overlayLayout, railCollapsed, inspectorCollapsed, rightWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia(OVERLAY_LAYOUT_QUERY);
+    const onChange = () => {
+      setOverlayLayout(query.matches);
+      // Returning to desktop restores the panes the user last chose there.
+      if (!query.matches) {
+        setRailCollapsed(readLayoutFlag("cobolens.railCollapsed", false));
+        setInspectorCollapsed(readLayoutFlag("cobolens.inspectorCollapsed", false));
+      }
+    };
+    query.addEventListener("change", onChange);
+    // The window can change size between the first render and this effect.
+    if (query.matches !== overlayLayout) onChange();
+    return () => query.removeEventListener("change", onChange);
+    // Subscribe once; onChange reads the live media query.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Two drawers would bury the canvas. When both are open in the overlay
+  // layout (for example after narrowing the window), keep the conversation.
+  useEffect(() => {
+    if (overlayLayout && !railCollapsed && !inspectorCollapsed) setRailCollapsed(true);
+  }, [overlayLayout, railCollapsed, inspectorCollapsed]);
 
   const toggleRailCollapsed = useCallback(() => {
-    setRailCollapsed((collapsed) => !collapsed);
-  }, []);
+    if (railCollapsed && overlayLayout) setInspectorCollapsed(true);
+    setRailCollapsed(!railCollapsed);
+  }, [overlayLayout, railCollapsed]);
 
   const toggleInspectorCollapsed = useCallback(() => {
     setInspectorCollapsed((collapsed) => !collapsed);

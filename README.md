@@ -1,49 +1,57 @@
-<div align="center">
-  <img src="public/cobolens-banner.png" alt="Cobolens — trace unfamiliar COBOL systems and prove every answer" width="100%">
-  <h1>Cobolens</h1>
-  <p><strong>Trace the system. Prove every answer.</strong></p>
-  <p>A free, open-source, local-first investigation desk for COBOL, copybooks, and JCL.</p>
-  <p><sub>No account · AI optional · Graph answers work offline · MIT licensed</sub></p>
-  <p>
-    <a href="https://github.com/chrissotraidis/cobolens/actions/workflows/health.yml"><img alt="Health" src="https://github.com/chrissotraidis/cobolens/actions/workflows/health.yml/badge.svg"></a>
-    <a href="https://github.com/chrissotraidis/cobolens/actions/workflows/package.yml"><img alt="Packages" src="https://github.com/chrissotraidis/cobolens/actions/workflows/package.yml/badge.svg"></a>
-    <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-69c8ad.svg"></a>
-    <a href="#local-ai-is-optional"><img alt="Local-first" src="https://img.shields.io/badge/privacy-local--first-69c8ad.svg"></a>
-  </p>
-  <p>
-    <a href="#quick-start">Quick start</a> ·
-    <a href="#sample-library">Explore samples</a> ·
-    <a href="#how-it-works">How it works</a> ·
-    <a href="docs/PRODUCT-DESIGN.md">Product design</a> ·
-    <a href="docs/COBOL-Lens-PRD.md">PRD</a>
-  </p>
-</div>
+<p align="center">
+  <img src="public/favicon.png" width="96" height="96" alt="Cobolens logo">
+</p>
 
-Cobolens turns an unfamiliar mainframe-adjacent codebase into an evidence trail you can follow. Start from a job, program, copybook, dataset, or search result; trace its relationships; open the exact source behind an edge; ask questions in context; and export what you learned.
+<h1 align="center">Cobolens</h1>
 
-It helps you **understand existing systems**. It does not translate, migrate, generate, or modify COBOL.
+<p align="center">
+  <strong>Trace unfamiliar COBOL systems and prove every answer.</strong><br>
+  A free, local-first investigation desk for COBOL, copybooks and JCL. Follow a dependency on the map,
+  open the exact source line behind it, and ask questions that stay tied to evidence.
+</p>
 
-![Cobolens showing a CardDemo program map beside contextual Chat](docs/audits/human-compact-loop-6-2026-08-31/screenshots/05-after-map-chat-visible-nodes.jpg)
+<p align="center">
+  <a href="https://github.com/chrissotraidis/cobolens/actions/workflows/health.yml"><img alt="Health checks" src="https://github.com/chrissotraidis/cobolens/actions/workflows/health.yml/badge.svg"></a>
+  <a href="https://github.com/chrissotraidis/cobolens/actions/workflows/package.yml"><img alt="Desktop packages" src="https://github.com/chrissotraidis/cobolens/actions/workflows/package.yml/badge.svg"></a>
+  <img alt="macOS, Windows and Linux" src="https://img.shields.io/badge/desktop-macOS%20%7C%20Windows%20%7C%20Linux-0A84FF">
+  <img alt="COBOL, copybooks and JCL" src="https://img.shields.io/badge/reads-COBOL%20%7C%20copybooks%20%7C%20JCL-FF9F0A">
+  <img alt="Local-first: graph answers never leave your machine" src="https://img.shields.io/badge/privacy-local--first-30D158">
+  <img alt="AI is optional" src="https://img.shields.io/badge/AI-optional-5E5CE6">
+  <img alt="Status: v1 release candidate" src="https://img.shields.io/badge/status-v1%20release%20candidate-FFD60A">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
+  <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
+</p>
 
-## Why Cobolens
+![Cobolens tracing the CUSTOMER copybook on the dependency map, with a cited graph answer in Chat](docs/images/cobolens-map-chat.jpg)
 
-| Evidence first | Local by default | Built for inherited systems | AI is optional |
-| --- | --- | --- | --- |
-| Important claims lead back to a relationship or exact source range. | Graph analysis, source inspection, export, and local Ollama can stay on your machine. | COBOL, copybooks, JCL, datasets, CICS, DB2, IMS, and MQ appear in one investigation workspace. | Structural questions work from the parsed graph. AI only explains the cited context you choose to send. |
+*The Lineage quick tour sample: the CUSTOMER copybook on the map, and a graph answer in Chat where every claim names its file and line.*
 
-Use Cobolens when you need to answer questions such as:
+**[Get Cobolens](#get-cobolens) · [How it works](#how-it-works) · [Samples](#sample-library) ·
+[Status](#current-status) · [FAQ](#frequently-asked-questions) · [Discord](https://discord.gg/xwHfUD2bxW)**
 
-- Where does this value come from?
-- What reads or writes this dataset?
-- What depends on this copybook?
-- Why are these programs connected?
-- Can I explain this path and cite the code behind it?
+> [!IMPORTANT]
+> **Cobolens helps you understand existing systems.** It does not translate, migrate, generate or modify
+> COBOL. Structural answers come from a parsed dependency graph and work offline with no account and no
+> model. AI is an optional explanation layer over the evidence you choose to send.
+>
+> **AI disclosure:** Cobolens is developed with substantial AI assistance. The
+> [readiness audit](docs/v1-readiness-audit.md) records what has actually been checked.
 
-## Quick Start
+## Get Cobolens
 
-### Explore the bundled samples in two minutes
+| You want to | What to do |
+| --- | --- |
+| **Try it in two minutes** | Run the [browser preview](#try-the-browser-preview) and open a bundled sample |
+| **Open your own codebase** | Run the [desktop app from source](#open-your-own-codebase) on macOS, Windows or Linux |
+| **Test a packaged build** | Download an unsigned bundle from the latest [package run](https://github.com/chrissotraidis/cobolens/actions/workflows/package.yml) (GitHub sign-in required) |
 
-The browser preview needs Node.js 22+ and uses committed offline graph/source assets—no Rust toolchain, COBOL project, account, or AI setup required.
+**Questions or bugs?** Ask on [Discord](https://discord.gg/xwHfUD2bxW) or
+[open an issue](https://github.com/chrissotraidis/cobolens/issues).
+
+### Try the browser preview
+
+You need Node.js 22 or later. The preview uses committed graph and source files, so there is nothing else
+to install: no Rust toolchain, COBOL project, account or AI setup.
 
 ```sh
 git clone https://github.com/chrissotraidis/cobolens.git
@@ -52,57 +60,29 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 1420
 ```
 
-Open <http://127.0.0.1:1420>, choose **Samples**, and start with **Lineage quick tour**. Move to **CardDemo system** when you want to test the large-project experience.
+Open <http://127.0.0.1:1420>, choose **Explore samples**, and start with **Lineage quick tour**. Move to
+**CardDemo system** when you want to see a 6,139-node project.
 
-### Open your own local codebase
+### Open your own codebase
 
-Folder access runs through the Tauri desktop shell. Prerequisite: Rust/Cargo from <https://rustup.rs/>. Then run:
+Importing folders runs through the Tauri desktop app. Install Rust/Cargo from <https://rustup.rs/>, then run:
 
 ```sh
 cargo build --manifest-path sidecar/cobolens-analyze/Cargo.toml
 npm run tauri dev
 ```
 
-Choose **Import Project** and select the folder containing your COBOL, copybooks, and JCL. Cobolens scans supported source locally and reports files it could not fully parse without dropping the rest of the project.
+Choose **Import Project** and select the folder that holds your COBOL, copybooks and JCL. Cobolens scans
+supported files locally and lists anything it could not fully parse in **Parse Health**, without dropping
+the rest of the project.
 
 > [!NOTE]
-> The browser preview is a fast product/demo surface. Importing arbitrary folders, OS-keychain storage, packaged caching, and desktop-runtime behavior require the Tauri app.
+> The browser preview can also import a folder you pick, but OS keychain storage, desktop caching and
+> packaged behavior need the desktop app.
 
-## Sample Library
+## How it works
 
-Four offline scenarios move from a guided four-file trace to a 6,139-node public system. The three public corpora retain their upstream Apache-2.0 license, pinned revision, and provenance.
-
-| Scenario | Scale | Parsed | Graph | Best first question |
-| --- | --- | ---: | ---: | --- |
-| **Lineage quick tour** · Cobolens fixture | Quick tour | 4/4 files | 28 nodes · 33 edges | What does `DAILYLN` run? |
-| **Customer report batch** · [IBM Z Open Editor](https://github.com/IBM/zopeneditor-sample) | Medium | 23/23 files | 286 nodes · 979 edges | What uses `TRANREC`? |
-| **Claims API requester** · [IBM z/OS Connect](https://github.com/zosconnect/zosconnect-sample-cobol-apirequester) | Integration | 11/11 files | 188 nodes · 263 edges | How does `CLAIMCI0` reach the API stub? |
-| **CardDemo system** · [AWS CardDemo](https://github.com/aws-samples/aws-mainframe-modernization-carddemo) | Large | 152/152 files | 6,139 nodes · 14,008 edges | What reads the account VSAM dataset? |
-
-All four graph/source pairs were served and revalidated on 2026-08-31. See [the sample library guide](docs/SAMPLE-LIBRARY.md) for pinned commits, licenses, parser warnings, regeneration, and hardening findings.
-
-<details>
-<summary><strong>Reproduce the sample checks</strong></summary>
-
-```sh
-node tools/m6-verify/sample-library-smoke.mjs
-node tools/m6-verify/ui-contract-smoke.mjs
-npm run build
-```
-
-The sample smoke checks catalog registration, graph shape, source-bundle parity, pinned provenance, and license retention. The current counts include 31 visible, non-fatal fallback warnings across the three public corpora.
-
-The strict M6 compatibility assets remain at `public/m6-bakeoff-graph.json` and
-`public/m6-bakeoff-source.json`. Regenerate them after analyzer changes and
-before a release with:
-
-```sh
-npm run m6:fixture-graph
-```
-
-</details>
-
-## How It Works
+Cobolens is built around one loop. Every screen serves a step of it.
 
 ```mermaid
 flowchart LR
@@ -114,51 +94,57 @@ flowchart LR
   D -. "cited answer" .-> C
 ```
 
-1. **Orient** — choose a job, program, copybook, dataset, guided stop, or search result.
-2. **Trace** — follow direct dependencies in a focus-and-expand map instead of rendering a full-graph hairball.
-3. **Prove** — open the relationship and cited source lines behind the connection.
-4. **Explain** — continue in Chat with the current graph/source context attached.
-5. **Carry forward** — export Markdown, Mermaid, and PNG documentation.
+1. **Orient:** pick a job, program, copybook, dataset, guided stop or search result.
+2. **Trace:** follow its direct relationships on a focused map, not a full-graph hairball.
+3. **Prove:** open the relationship and the exact source line behind it.
+4. **Explain:** ask in Chat with the current selection as context. Answers keep their citations.
+5. **Carry forward:** export Markdown, Mermaid and PNG documentation.
 
-The three coordinated work areas keep that loop visible:
-
-| Navigator | Map / Source | Chat / Dependencies |
+| Navigator | Map and Source | Chat and Dependencies |
 | --- | --- | --- |
-| Browse codebase units, guided traces, filters, inventory, parse health, and graph hints. | Focus one symbol, expand its neighborhood, inspect relationships, and switch directly to cited source. | Ask in the selected context, inspect evidence, follow reverse dependencies, and open exact usage sites. |
+| Codebase tree, guided traces, filters, inventory, parse health and graph hints. | Focus one symbol, expand its neighborhood, and jump straight to cited source. | Ask about the selection, review evidence, follow reverse dependencies and open exact usage sites. |
 
 <p align="center">
-  <img src="docs/audits/human-compact-loop-6-2026-08-31/screenshots/06-after-source-chat.jpg" alt="Cobolens Source and Chat view" width="49%">
-  <img src="docs/audits/human-compact-loop-6-2026-08-31/screenshots/07-after-settings.jpg" alt="Cobolens simplified Settings" width="49%">
+  <img src="docs/images/cobolens-source-citation.jpg" alt="Cobolens Source view highlighting COPY CUSTOMER at src/LINEAGE.cbl line 11, with the relationship detail beside it" width="49%">
+  <img src="docs/images/cobolens-carddemo.jpg" alt="Cobolens map focused on the CBACT01C program in the AWS CardDemo sample" width="49%">
 </p>
 
-## Current Status
+## Sample library
 
-Cobolens is a local **v1 release candidate** on the implemented M0–M6 scope.
+Four offline scenarios run from a four-file guided trace to a 6,139-node public system. The three public
+corpora keep their upstream Apache-2.0 license, pinned revision and provenance.
 
-- Focus-and-expand graph, source sync, search, filters, citations, Dependencies, Chat, and documentation export are implemented.
-- The Rust analyzer is the production v1 parser behind a replaceable `GraphDocument` contract.
-- Large-project navigation uses indexed adjacency, bounded source pages, cached reads, and explicit—not hidden—semantic preparation.
-- Local macOS launch and Linux packaging are validated. GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA.
-- Signed and notarized public installers, enterprise parser coverage, and behavior-equivalence guarantees are **not** claimed.
+![The Cobolens sample library with four scenarios, from the Lineage quick tour to the CardDemo system](docs/images/cobolens-samples.jpg)
 
-See the [current PRD](docs/COBOL-Lens-PRD.md), [readiness audit](docs/v1-readiness-audit.md), and [product design contract](docs/PRODUCT-DESIGN.md) for the exact scope and evidence.
+| Scenario | Scale | Parsed | Graph | Good first question |
+| --- | --- | ---: | ---: | --- |
+| **Lineage quick tour** · Cobolens fixture | Quick tour | 4/4 files | 28 nodes · 33 edges | What does `DAILYLN` run? |
+| **Customer report batch** · [IBM Z Open Editor](https://github.com/IBM/zopeneditor-sample) | Medium | 23/23 files | 286 nodes · 979 edges | What uses `TRANREC`? |
+| **Claims API requester** · [IBM z/OS Connect](https://github.com/zosconnect/zosconnect-sample-cobol-apirequester) | Integration | 11/11 files | 188 nodes · 263 edges | How does `CLAIMCI0` reach the API stub? |
+| **CardDemo system** · [AWS CardDemo](https://github.com/aws-samples/aws-mainframe-modernization-carddemo) | Large | 152/152 files | 6,139 nodes · 14,008 edges | What reads the account VSAM dataset? |
 
-## Local AI Is Optional
+The [sample library guide](docs/SAMPLE-LIBRARY.md) lists pinned commits, licenses, the 31 visible parser
+fallback warnings across the public corpora, and how to regenerate the assets.
 
-The map, source reader, Dependencies, graph-grounded Chat, and export do not need a model. AI is an opt-in explanation layer over retrieved, cited context.
+## Local AI is optional
+
+The map, source reader, Dependencies, graph answers in Chat, and export need no model. AI explains
+retrieved, cited context when you ask it to.
 
 | Route | Where it runs | What leaves your machine |
 | --- | --- | --- |
-| Graph Chat | Inside Cobolens | Nothing |
-| Local AI · Ollama | `127.0.0.1:11434` | Nothing |
-| Cloud AI · Anthropic, OpenAI, or OpenRouter | Selected provider | Only the retrieved graph/source slice and your question |
+| Graph answers | Inside Cobolens | Nothing |
+| Local AI with Ollama | `127.0.0.1:11434` | Nothing |
+| Cloud AI with Anthropic, OpenAI or OpenRouter | The provider you choose | Only the retrieved graph and source slice plus your question |
 
-Generated answers are citation-guarded. Cobolens keeps supported cited claims, removes unsupported claims, and falls back to explicit graph evidence when a model response cannot be trusted.
+Model answers are citation-guarded: supported cited claims are kept, unsupported claims are removed, and
+Cobolens falls back to an explicit graph answer when a response cannot be trusted.
 
 <details>
-<summary><strong>Configure local Ollama</strong></summary>
+<summary><strong>Set up local Ollama</strong></summary>
 
-Ollama is the default provider, but Cobolens does not assume it is installed or running. A smaller generation model is the easiest first test:
+Ollama is the default provider, but Cobolens never assumes it is installed or running. A small model is
+the easiest first test:
 
 ```sh
 ollama pull llama3.2:1b
@@ -170,9 +156,10 @@ Semantic retrieval is optional and uses a separate embedding model:
 ollama pull nomic-embed-text
 ```
 
-In Cobolens, open **Settings**, choose **Local AI**, select a generation model, and run **Check connection**. Prepare semantic search only when you want broader source retrieval; project loading never starts an embedding job silently.
+In Cobolens, open **Settings**, choose **Local AI**, pick a model and run **Check connection**. Semantic
+search is prepared only when you ask for it; loading a project never starts an embedding job.
 
-Verify the complete local path with:
+Check the whole local path with:
 
 ```sh
 npm run ollama:check
@@ -181,274 +168,198 @@ npm run ollama:ask-smoke
 npm run ollama:semantic-smoke
 ```
 
-Set `COBOLENS_READINESS_MODEL` or pass a model to the Chat smoke when comparing local models:
+</details>
 
-```sh
-npm run ollama:ask-smoke -- qwen3.5:2b-nvfp4
-```
+<details>
+<summary><strong>Use a cloud provider</strong></summary>
+
+Choose Anthropic, OpenAI or OpenRouter in **Settings**, enter the key, and save it to the OS keychain.
+Keys are never written to plaintext settings. The interface shows when cloud mode is active before any
+request sends code context.
+
+</details>
+
+## Current status
+
+Cobolens is a **v1 release candidate** covering the planned M0 to M6 scope.
+
+| Area | State |
+| --- | --- |
+| Map, source sync, search, filters, citations, Dependencies, Chat, export | Implemented |
+| Parser | Rust analyzer behind a replaceable `GraphDocument` contract |
+| Large projects | Indexed adjacency, paged source, cached reads; checked on CardDemo |
+| Desktop | macOS launch and Linux packaging validated; unsigned macOS, Windows and Linux bundles built in CI |
+| Not claimed | Signed or notarized installers, full enterprise dialect coverage, behavior equivalence |
+
+The Tauri desktop app is the v1 product.
+The browser build is a QA and demo surface: it cannot prove folder access, keychain storage, desktop caching or packaged behavior.
+GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA.
+These are unsigned QA/release-candidate bundles.
+Unsigned artifacts are not public release installers.
+Signed public installers are not claimed until platform signing and notarization are set up and checked.
+
+See the [PRD](docs/COBOL-Lens-PRD.md), [readiness audit](docs/v1-readiness-audit.md) and
+[product design contract](docs/PRODUCT-DESIGN.md) for scope and evidence.
+
+## Frequently asked questions
+
+<details>
+<summary><strong>Does Cobolens send my code anywhere?</strong></summary>
+
+Not unless you choose a cloud AI provider. Scanning, the map, source reading, graph answers and export run
+on your machine. Local AI talks only to Ollama on `127.0.0.1`. A cloud provider receives the
+retrieved slice and your question, and the interface labels that mode before anything is sent.
 
 </details>
 
 <details>
-<summary><strong>Configure a cloud provider</strong></summary>
+<summary><strong>Do I need AI or Ollama?</strong></summary>
 
-Choose Anthropic, OpenAI, or OpenRouter in **Settings**, enter the provider key, and save it to the OS keychain. Cobolens does not write cloud keys to its plaintext app settings. The interface identifies cloud mode before a model-backed request sends retrieved code context.
+No. Questions such as "what uses this copybook?" or "what runs this program?" are answered from the
+dependency graph with citations. AI only adds broader explanations on request.
 
 </details>
 
-## Build And Package
+<details>
+<summary><strong>Can it convert COBOL to Java or another language?</strong></summary>
 
-The Tauri desktop app is the v1 product. GitHub Actions builds unsigned Linux, Windows, and macOS bundles for QA; signed public installers are not claimed yet.
+No. Cobolens is an understanding tool. Translation, code generation, behavior-equivalence checks and live
+mainframe connections are explicit non-goals for v1.
+
+</details>
 
 <details>
-<summary><strong>Linux prerequisites and package commands</strong></summary>
+<summary><strong>Which files and dialects does it read?</strong></summary>
 
-Install Tauri Linux prerequisites:
+By default `.cbl`, `.cob`, `.cpy` and `.jcl` (change this in **Settings**). The analyzer
+targets IBM Enterprise COBOL style source plus JCL, and records CICS, DB2, IMS and MQ references.
+Anything it cannot fully parse shows up in **Parse Health** with the file and reason, and the rest of the
+project still loads. Small reproducible examples of parser gaps are very welcome as issues.
 
-```sh
-sudo apt-get update
-sudo apt-get install -y \
-  pkg-config \
-  libdbus-1-dev \
-  libwebkit2gtk-4.1-dev \
-  libjavascriptcoregtk-4.1-dev \
-  libsoup-3.0-dev \
-  libgtk-3-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev \
-  patchelf
-```
+</details>
 
-Check packaging readiness:
+<details>
+<summary><strong>Is there a signed installer?</strong></summary>
+
+Not yet. CI builds unsigned macOS, Windows and Linux bundles for testing only; see the
+[release stance](#current-status) above. Signed and notarized installers will be announced once platform
+signing has been set up and checked.
+
+</details>
+
+<details>
+<summary><strong>Where can I get help?</strong></summary>
+
+Join the [Discord](https://discord.gg/xwHfUD2bxW) or
+[open an issue](https://github.com/chrissotraidis/cobolens/issues). Please never post proprietary
+source, credentials or production data.
+
+</details>
+
+## Build, package and verify
+
+<details>
+<summary><strong>Package the desktop app</strong></summary>
 
 ```sh
 npm run m6:packaging-readiness
-```
-
-Build release bundles:
-
-```sh
 npm run tauri build
 ```
 
-The release build runs:
+`npm run tauri build` compiles the frontend and the Rust analyzer sidecar, then packages app resources.
+On Linux, install the Tauri prerequisites first:
 
 ```sh
-npm run tauri:before-build
+sudo apt-get update
+sudo apt-get install -y pkg-config libdbus-1-dev libwebkit2gtk-4.1-dev \
+  libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libgtk-3-dev \
+  libayatana-appindicator3-dev librsvg2-dev patchelf
 ```
 
-That compiles the frontend and the Rust analyzer sidecar, then packages app resources.
-The Tauri desktop app is the v1 product. The browser build is a QA and demo surface;
-it cannot prove folder access, keychain storage, desktop caching, or packaged-shell
-behavior. macOS is the primary desktop validation target, with Linux and Windows
-kept as unsigned cross-platform QA targets.
-
-These are unsigned QA/release-candidate bundles. Unsigned artifacts are not public release installers.
-Signed public installers are not claimed until Apple notarization and platform
-signing are configured and validated.
-
-Expected Linux outputs:
-
-- `src-tauri/target/release/bundle/deb/Cobolens_0.1.0_amd64.deb`
-- `src-tauri/target/release/bundle/rpm/Cobolens-0.1.0-1.x86_64.rpm`
-- `src-tauri/target/release/bundle/appimage/Cobolens_0.1.0_amd64.AppImage`
-
-Expected macOS outputs:
-
-- `src-tauri/target/release/bundle/macos/Cobolens.app`
-- `src-tauri/target/release/bundle/dmg/Cobolens_0.1.0_*.dmg`
-
-The packaged resource layout includes:
-
-- `binaries/cobolens-analyze`
-- `samples/mini-bank/`
-
-On Windows, the analyzer sidecar resource is `binaries/cobolens-analyze.exe`.
-
-`src-tauri/binaries/` is a tracked Tauri resource path: the directory itself is
-committed via `src-tauri/binaries/.gitkeep` so the bundle resource resolves on a
-fresh clone, while the built analyzer binary inside it is generated by
-`npm run build:sidecar` and git-ignored.
+Bundles land in `src-tauri/target/release/bundle/` (`.app` and `.dmg` on macOS; `.deb`, `.rpm` and
+`.AppImage` on Linux). They are unsigned release-candidate builds. See
+[desktop release hardening](docs/desktop-release-hardening.md) for the signing plan.
 
 </details>
 
-## Verification
+<details>
+<summary><strong>Run the checks</strong></summary>
 
-Every push to `main` runs the clean-checkout health workflow with Node.js 22, Rust formatting/lint components, `npm ci`, and the release-candidate suite. Run the same gate locally before a broad product change:
+Every push to `main` runs the clean-checkout health workflow. Run the same release-candidate suite
+locally before a broad change (it needs Rust on your `PATH`):
 
 ```sh
 npm run m6:verify
 ```
 
-If this stops with `Missing required command: cargo`, install Rust/Cargo from
-<https://rustup.rs/> and rerun it.
-
-<details>
-<summary><strong>Focused checks, readiness sweep, and suite coverage</strong></summary>
-
-Run the broader v1 readiness sweep:
-
-```sh
-npm run v1:readiness
-```
-
-Useful focused checks:
+It covers the strict parser fixture, frontend build, a driven-browser UI smoke at desktop, tablet and
+phone widths, citation, Chat, export, privacy, prompt and guard smokes, Rust formatting and Clippy, and the
+sidecar and Tauri tests. Useful focused checks:
 
 ```sh
 npm run build
-npm run desktop:smoke
-npm run desktop:packaged-smoke
-npm run desktop:macos-packaged-smoke
-npm run validate:benchmark:local
-npm run m6:compare-candidates
+npm run ui:smoke
+node tools/m6-verify/ui-contract-smoke.mjs
+node tools/m6-verify/sample-library-smoke.mjs
+npm run v1:readiness
 ```
 
-Dependency advisories are checked in `.github/workflows/audit.yml` with
-`npm audit --audit-level=high` and RustSec against both Cargo lockfiles.
+Dependency advisories are checked weekly with `npm audit` and `cargo audit` against both Cargo lockfiles.
 
-`npm run m6:verify` covers:
-
-- strict M6 fixture
-- frontend build
-- citation focus smoke
-- graph selector smoke
-- summary planning smoke
-- summary graph smoke
-- Chat focus smoke
-- model runtime smoke
-- inspector progress smoke
-- chat history smoke
-- layout state smoke
-- source line smoke
-- size-capped full-file source reader smoke
-- app settings smoke
-- stale model-readiness request smoke
-- browser startup retry and failure-diagnostic smoke
-- export docs smoke
-- graph Chat smoke
-- semantic retrieval smoke
-- UI contract smoke
-- accessibility smoke
-- packaging contract smoke
-- model privacy and embedding privacy smokes
-- prompt and guard smokes
-- Rust formatting and Clippy lint checks
-- Rust sidecar tests
-- Tauri command tests
-- parser candidate comparison
-- parser upgrade readiness
+The strict M6 compatibility assets live at `public/m6-bakeoff-graph.json` and
+`public/m6-bakeoff-source.json`. Regenerate them after analyzer changes and before a release with
+`npm run m6:fixture-graph`. If a check stops with `Missing required command: cargo`, install Rust/Cargo
+from <https://rustup.rs/> and rerun it.
 
 </details>
 
-## Architecture
+<details>
+<summary><strong>Architecture and repository map</strong></summary>
 
-Cobolens is deliberately small:
-
-```mermaid
-flowchart TB
-  UI["React + TypeScript UI"]
-  Tauri["Tauri shell"]
-  Sidecar["Rust analyzer sidecar"]
-  Graph["GraphDocument JSON"]
-  Retrieval["Graph-guided retrieval"]
-  Models["Ollama / Anthropic / OpenAI / OpenRouter"]
-  Export["Markdown / Mermaid / PNG export"]
-
-  Tauri --> Sidecar
-  Sidecar --> Graph
-  Graph --> UI
-  Graph --> Retrieval
-  Retrieval --> Models
-  UI --> Export
+```text
+Tauri shell + React UI + Rust analyzer sidecar + local graph and cache files
 ```
 
-The key contract is `GraphDocument`: the UI, Chat, source citations, dependencies, and export all consume graph nodes and edges from that JSON contract. Parser internals stay behind the sidecar boundary.
-
-Production analyzer decision:
-
-- Use the Rust sidecar for v1.
-- Keep ProLeap and mapa as benchmarked candidates.
-- Do not adopt a JVM analyzer until real-code coverage justifies the packaging and maintenance cost.
-
-<details>
-<summary><strong>Repository and documentation map</strong></summary>
-
-### Repository Map
+The key contract is `GraphDocument`: the map, Chat, citations, Dependencies and export all consume the
+same graph nodes and edges, and parser internals stay behind the sidecar boundary. ProLeap and mapa remain
+benchmarked parser candidates; a JVM analyzer is adopted only if real-code coverage justifies its weight.
 
 | Path | Purpose |
 | --- | --- |
-| `src/` | React/TypeScript app. |
-| `src/graph/` | Sigma/graphology graph view. |
-| `src/model/` | Provider config, prompts, summaries, embeddings, readiness. |
-| `src/retrieval/` | Graph Chat and semantic retrieval. |
-| `src-tauri/` | Tauri shell, commands, packaged resources. |
-| `sidecar/cobolens-analyze/` | Rust production analyzer. |
-| `sidecar/cobolens-analyze-jvm/` | ProLeap candidate analyzer. |
-| `sidecar/cobolens-analyze-mapa/` | mapa candidate analyzer. |
-| `fixtures/m6-bakeoff/` | Strict lineage/impact fixture. |
-| `samples/catalog/` | Curated offline public COBOL/JCL corpora with pinned provenance and licenses. |
-| `public/samples/` | Pre-generated graph and full-source JSON consumed by the sample library. |
-| `tools/sample-library/` | Reproducible sample-asset generation. |
-| `tools/` | Verification, packaging, benchmark, local-model, and parser comparison scripts. |
-| `docs/` | PRD, agent guide, audits, parser notes, readiness evidence. |
+| `src/` | React and TypeScript app; design tokens live at the top of `src/App.css` |
+| `src/graph/` | Sigma and graphology map |
+| `src/model/`, `src/retrieval/` | Providers, prompts, guards, graph answers and semantic retrieval |
+| `src-tauri/` | Desktop shell, commands and packaged resources |
+| `sidecar/cobolens-analyze/` | Production Rust analyzer |
+| `samples/`, `public/samples/` | Pinned public corpora and their generated graph and source assets |
+| `tools/` | Verification, packaging, benchmark and local-model scripts |
+| `docs/` | PRD, design contract, agent guide, audits and readiness evidence |
 
-### Documentation Map
-
-- [Current PRD](docs/COBOL-Lens-PRD.md)
-- [Agent guide](docs/AGENTS.md)
-- [V1 readiness audit](docs/v1-readiness-audit.md)
-- [M6 completion audit](docs/m6-completion-audit.md)
-- [M6 UI QA](docs/m6-ui-qa.md)
-- [Parser upgrade readiness](docs/m6-parser-upgrade-readiness.md)
-- [Design contract (adhere to this for UI work)](docs/DESIGN.md)
-- [V1 build guide (bounded fix/build plan)](docs/v1-build-guide.md)
-- [Local-model & UI working-state plan](docs/local-model-and-ui-test-plan.md)
-- [Sample library sources, licenses, and hardening findings](docs/SAMPLE-LIBRARY.md)
-- [Known tech debt](docs/tech-debt.md)
-
-Historical research is kept in `docs/00-*` through `docs/05-*`.
+Start with the [agent and contributor guide](docs/AGENTS.md), the
+[product design thesis](docs/PRODUCT-DESIGN.md) and the [design contract](docs/DESIGN.md). Known debt is
+tracked in [docs/tech-debt.md](docs/tech-debt.md).
 
 </details>
 
 ## Contributing
 
-Bug reports, parser-gap examples, accessibility findings, and focused pull requests are welcome.
+Bug reports, parser-gap examples, accessibility findings and focused pull requests are welcome.
 
-1. [Open an issue](https://github.com/chrissotraidis/cobolens/issues) with the smallest reproducible COBOL/JCL example you can share.
-2. Read the [agent/contributor guide](docs/AGENTS.md) and [product design contract](docs/PRODUCT-DESIGN.md) before changing behavior or interface structure.
-3. Preserve the local-first privacy boundary and `GraphDocument` parser seam.
+1. [Open an issue](https://github.com/chrissotraidis/cobolens/issues) with the smallest COBOL or JCL
+   example you are allowed to share.
+2. Read the [contributor guide](docs/AGENTS.md) and [product design thesis](docs/PRODUCT-DESIGN.md)
+   before changing behavior or layout.
+3. Keep the local-first privacy boundary and the `GraphDocument` parser seam intact.
 4. Run `npm run m6:verify` before proposing a broad change.
-
-Please do not include proprietary source, credentials, production data, or other material you are not authorized to publish.
 
 ## Roadmap
 
-Highest-value next work:
-
-1. Reduce false-positive relationships and fallback warnings exposed by the IBM and AWS sample corpora.
-2. Measure packaged-desktop cold load, program-focus latency, and Map/Source switching on CardDemo-scale data.
-3. Make relationship explanations more obvious directly from the graph canvas.
-4. Finish hardening local AI setup: desktop install-vs-running detection and
-   separate generation/embedding readiness checks.
-5. Decide whether a JVM parser candidate improves the recorded public-corpus gaps enough to justify the extra packaging weight.
-6. Validate signed macOS and Windows packaging before public release claims.
-
-Deferred engineering debt (deeper detail in [docs/tech-debt.md](docs/tech-debt.md)):
-
-- Continue splitting the just-under-400-line `src/App.tsx` root wiring into feature components.
-- Keep moving grep-based UI/accessibility smokes toward driven-browser coverage.
-- Add desktop Ollama install-vs-running detection to the AI readiness stepper.
-- Measure source-aware semantic recall and indexing latency on the real-corpus benchmark.
-
-Explicit non-goals for v1:
-
-- COBOL generation or editing
-- COBOL-to-Java translation
-- behavior-equivalence verification
-- live mainframe connectivity
-- team/cloud sync
-- a hosted backend
+1. Reduce false-positive relationships and fallback warnings found in the IBM and AWS corpora.
+2. Measure packaged-desktop cold load and Map/Source switching on CardDemo-scale data.
+3. Make relationship explanations clearer directly on the map.
+4. Detect whether Ollama is installed or just stopped, with separate generation and embedding checks.
+5. Validate signed macOS and Windows packages before calling any build a public release.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Public sample corpora keep their own Apache-2.0 licenses and provenance.

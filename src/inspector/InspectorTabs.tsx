@@ -3,17 +3,17 @@ export type InspectorTab = "ask" | "impact";
 export function InspectorTabs({
   activeTab,
   dependencyCount,
-  selectedRelationship,
   onChange,
 }: {
   activeTab: InspectorTab;
   dependencyCount: number;
-  selectedRelationship: boolean;
   onChange: (tab: InspectorTab) => void;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string; badge?: string }> = [
     { id: "ask", label: "Chat" },
-    { id: "impact", label: "Dependencies", badge: selectedRelationship ? "1" : dependencyCount ? String(dependencyCount) : undefined },
+    // The badge is always the dependency count; a "1" for an open relationship
+    // read as a count and contradicted the list shown below it.
+    { id: "impact", label: "Dependencies", badge: dependencyCount ? String(dependencyCount) : undefined },
   ];
 
   return (

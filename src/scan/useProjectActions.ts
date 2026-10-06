@@ -53,6 +53,11 @@ export function useProjectActions({
     setStatus,
   } = project;
   const browserImportInputRef = useRef<HTMLInputElement | null>(null);
+  // Only the most recent load may update the workspace; a slow earlier
+  // sample or scan must not replace a project the user opened after it.
+  const loadRequestRef = useRef(0);
+  const startLoad = () => ++loadRequestRef.current;
+  const isCurrentLoad = (request: number) => request === loadRequestRef.current;
 
   function beginScan(nextRoot: string, nextSourceBase = "") {
     onProjectLoad();
@@ -104,6 +109,7 @@ export function useProjectActions({
     });
     if (typeof selected !== "string") return;
 
+    const request = startLoad();
     beginScan(selected);
 
     try {
@@ -111,8 +117,10 @@ export function useProjectActions({
         root: selected,
         scan: normalizedScanSettings(scanSettings),
       });
+      if (!isCurrentLoad(request)) return;
       acceptGraph(result, selected);
     } catch (err) {
+      if (!isCurrentLoad(request)) return;
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
     }
@@ -123,12 +131,18 @@ export function useProjectActions({
     event.currentTarget.value = "";
     if (!files.length) return;
 
-    beginScan("Importing project...");
+    // Keep the current project visible while the files are read. A folder
+    // without COBOL sources should report that, not discard the open project.
+    const request = startLoad();
+    setError("");
+    setStatus("running");
     try {
       const result = await analyzeBrowserProject(files, normalizedScanSettings(scanSettings));
+      if (!isCurrentLoad(request)) return;
       acceptBrowserProject(result);
       showExportStatus(`Imported ${result.graph.meta.fileCount} file${result.graph.meta.fileCount === 1 ? "" : "s"} locally.`);
     } catch (err) {
+      if (!isCurrentLoad(request)) return;
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
     }
@@ -141,6 +155,7 @@ export function useProjectActions({
     // Keep the current graph mounted while the bundled JSON is fetched. This
     // makes switching from a long Source view stable and avoids a blank
     // intermediate workspace before the next sample is ready.
+    const request = startLoad();
     onProjectLoad();
     setSelectedEdge(null);
     setSourceFocus(null);
@@ -154,8 +169,10 @@ export function useProjectActions({
         );
       }
       const result = (await response.json()) as GraphDocument;
+      if (!isCurrentLoad(request)) return;
       acceptGraph(result, sample.rootLabel, sample.sourceUrl);
     } catch (err) {
+      if (!isCurrentLoad(request)) return;
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
     }
@@ -176,14 +193,17 @@ export function useProjectActions({
     }
 
     if (!root) return;
+    const request = startLoad();
     beginScan(root);
     try {
       const result = await invoke<GraphDocument>("analyze_codebase", {
         root,
         scan: normalizedScanSettings(scanSettings),
       });
+      if (!isCurrentLoad(request)) return;
       acceptGraph(result, root);
     } catch (err) {
+      if (!isCurrentLoad(request)) return;
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
     }
@@ -221,6 +241,7 @@ export function useProjectActions({
 
   useEffect(() => {
     window.__cobolensLoadGraph = (nextGraph, nextRoot = "", nextSourceBase = "") => {
+      startLoad();
       acceptGraph(nextGraph, nextRoot, nextSourceBase);
     };
   });

@@ -3507,6 +3507,12 @@ pre {
   font-weight: 650;
 }
 
+/* "No selection" sits beside the title, not floating mid-header. */
+.inspector-title > small {
+  margin-right: auto;
+  color: var(--muted-quiet);
+}
+
 .center-pane.center-source .center-toolbar {
   position: relative;
   z-index: 12;

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
 import { edgeLabel, nodeColor } from "../lib/graph";
-import { nodeTypeLabel } from "../lib/graphLabels";
+import { nodeTypeLabel, relationshipLabel } from "../lib/graphLabels";
 import { graphIndex, incomingEdges, outgoingEdges } from "../lib/graphIndex";
 
 export function LineageImpactPanel({
@@ -119,7 +119,7 @@ function RelationshipList({
                   disabled={!edge.site}
                   title={edge.site ? `Show cited relationship at ${edge.site.file}:${edge.site.line}` : "No source location recorded"}
                 >
-                  <span>{edge.type}</span>
+                  <span>{relationshipLabel(edge.type)}</span>
                   <small>{edge.site ? `${edge.site.file}:${edge.site.line}` : "No source site"}</small>
                 </button>
               </div>
@@ -227,7 +227,7 @@ function EdgeExplanation({
           </span>
           <small>{fromNode ? nodeLocationLabel(fromNode) : edge.from}</small>
         </button>
-        <span className="relationship-edge-type">{edge.type}</span>
+        <span className="relationship-edge-type">{relationshipLabel(edge.type)}</span>
         <button
           type="button"
           className="relationship-node-button"

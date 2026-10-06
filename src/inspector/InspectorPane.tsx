@@ -129,7 +129,6 @@ export function InspectorPane({
             <InspectorTabs
               activeTab={activeTab}
               dependencyCount={dependencyCount}
-              selectedRelationship={Boolean(selectedEdge)}
               onChange={onTabChange}
             />
             <div className="summary-stack" ref={bodyRef}>

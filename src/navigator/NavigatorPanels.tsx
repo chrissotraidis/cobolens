@@ -3,7 +3,7 @@ import type { GraphDocument, GraphNode } from "../lib/graph";
 import { nodeColor } from "../lib/graph";
 import { nodeTypeLabel } from "../lib/graphLabels";
 import type { SourceTreeGroup } from "../lib/graphSelectors";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 const SOURCE_TREE_PREVIEW_LIMIT = 12;
 
@@ -149,11 +149,14 @@ export function SourceTree({
 }) {
   const totalNodes = groups.reduce((total, group) => total + group.nodes.length, 0);
   const selectedGroupTitle = groups.find((group) => group.nodes.some((node) => node.id === selectedNodeId))?.title;
-  const [openGroupTitle, setOpenGroupTitle] = useState(groups[0]?.title ?? "");
-
-  useEffect(() => {
+  const [openGroupTitle, setOpenGroupTitle] = useState(selectedGroupTitle ?? groups[0]?.title ?? "");
+  // Open the selected symbol's group in the same render that selects it. An
+  // effect would paint one frame with every group collapsed after a load.
+  const [followedGroupTitle, setFollowedGroupTitle] = useState(selectedGroupTitle);
+  if (selectedGroupTitle !== followedGroupTitle) {
+    setFollowedGroupTitle(selectedGroupTitle);
     if (selectedGroupTitle) setOpenGroupTitle(selectedGroupTitle);
-  }, [selectedGroupTitle]);
+  }
 
   return (
     <section className="pane-block source-tree" aria-label="Codebase browser">

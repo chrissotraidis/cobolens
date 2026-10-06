@@ -26,6 +26,35 @@ Cobolens should feel like a quiet night desk for technical investigation: calm, 
 - **Private by default:** graph-only work is useful; model use is explicit and honestly labeled.
 - **Respectful of legacy code:** the interface clarifies the system without treating it as obsolete or broken.
 
+## Visual Thesis
+
+**The evidence is the brightest thing on screen.**
+
+Cobolens chrome (top bar, panes, navigation, settings) stays in neutral ink so the
+map, the source line and the citation carry the attention. When a design choice
+is unclear, ask whether it makes the evidence easier to see or competes with it.
+
+The rules that follow from it:
+
+1. **Color marks evidence and state, never decoration.** Teal is the selected
+   evidence and local state, periwinkle is conversation, amber is model work, coral
+   is failure. Top-bar actions and navigation are neutral.
+2. **One filled action per surface.** The welcome card, selection bar, composer and
+   each dialog get a single filled button for the next step. Everything else is a
+   quiet outline or text button.
+3. **Sentence case everywhere.** Section labels are 12px semibold in muted ink. No
+   letter-spaced, all-caps labels.
+4. **Monospace only for code.** Source, symbol names, paths and `file:line`
+   references. Project names, counts and status copy use the interface sans.
+5. **Depth from surface steps, not nested borders.** Canvas, pane, control and
+   raised surfaces are the four ink steps; prefer spacing over another border.
+6. **The canvas is never buried.** At tablet and phone widths the navigator and
+   Chat are drawers, only one is open at a time, and a fresh visit starts on the
+   canvas. Graph labels and nodes must stay clear of the canvas edges and overlays.
+
+The palette, type stacks and radii are CSS custom properties at the top of
+`src/App.css`. Use those tokens instead of new color literals.
+
 ## Interface Grammar
 
 ### Type

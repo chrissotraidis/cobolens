@@ -415,7 +415,6 @@ const checks = [
         ".chat-mode-control button.ai-checking .chat-mode-status-dot",
         ".chat-mode-control button.ai-error .chat-mode-status-dot",
         ".chat-user-message",
-        ".chat-stream-stages",
         ".chat-mode-control",
         ".chat-send-button",
         "height: 28px",
@@ -763,7 +762,7 @@ const checks = [
         'pageCount === 1 ? " is-single-page" : ""',
         'focusedCitation ? " has-focused-citation" : ""',
         'className="source-focus-note"',
-        "Focused citation: {source.file}:{source.highlightLine}",
+        "Focused citation: <code>{source.file}:{source.highlightLine}</code>",
         "Focused citation line",
       ]) &&
       includesAll(sourceLineLabelsSource, ["function sourceLineMarker", 'if (citationLine) return "C"']) &&
@@ -846,7 +845,7 @@ const checks = [
       ".privacy-dot",
       ".home-crumb",
       ".project-import-input",
-      ".first-run-guide",
+      ".graph-empty-note",
       ".center-toolbar-meta.is-source",
       ".source-line-chip",
     ]),

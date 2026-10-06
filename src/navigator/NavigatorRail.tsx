@@ -1,6 +1,7 @@
 import type { Citation } from "../retrieval/context";
 import type { GraphDocument, GraphNode } from "../lib/graph";
 import { nodeColor } from "../lib/graph";
+import { nodeTypeLabel } from "../lib/graphLabels";
 import type { CodebaseInventoryCounts, SourceTreeGroup } from "../lib/graphSelectors";
 import type { AnalysisProgress } from "../scan/useAnalysisProgress";
 import { GraphHints, LegendItem, Metric, NavigatorDetails, ParseHealth, SourceTree } from "./NavigatorPanels";
@@ -118,7 +119,7 @@ export function NavigatorRail({
 
       {query.trim() ? (
         <section className="pane-block">
-          <h2>Search Results</h2>
+          <h2>Search results</h2>
           <div className="search-results">
             {searchResults.length ? (
               searchResults.map((node) => (
@@ -130,7 +131,7 @@ export function NavigatorRail({
                 >
                   <span className="swatch" style={{ background: nodeColor(node.type) }} />
                   <span>{node.name}</span>
-                  <small>{node.type}</small>
+                  <small>{nodeTypeLabel(node.type)}</small>
                 </button>
               ))
             ) : (

@@ -13,6 +13,13 @@ export type ModelReadiness = {
 
 type ReadinessStepStatus = "ready" | "checking" | "error" | "pending";
 
+const EXPLANATION_LANGUAGES: Record<string, string> = {
+  python: "Python",
+  javascript: "JavaScript",
+  java: "Java",
+  "c#": "C#",
+};
+
 type ReadinessStep = {
   label: string;
   status: ReadinessStepStatus;
@@ -389,7 +396,11 @@ function ModelSettingsPanel({
       <details className="settings-disclosure">
         <summary>
           <span>Retrieval &amp; explanation</span>
-          <small>{settings.provider === "ollama" ? settings.embeddingModel : settings.rosettaLanguage}</small>
+          <small>
+            {settings.provider === "ollama"
+              ? settings.embeddingModel
+              : `Explains in ${EXPLANATION_LANGUAGES[settings.rosettaLanguage] ?? settings.rosettaLanguage}`}
+          </small>
         </summary>
         <div className="settings-disclosure-body">
           {settings.provider === "ollama" ? (
@@ -422,10 +433,9 @@ function ModelSettingsPanel({
               value={settings.rosettaLanguage}
               onChange={(event) => onSettingsChange({ ...settings, rosettaLanguage: event.currentTarget.value })}
             >
-              <option value="python">Python</option>
-              <option value="javascript">JavaScript</option>
-              <option value="java">Java</option>
-              <option value="c#">C#</option>
+              {Object.entries(EXPLANATION_LANGUAGES).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </label>
           <p className="settings-footnote">Cobolens may compare concepts with this language; it never translates or changes the source.</p>

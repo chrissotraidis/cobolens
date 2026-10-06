@@ -62,6 +62,7 @@ npm run dev -- --host 127.0.0.1 --port 1420
 
 Open <http://127.0.0.1:1420>, choose **Explore samples**, and start with **Lineage quick tour**. Move to
 **CardDemo system** when you want to see a 6,139-node project.
+Press **⌘K** (or **Ctrl K**) at any time to jump to symbol search.
 
 ### Open your own codebase
 

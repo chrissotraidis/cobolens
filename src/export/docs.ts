@@ -1,5 +1,6 @@
 import { edgeLabel, potentiallyUnreferencedSourceUnits } from "../lib/graph";
 import type { GraphDocument, GraphEdge, GraphNode } from "../lib/graph";
+import { nodeTypeLabel, relationshipLabel } from "../lib/graphLabels";
 import type { UnitSummary } from "../model/summaries";
 
 export type SummaryExportState = Record<string, { summary?: UnitSummary } | undefined>;
@@ -380,7 +381,7 @@ async function diagramPngBlob(graph: GraphDocument, focusNodeId: string, title: 
     drawArrow(context, from.x, from.y, to.x, to.y);
     const labelX = (from.x + to.x) / 2;
     const labelY = (from.y + to.y) / 2;
-    drawLabel(context, edge.type, labelX, labelY);
+    drawLabel(context, relationshipLabel(edge.type), labelX, labelY);
   }
 
   for (const node of visible.nodes) {
@@ -401,7 +402,7 @@ async function diagramPngBlob(graph: GraphDocument, focusNodeId: string, title: 
     context.fillText(fitText(context, node.name, width - 26), position.x - width / 2 + 13, position.y - 6);
     context.fillStyle = isFocus ? "#d1fae5" : "#64748b";
     context.font = "14px sans-serif";
-    context.fillText(node.type, position.x - width / 2 + 13, position.y + 19);
+    context.fillText(nodeTypeLabel(node.type), position.x - width / 2 + 13, position.y + 19);
   }
 
   context.fillStyle = "#475569";

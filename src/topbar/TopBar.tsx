@@ -161,6 +161,22 @@ export function TopBar({
         <button type="button" className="topbar-sample" onClick={onOpenSample} disabled={status === "running"} title="Choose a sample project">
           Samples
         </button>
+        <button type="button" onClick={onExport} disabled={!graphLoaded} title="Choose export package options">
+          Export
+        </button>
+        <span className="topbar-divider" aria-hidden="true" />
+        <button type="button" className="topbar-icon-button" onClick={onOpenSettings} aria-label="Open settings" title="Settings">
+          <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">
+            <path
+              d="M10 12.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z M16.2 11.3l1.3 1-1.5 2.6-1.6-.6a6 6 0 0 1-1.6.9l-.3 1.7H9.5l-.3-1.7a6 6 0 0 1-1.6-.9l-1.6.6-1.5-2.6 1.3-1a6 6 0 0 1 0-1.8l-1.3-1L6 5.9l1.6.6a6 6 0 0 1 1.6-.9l.3-1.7h3l.3 1.7a6 6 0 0 1 1.6.9l1.6-.6 1.5 2.6-1.3 1a6 6 0 0 1 0 1.8Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        {/* The Chat panel toggle mirrors the navigator toggle on the far left. */}
         <button
           type="button"
           className="inspector-toggle"
@@ -174,12 +190,6 @@ export function TopBar({
             <rect x="11.3" y="4.7" width="3" height="8.6" rx="1" fill="currentColor" />
           </svg>
           <span>Chat</span>
-        </button>
-        <button type="button" onClick={onExport} disabled={!graphLoaded} title="Choose export package options">
-          Export
-        </button>
-        <button type="button" onClick={onOpenSettings} aria-label="Open settings">
-          Settings
         </button>
       </div>
     </header>

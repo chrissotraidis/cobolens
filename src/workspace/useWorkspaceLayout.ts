@@ -63,6 +63,17 @@ export function useWorkspaceLayout() {
   const openInspector = useCallback(() => setInspectorCollapsed(false), []);
   const closeInspector = useCallback(() => setInspectorCollapsed(true), []);
 
+  // At overlay widths the navigator is a drawer: it closes once the user has
+  // picked something, and opens when search results need somewhere to show.
+  const dismissNavigatorDrawer = useCallback(() => {
+    if (overlayLayout) setRailCollapsed(true);
+  }, [overlayLayout]);
+  const revealNavigatorDrawer = useCallback(() => {
+    if (!overlayLayout) return;
+    setInspectorCollapsed(true);
+    setRailCollapsed(false);
+  }, [overlayLayout]);
+
   function startInspectorResize(event: ReactPointerEvent) {
     event.preventDefault();
     if (inspectorCollapsed) setInspectorCollapsed(false);
@@ -94,6 +105,9 @@ export function useWorkspaceLayout() {
     toggleInspectorCollapsed,
     openInspector,
     closeInspector,
+    overlayLayout,
+    dismissNavigatorDrawer,
+    revealNavigatorDrawer,
     rightWidth,
     rightWidthPx: Math.round(clampRightWidth(rightWidth, railCollapsed)),
     startInspectorResize,

@@ -2986,13 +2986,19 @@ pre {
 .chat-grounding-cue {
   display: inline-flex;
   align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
   min-height: 23px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 11px;
   font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-grounding-cue::before {
+  flex: 0 0 auto;
   width: 7px;
   height: 7px;
   margin-right: 6px;
@@ -3017,183 +3023,6 @@ pre {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
-}
-
-@media (max-width: 1280px) and (min-width: 1025px) {
-  .topbar {
-    grid-template-columns: max-content minmax(160px, 1fr) minmax(0, auto) auto;
-    gap: 8px;
-  }
-
-  .shell {
-    grid-template-columns: 232px minmax(300px, 1fr) var(--right-w, 440px);
-  }
-}
-
-/* Below the desktop 3-pane threshold: one clean vertical column that scrolls.
-   It leads with a prominent, usable graph (not the navigator rail), then the
-   source viewer and inspector, with the navigator/status rail last. This
-   replaces the old cramped rail-beside-graph and phone-stack layouts, which
-   were unusable in the ~700-1024px range. */
-@media (max-width: 1024px) {
-  .topbar {
-    grid-template-columns: minmax(120px, auto) minmax(90px, 1fr) auto;
-    gap: 10px;
-    overflow: hidden;
-  }
-
-  .breadcrumbs {
-    display: none;
-  }
-
-  /* Reclaim space so the search and actions never overlap on narrow widths. */
-  .global-search {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shell,
-  .shell.rail-collapsed,
-  .shell.inspector-collapsed,
-  .shell.inspector-collapsed.rail-collapsed {
-    grid-template-columns: minmax(0, 1fr);
-    /* workspace (map/source, row 1) -> inspector/chat (row 2) -> rail (row 3).
-       Rows are definite so overflow:hidden panes cannot collapse to zero. */
-    grid-template-rows: 56vh minmax(440px, auto) auto;
-    overflow-y: auto;
-  }
-
-  /* On one column, collapsing the inspector removes its row (no empty gap). */
-  .shell.inspector-collapsed {
-    grid-template-rows: 56vh 0 auto;
-  }
-
-  /* Horizontal resize does not apply to a single stacked column. */
-  .pane-divider {
-    display: none;
-  }
-
-  .center-pane {
-    grid-column: 1;
-    grid-row: 1;
-    min-width: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .right-pane,
-  .right-pane.is-ask-focused {
-    grid-column: 1;
-    grid-row: 2;
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    border-left: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .chat-panel {
-    min-width: 0;
-  }
-
-  .left-pane {
-    grid-column: 1;
-    grid-row: 3;
-    max-height: none;
-    gap: 16px;
-    padding: 14px 14px 20px;
-    border-right: 0;
-    border-top: 1px solid var(--line);
-    overflow: visible;
-  }
-
-  .right-pane.is-ask-focused .summary-stack {
-    padding: 10px 12px;
-  }
-
-  .button-row.two {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Code stays column-accurate (no wrap); the source view scrolls horizontally. */
-  .center-source-view {
-    overflow: auto;
-  }
-}
-
-@media (max-width: 560px) {
-  .topbar {
-    --topbar-control-font: 11.5px;
-
-    grid-template-columns: max-content minmax(48px, 1fr) minmax(0, max-content);
-    gap: 4px;
-    padding: 0 8px;
-  }
-
-  .brand {
-    gap: 5px;
-  }
-
-  .brand-mark {
-    display: none;
-  }
-
-  .topbar-actions {
-    gap: 3px;
-    min-width: 0;
-  }
-
-  .topbar-actions button {
-    padding: 0 7px;
-  }
-
-  /* On a single-column phone the panel-collapse toggle is meaningless; drop it. */
-  .topbar-actions .rail-toggle {
-    display: none;
-  }
-
-  .global-search {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shell,
-  .shell.rail-collapsed {
-    grid-template-rows: 52vh minmax(440px, auto) auto;
-  }
-
-  .brand-name {
-    display: none;
-  }
-
-  .center-toolbar-meta.is-source {
-    grid-template-columns: minmax(0, 1fr) max-content;
-  }
-
-  .center-toolbar-meta.is-source .swatch,
-  .center-toolbar-meta.is-source .source-meta-symbol {
-    display: none;
-  }
-
-  /* Settings becomes a full-width sheet on tiny screens. */
-  .settings-dialog {
-    width: 100vw;
-    border-left: 0;
-  }
-
-  .center-toolbar {
-    gap: 8px;
-    padding: 0 10px;
-  }
-
-  .center-toolbar .graph-toolbar-actions button {
-    min-width: 84px;
-    padding: 0 8px;
-    font-size: 12px;
-  }
-
-  .graph-minimap {
-    right: 8px;
-    bottom: 8px;
-  }
 }
 
 /* Goal loop 3: large-codebase navigation -------------------------------- */
@@ -3432,8 +3261,8 @@ pre {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  width: min(670px, calc(100% - 220px));
+  gap: 12px 16px;
+  width: min(720px, calc(100% - 32px));
   min-height: 56px;
   padding: 9px 10px 9px 14px;
   border: 1px solid rgba(105, 200, 173, 0.34);
@@ -3441,12 +3270,14 @@ pre {
   background: rgba(14, 21, 24, 0.96);
   box-shadow: 0 16px 45px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(14px);
+  animation: cb-rise-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .graph-context-selection {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 1px 8px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -3480,8 +3311,8 @@ pre {
 
 .graph-context-actions button {
   min-height: 34px;
-  padding: 0 10px;
-  font-size: 12px;
+  padding: 0 12px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 
@@ -3529,35 +3360,7 @@ pre {
   font-size: 11px;
 }
 
-@media (max-width: 1280px) {
-  .center-toolbar-meta.is-source {
-    grid-template-columns: minmax(70px, max-content) minmax(130px, 1fr) max-content;
-  }
-
-  .center-toolbar-meta.is-source > .swatch {
-    display: none;
-  }
-
-  .graph-context-bar {
-    width: min(630px, calc(100% - 32px));
-  }
-}
-
 @media (max-width: 760px) {
-  .graph-context-bar {
-    right: 10px;
-    bottom: 48px;
-    left: 10px;
-    display: grid;
-    width: auto;
-    gap: 8px;
-  }
-
-  .graph-context-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .source-file-popover {
     position: fixed;
     top: 96px;
@@ -3598,11 +3401,6 @@ pre {
   .source-file-group > button {
     grid-template-columns: minmax(0, 1fr);
     gap: 1px;
-  }
-
-  .graph-context-actions button {
-    padding: 0 6px;
-    font-size: 11.5px;
   }
 }
 
@@ -4475,93 +4273,7 @@ h2,
   font-size: 13px;
 }
 
-@media (max-width: 1280px) and (min-width: 1025px) {
-  .shell {
-    grid-template-columns: 250px minmax(340px, 1fr) var(--right-w, 430px);
-  }
-}
-
-@media (max-width: 1024px) {
-  .workspace {
-    grid-template-rows: 52px minmax(0, 1fr);
-  }
-
-  .shell,
-  .shell.rail-collapsed,
-  .shell.inspector-collapsed,
-  .shell.inspector-collapsed.rail-collapsed {
-    width: 100%;
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 58vh minmax(500px, auto) auto;
-  }
-
-  .shell.inspector-collapsed,
-  .shell.inspector-collapsed.rail-collapsed {
-    grid-template-rows: 58vh 0 auto;
-  }
-
-  .summary-stack,
-  .right-pane.is-ask-focused .summary-stack {
-    padding: 16px;
-  }
-}
-
 @media (max-width: 560px) {
-  .workspace {
-    grid-template-rows: 86px minmax(0, 1fr);
-  }
-
-  .topbar {
-    --topbar-control-font: 12.5px;
-    --topbar-control-h: 34px;
-    grid-template-columns: max-content minmax(0, 1fr);
-    grid-template-rows: 42px 40px;
-    gap: 0 8px;
-    padding: 2px 10px;
-  }
-
-  .brand {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .brand-mark {
-    display: block;
-    width: 24px;
-    height: 24px;
-  }
-
-  .global-search {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .topbar-actions {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: stretch;
-    overflow-x: auto;
-  }
-
-  .topbar-actions button {
-    /* Five equal actions must fit a 360px phone without a hidden scroll. */
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0 6px;
-  }
-
-  .topbar-label-extra {
-    display: none;
-  }
-
-  .shell,
-  .shell.rail-collapsed,
-  .shell.inspector-collapsed,
-  .shell.inspector-collapsed.rail-collapsed {
-    grid-template-rows: 54vh minmax(520px, auto) auto;
-  }
-
   .center-toolbar {
     gap: 6px;
     padding: 0 8px;
@@ -4876,64 +4588,7 @@ h2,
   background: var(--ask-soft);
 }
 
-@media (max-width: 1024px) {
-  .shell,
-  .shell.rail-collapsed,
-  .shell.inspector-collapsed,
-  .shell.inspector-collapsed.rail-collapsed {
-    position: relative;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-  }
-
-  .center-pane {
-    grid-column: 1;
-    grid-row: 1;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .left-pane {
-    position: fixed;
-    top: 52px;
-    bottom: 0;
-    left: 0;
-    z-index: 17;
-    width: min(320px, calc(100vw - 24px));
-    box-shadow: 20px 0 55px rgba(0, 0, 0, 0.46);
-  }
-
-  .right-pane,
-  .right-pane.is-ask-focused {
-    position: fixed;
-    top: 52px;
-    right: 0;
-    bottom: 0;
-    z-index: 18;
-    width: min(480px, calc(100vw - 12px));
-    border-left: 1px solid rgba(157, 162, 255, 0.24);
-    background: var(--ink-1);
-    box-shadow: -22px 0 65px rgba(0, 0, 0, 0.52);
-  }
-
-  .pane-divider {
-    display: none;
-  }
-}
-
 @media (max-width: 560px) {
-  .left-pane,
-  .right-pane,
-  .right-pane.is-ask-focused {
-    top: 86px;
-  }
-
-  .right-pane,
-  .right-pane.is-ask-focused {
-    width: 100vw;
-    border-left: 0;
-  }
-
   .investigation-card .summary-actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4955,22 +4610,6 @@ h2,
   inset: 14px 14px auto auto;
   width: min(280px, calc(100% - 28px));
   max-height: min(360px, calc(100% - 112px));
-}
-
-.graph-context-bar {
-  width: min(720px, calc(100% - 32px));
-  flex-wrap: wrap;
-}
-
-.graph-context-selection {
-  flex: 1 1 180px;
-  min-width: 0;
-}
-
-.graph-context-actions {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .graph-minimap {
@@ -5142,59 +4781,6 @@ h2,
   background: transparent;
 }
 
-@media (max-width: 1280px) and (min-width: 1025px) {
-  .graph-context-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 1024px) and (min-width: 561px) {
-  /* The inspector is an overlay at windowed widths. Keep map controls inside
-     the uncovered canvas instead of letting the drawer crop half of them. */
-  .shell:not(.inspector-collapsed) .center-toolbar {
-    padding-right: calc(min(480px, calc(100vw - 12px)) + 10px);
-  }
-
-  .shell:not(.inspector-collapsed) .center-source .source-meta-symbol,
-  .shell:not(.inspector-collapsed) .center-source .source-line-chip,
-  .shell:not(.inspector-collapsed) .center-source .center-toolbar-meta.is-source > .swatch {
-    display: none;
-  }
-
-  .shell:not(.inspector-collapsed) .center-source .center-toolbar-meta.is-source {
-    flex: 1 1 0;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shell:not(.inspector-collapsed) .source-file-picker-path {
-    display: none;
-  }
-
-  .shell:not(.inspector-collapsed) .source-file-picker-basename {
-    display: block;
-  }
-
-  .shell:not(.inspector-collapsed) .graph-context-bar {
-    right: calc(min(480px, calc(100vw - 12px)) + 12px);
-    width: auto;
-  }
-
-  .shell:not(.inspector-collapsed) .graph-node-list {
-    right: calc(min(480px, calc(100vw - 12px)) + 14px);
-  }
-}
-
-@media (max-width: 780px) and (min-width: 561px) {
-  /* Below this point the uncovered map is only a preview. Do not leave
-     partially visible action surfaces behind the Chat drawer. */
-  .shell:not(.inspector-collapsed) .graph-context-bar,
-  .shell:not(.inspector-collapsed) .graph-node-list,
-  .shell:not(.inspector-collapsed) .graph-minimap {
-    display: none;
-  }
-}
-
 @media (max-width: 560px) {
   .graph-node-list {
     width: min(250px, calc(100% - 20px));
@@ -5207,26 +4793,377 @@ h2,
     display: none;
   }
 
-  .graph-context-bar {
-    left: 10px;
-    bottom: 10px;
-    width: calc(100% - 20px);
-  }
-
-  .graph-context-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .graph-context-actions button {
-    flex: 1 1 120px;
-  }
-
   .settings-section-heading {
     display: grid;
   }
 
   .settings-summary-status {
     justify-self: start;
+  }
+}
+
+/* ==========================================================================
+   Layout and motion. This is the single home for responsive shell rules.
+   Desktop (>1024px): navigator | map or source | chat, side by side.
+   Tablet (761-1024px): chat stays beside the map; the navigator is a drawer.
+   Phone (<=760px): two-row top bar; navigator and chat are drawers.
+   Map controls respond to the width of their own pane (container queries),
+   so they hold up whether one, two or three panes are open.
+   ========================================================================== */
+
+.topbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--line);
+  flex: 0 0 auto;
+}
+
+.topbar-actions .topbar-icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--topbar-control-h);
+  padding: 0;
+}
+
+.drawer-scrim {
+  display: none;
+}
+
+.sample-card-start {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--focus-text);
+  background: var(--focus-soft);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0;
+  vertical-align: 3px;
+}
+
+.sample-card .sample-open {
+  color: var(--text-soft);
+  background: transparent;
+}
+
+.sample-card:hover .sample-open,
+.sample-card .sample-open:focus-visible {
+  color: var(--focus-text);
+  border-color: var(--focus);
+  background: var(--focus-soft);
+}
+
+.sample-card {
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.sample-card:hover {
+  border-color: rgba(105, 200, 173, 0.38);
+}
+
+.sample-guide button.is-current {
+  color: var(--text);
+  background: var(--focus-soft);
+  box-shadow: inset 2px 0 0 var(--focus);
+}
+
+.center-pane {
+  container: workspace / inline-size;
+}
+
+@media (max-width: 1280px) and (min-width: 1025px) {
+  .shell {
+    grid-template-columns: 240px minmax(0, 1fr) min(var(--right-w, 460px), 38vw);
+  }
+
+  .shell.rail-collapsed {
+    grid-template-columns: minmax(0, 1fr) min(var(--right-w, 460px), 38vw);
+  }
+}
+
+@media (max-width: 1100px) {
+  .topbar-label-extra {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .breadcrumbs,
+  .pane-divider {
+    display: none;
+  }
+
+  .shell,
+  .shell.rail-collapsed {
+    grid-template-columns: minmax(0, 1fr) min(var(--right-w, 400px), 46vw);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .shell.inspector-collapsed,
+  .shell.inspector-collapsed.rail-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .center-pane {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .right-pane,
+  .right-pane.is-ask-focused {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .left-pane {
+    position: fixed;
+    top: 52px;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: min(340px, calc(100vw - 56px));
+    border-right: 1px solid var(--line);
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.5);
+    animation: cb-slide-in-left 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .drawer-scrim {
+    position: fixed;
+    inset: 52px 0 0;
+    z-index: 19;
+    display: block;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(4, 6, 9, 0.55);
+    cursor: default;
+    animation: cb-fade-in 180ms ease-out;
+  }
+
+  .drawer-scrim:hover {
+    border: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    grid-template-rows: 88px minmax(0, 1fr);
+  }
+
+  .topbar {
+    --topbar-control-h: 34px;
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-rows: 44px 40px;
+    gap: 0 8px;
+    padding: 2px 10px;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .brand-name {
+    display: none;
+  }
+
+  .global-search {
+    grid-column: 2;
+    grid-row: 1;
+    max-width: none;
+  }
+
+  .topbar-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: space-between;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .topbar-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 6px;
+  }
+
+  .topbar-actions .topbar-icon-button {
+    flex: 0 0 var(--topbar-control-h);
+  }
+
+  .topbar-divider {
+    display: none;
+  }
+
+  .shell,
+  .shell.rail-collapsed,
+  .shell.inspector-collapsed,
+  .shell.inspector-collapsed.rail-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .left-pane {
+    top: 88px;
+  }
+
+  .drawer-scrim {
+    top: 88px;
+  }
+
+  .right-pane,
+  .right-pane.is-ask-focused {
+    position: fixed;
+    top: 88px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 21;
+    border-left: 0;
+    animation: cb-slide-in-right 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .settings-dialog {
+    width: 100vw;
+    border-left: 0;
+  }
+}
+
+/* Map toolbar and selection bar: sized by the map pane, not the window. */
+@container workspace (max-width: 640px) {
+  .graph-context-bar {
+    left: 12px;
+    bottom: 12px;
+    width: calc(100% - 24px);
+    padding-left: 12px;
+  }
+
+  .graph-context-selection > span,
+  .graph-context-actions .label-extra {
+    display: none;
+  }
+}
+
+@container workspace (max-width: 560px) {
+  .graph-toolbar-actions .label-extra,
+  .center-toolbar-meta:not(.is-source) {
+    display: none;
+  }
+
+  .view-toggle button {
+    min-width: 0;
+    padding: 0 12px;
+  }
+}
+
+@container workspace (max-width: 460px) {
+  .graph-context-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .graph-context-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .graph-context-actions button {
+    padding: 0 6px;
+  }
+
+  .graph-minimap {
+    display: none;
+  }
+
+  .center-toolbar {
+    gap: 6px;
+    padding: 0 8px;
+  }
+}
+
+/* Motion: short, eased entrances so panels and dialogs arrive instead of
+   popping. Exits stay instant. Reduced-motion users get no movement. */
+@keyframes cb-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cb-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes cb-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+
+@keyframes cb-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes cb-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+button {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.sample-library-backdrop,
+.export-backdrop,
+.settings-backdrop {
+  animation: cb-fade-in 160ms ease-out;
+}
+
+.sample-library-dialog,
+.export-dialog {
+  animation: cb-pop-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.settings-dialog {
+  animation: cb-slide-in-right 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.chat-panel {
+  animation: cb-fade-in 180ms ease-out;
+}
+
+.navigator-details[open] > :not(summary),
+.sample-guide[open] > .sample-guide-body,
+.source-file-popover,
+.answer-route-popover,
+.graph-node-list {
+  animation: cb-rise-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }

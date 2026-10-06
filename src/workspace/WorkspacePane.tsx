@@ -155,7 +155,11 @@ export function WorkspacePane({
                 title={expandButtonTitle}
                 aria-label={expandButtonTitle}
               >
-                {focusExpanded ? "Fewer relationships" : `More relationships +${focusExpansion.hiddenByLimit}`}
+                {focusExpanded ? (
+                  <>Fewer<span className="label-extra"> relationships</span></>
+                ) : (
+                  <>More<span className="label-extra"> relationships</span> +{focusExpansion.hiddenByLimit}</>
+                )}
               </button>
             ) : null}
             <button
@@ -205,7 +209,9 @@ export function WorkspacePane({
                 Open source
               </button>
               <button type="button" onClick={onOpenDependencies}>Dependencies</button>
-              <button type="button" className="primary-action ask-action" onClick={onAskAboutNode}>Chat about this</button>
+              <button type="button" className="primary-action ask-action" onClick={onAskAboutNode}>
+                Chat<span className="label-extra"> about this</span>
+              </button>
             </div>
           </section>
         ) : null}

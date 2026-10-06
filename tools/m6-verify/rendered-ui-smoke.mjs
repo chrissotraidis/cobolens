@@ -151,7 +151,7 @@ async function main() {
       (await evaluate("document.querySelector('.sample-library-dialog')?.innerText ?? ''")).includes("CardDemo system"),
       "sample library includes the large public corpus",
     );
-    await click(".sample-card:first-child .primary-action");
+    await click(".sample-card:first-child .sample-open");
     await waitFor(
       () => evaluate("document.querySelector('.project-strip')?.innerText.includes('Sample · Lineage quick tour')"),
       "browser sample graph label",
@@ -760,11 +760,11 @@ async function loadAskExpansionSmokeGraph() {
 
 async function verifyResponsiveLayout() {
   await setViewport(900, 900);
-  await waitFor(async () => (await responsiveLayoutState()).singleColumn, "tablet uses workspace-first single-column layout");
+  await waitFor(async () => (await responsiveLayoutState()).tabletChatBeside, "tablet keeps Chat beside the map");
   const tablet = await responsiveLayoutState();
   assertEqual(tablet.paneDividerDisplay, "none", "tablet layout hides horizontal resize handle");
-  assert(tablet.inspectorOverlay, "tablet layout opens Ask as an overlay drawer");
-  assert(tablet.centerFillsShell, "tablet layout keeps the workspace full-height behind the drawer");
+  assert(!tablet.inspectorOverlay, "tablet layout does not cover the map with Chat");
+  assert(tablet.tabletChatBeside, "tablet layout places Chat beside a full-height map");
   assert(tablet.toolbarInsideViewport, "tablet layout keeps the workspace toolbar inside the viewport");
   assertEqual(tablet.sourceLineWhiteSpace, "pre", "tablet Source preserves code line integrity");
   assert(tablet.chatSuggestionsFit, "tablet Chat suggestions wrap inside the inspector");
@@ -865,6 +865,9 @@ async function responsiveLayoutState() {
       paneDividerDisplay: getComputedStyle(document.querySelector('.pane-divider')).display,
       inspectorOverlay: inspectorStyle?.position === 'fixed',
       centerFillsShell: Boolean(center && shellRect && Math.abs(center.width - shellRect.width) <= 2 && Math.abs(center.height - shellRect.height) <= 2),
+      tabletChatBeside: Boolean(center && inspector && shellRect && inspectorStyle?.position !== 'fixed' &&
+        Math.abs(center.width + inspector.width - shellRect.width) <= 2 && Math.abs(center.height - shellRect.height) <= 2 &&
+        center.right <= inspector.left + 1),
       toolbarInsideViewport: toolbarControls.every(insideViewport),
       topbarControlsInsideViewport: topbarControls.every(insideViewport),
       topbarControls,

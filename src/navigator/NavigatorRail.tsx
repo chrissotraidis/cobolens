@@ -106,7 +106,13 @@ export function NavigatorRail({
           <ol>
             {guideStops.map((stop) => (
               <li key={stop.nodeId}>
-                <button type="button" disabled={!stop.node} onClick={() => stop.node && onOpenGuideStop(stop.node.id)}>
+                <button
+                  type="button"
+                  className={stop.node?.id === selectedNodeId ? "is-current" : undefined}
+                  aria-current={stop.node?.id === selectedNodeId ? "step" : undefined}
+                  disabled={!stop.node}
+                  onClick={() => stop.node && onOpenGuideStop(stop.node.id)}
+                >
                   {stop.label}
                 </button>
               </li>

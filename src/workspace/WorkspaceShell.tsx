@@ -7,6 +7,8 @@ type WorkspaceShellProps = {
   railCollapsed: boolean;
   inspectorCollapsed: boolean;
   rightWidthPx: number;
+  overlayLayout: boolean;
+  onDismissNavigator: () => void;
   navigator: ComponentProps<typeof NavigatorRail>;
   workspace: ComponentProps<typeof WorkspacePane>;
   inspector: ComponentProps<typeof InspectorPane>;
@@ -16,6 +18,8 @@ export function WorkspaceShell({
   railCollapsed,
   inspectorCollapsed,
   rightWidthPx,
+  overlayLayout,
+  onDismissNavigator,
   navigator,
   workspace,
   inspector,
@@ -33,6 +37,9 @@ export function WorkspaceShell({
       style={{ ["--right-w" as string]: `${rightWidthPx}px` }}
     >
       <NavigatorRail {...navigator} />
+      {overlayLayout && !railCollapsed ? (
+        <button type="button" className="drawer-scrim" aria-label="Close navigator" tabIndex={-1} onClick={onDismissNavigator} />
+      ) : null}
       <WorkspacePane {...workspace} />
       {inspectorCollapsed ? null : <InspectorPane {...inspector} />}
     </section>

@@ -49,6 +49,9 @@ function App() {
     inspectorCollapsed,
     openInspector,
     closeInspector,
+    overlayLayout,
+    dismissNavigatorDrawer,
+    revealNavigatorDrawer,
     rightWidthPx,
     startInspectorResize,
     resetInspectorWidth,
@@ -294,7 +297,11 @@ function App() {
         scanSettings,
         browserImportInputRef,
         onToggleRail: toggleRailCollapsed,
-        onQueryChange: setQuery,
+        onQueryChange: (nextQuery: string) => {
+          setQuery(nextQuery);
+          // Search results live in the navigator; show it when it is a hidden drawer.
+          if (nextQuery.trim()) revealNavigatorDrawer();
+        },
         onSearchKeyDown: handleSearchKeyDown,
         onHome: () => goHome(clearSearch),
         onChooseFolder: chooseFolder,
@@ -354,6 +361,8 @@ function App() {
         railCollapsed,
         inspectorCollapsed,
         rightWidthPx,
+        overlayLayout,
+        onDismissNavigator: dismissNavigatorDrawer,
         navigator: {
           root: project.root,
           status: project.status,
@@ -369,9 +378,18 @@ function App() {
           counts,
           unreferencedSourceUnits,
           onRescan: rescanCurrent,
-          onFocusSearchResult: focusOnSearchResult,
-          onSelectSourceNode: focusOnMapNode,
-          onOpenGuideStop: readNodeSource,
+          onFocusSearchResult: (nodeId: string) => {
+            focusOnSearchResult(nodeId);
+            dismissNavigatorDrawer();
+          },
+          onSelectSourceNode: (nodeId: string) => {
+            focusOnMapNode(nodeId);
+            dismissNavigatorDrawer();
+          },
+          onOpenGuideStop: (nodeId: string) => {
+            readNodeSource(nodeId);
+            dismissNavigatorDrawer();
+          },
           onResetNodeTypeFilters: resetNodeTypeFilters,
           onToggleNodeTypeFilter: toggleNodeTypeFilter,
           onOpenWarning: jumpToCitation,

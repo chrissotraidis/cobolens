@@ -58,7 +58,10 @@ export function SampleLibraryDialog({
                 <small>{sample.scale}</small>
               </div>
               <div className="sample-card-copy">
-                <h3>{sample.name}</h3>
+                <h3>
+                  {sample.name}
+                  {index === 0 ? <span className="sample-card-start">Start here</span> : null}
+                </h3>
                 <p>{sample.description}</p>
               </div>
               <dl className="sample-card-stats">
@@ -74,10 +77,9 @@ export function SampleLibraryDialog({
               <p className="sample-card-focus"><strong>Exercises</strong> {sample.focus}</p>
               <div className="sample-card-footer">
                 <span>{sample.license}</span>
-                {/* The first scenario is the recommended start, so it alone is filled. */}
                 <button
                   type="button"
-                  className={index === 0 ? "primary-action" : undefined}
+                  className="sample-open"
                   onClick={() => onSelect(sample.id)}
                   disabled={Boolean(loadingSampleId)}
                 >

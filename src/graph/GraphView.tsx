@@ -135,7 +135,7 @@ export function GraphView({
     // Fit the whole focus slice. Labels draw to the right of each node, so
     // bias the view slightly left; the selection bar overlays the bottom
     // edge, so lift the slice a little as well.
-    renderer.getCamera().setState({ ratio: compactCanvas ? 1.26 : 1.1, x: 0.57, y: 0.47 });
+    renderer.getCamera().setState({ ratio: compactCanvas ? 1.32 : 1.1, x: compactCanvas ? 0.6 : 0.57, y: 0.47 });
 
     renderer.on("clickNode", ({ node }) => {
       if (slice.syntheticNodeIds.has(node)) {

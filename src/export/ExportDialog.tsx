@@ -86,7 +86,7 @@ export function ExportDialog({
             Cancel
           </button>
           <button type="button" className="primary-action" onClick={onConfirm} disabled={exporting || selectedCount === 0}>
-            {exporting ? "Exporting" : `Export ${selectedCount || ""}`.trim()}
+            {exporting ? "Exporting…" : selectedCount ? `Export ${selectedCount} file${selectedCount === 1 ? "" : "s"}` : "Export"}
           </button>
         </div>
       </section>

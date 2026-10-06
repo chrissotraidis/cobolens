@@ -158,10 +158,18 @@ Say what failed, what still works, and the smallest recovery action. Never imply
 
 Treat panes as modes, not as a long desktop layout stacked vertically. Preserve readable type and touch targets; hide secondary desktop controls before shrinking them.
 
-At tablet and windowed widths, Navigator and Inspector are overlay drawers over
-the full-height canvas. Opening or closing Chat must not resize Sigma or leave an
-empty lower half of the application. At phone widths, the Inspector becomes a
-full-width drawer below the two-row top bar.
+Layout follows the space each area actually has:
+
+- **Desktop (above 1024px):** Navigator, map or source, and Chat sit side by side.
+- **Tablet (761 to 1024px):** Chat stays beside the map so nothing hides under it;
+  the Navigator is a drawer with a dimmed backdrop that closes after a choice.
+- **Phone (760px and below):** a two-row top bar; Chat is a full-screen panel and
+  the Navigator is a drawer. Typing a search opens the Navigator so results show.
+
+The map toolbar and selection bar respond to the width of the map pane itself
+(CSS container queries), shortening labels ("More +242", "Chat") before
+anything wraps or clips. Panels and dialogs enter with short eased motion;
+reduced-motion settings remove it.
 
 ## Product Review Questions
 

@@ -628,29 +628,31 @@ const checks = [
       ]),
   ],
   [
-    "Tablet and mobile breakpoints keep the canvas full-height and use overlay panes",
-    // The live browser audit proves the overlay drawer behavior. This source
-    // check keeps the responsive contract from regressing to stacked panes.
+    "Tablet keeps Chat beside the map; phone and navigator use drawers; map controls size to their pane",
+    // The rendered browser smoke proves the layouts at 900px and 430px. This
+    // source check keeps the responsive contract from regressing to stacked
+    // panes or to a Chat drawer that covers map controls.
     includesAll(appCss, [
       "@media (max-width: 1024px)",
-      "@media (max-width: 560px)",
+      "@media (max-width: 760px)",
       ".shell.inspector-collapsed",
       ".center-pane",
       ".right-pane",
       ".left-pane",
       ".center-source-view",
-      ".button-row.two",
       ".center-toolbar .graph-toolbar-actions button",
-      ".topbar-actions .rail-toggle",
       ".center-toolbar-meta.is-source",
+      ".drawer-scrim",
+      "container: workspace / inline-size;",
+      "@container workspace (max-width: 640px)",
     ]) &&
     includesAll(appCss, [
-        "position: relative;",
-        "grid-template-columns: minmax(0, 1fr);",
+        "grid-template-columns: minmax(0, 1fr) min(var(--right-w, 400px), 46vw);",
         "grid-template-rows: minmax(0, 1fr);",
         "position: fixed;",
         "top: 52px;",
-        "width: min(480px, calc(100vw - 12px));",
+        "top: 88px;",
+        "width: min(340px, calc(100vw - 56px));",
       ]) &&
       includesAll(workspaceNavigationSource, [
         "function showCenterView(view: CenterView)",

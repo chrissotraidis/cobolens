@@ -7,6 +7,13 @@ export function readLayoutFlag(key: string, fallback: boolean) {
   }
 }
 
+// Matches the CSS breakpoint where the navigator and inspector become drawers.
+export const OVERLAY_LAYOUT_QUERY = "(max-width: 1024px)";
+
+export function isOverlayLayout() {
+  return typeof window !== "undefined" && Boolean(window.matchMedia?.(OVERLAY_LAYOUT_QUERY).matches);
+}
+
 export function readLayoutNumber(key: string, fallback: number, min: number, max: number) {
   try {
     const value = Number(window.localStorage.getItem(key));

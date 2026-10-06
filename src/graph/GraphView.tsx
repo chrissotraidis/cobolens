@@ -120,8 +120,8 @@ export function GraphView({
       // overlapping, and adapt automatically to the pane size (more on a wide
       // desktop pane, fewer on a narrow phone) instead of forcing every label.
       // Lower density + larger cells => fewer, non-overlapping labels.
-      labelDensity: compactCanvas ? 0.22 : 0.5,
-      labelGridCellSize: compactCanvas ? 126 : 96,
+      labelDensity: compactCanvas ? 0.22 : 0.4,
+      labelGridCellSize: compactCanvas ? 126 : 136,
       labelRenderedSizeThreshold: compactCanvas ? 8 : 6,
       labelSize: compactCanvas ? 11.5 : 12.5,
       labelWeight: "600",
@@ -132,7 +132,10 @@ export function GraphView({
       // focus slice in so it fills the pane instead of floating as a speck.
       stagePadding: compactCanvas ? 46 : 70,
     });
-    renderer.getCamera().setState({ ratio: compactCanvas ? 1.18 : 0.86 });
+    // Fit the whole focus slice. Labels draw to the right of each node, so
+    // bias the view slightly left; the selection bar overlays the bottom
+    // edge, so lift the slice a little as well.
+    renderer.getCamera().setState({ ratio: compactCanvas ? 1.26 : 1.1, x: 0.57, y: 0.47 });
 
     renderer.on("clickNode", ({ node }) => {
       if (slice.syntheticNodeIds.has(node)) {
@@ -188,14 +191,14 @@ export function GraphView({
 
   if (!graph) {
     return (
-      <div className="graph-empty">
+      <div key="graph-welcome" className="graph-empty">
         <div className="graph-empty-card">
           <span className="graph-empty-kicker">Evidence-first codebase investigation</span>
           <strong>Understand unfamiliar COBOL without guessing.</strong>
           <p>Follow a dependency through the map, open the exact source, and ask questions that stay tied to evidence.</p>
           <div className="graph-empty-actions">
             {desktopAvailable ? <button type="button" className="primary-action" onClick={onImportProject}>Import a project</button> : null}
-            <button type="button" onClick={onOpenSample}>Explore samples</button>
+            <button type="button" className={desktopAvailable ? undefined : "primary-action"} onClick={onOpenSample}>Explore samples</button>
           </div>
           <span className="graph-empty-assurance">No account. AI is optional. Your graph works on its own.</span>
         </div>
@@ -205,7 +208,7 @@ export function GraphView({
 
   if (!slice) {
     return (
-      <div className="graph-empty">
+      <div key="graph-no-focus" className="graph-empty">
         <div className="graph-empty-card">
           <strong>No focus node available</strong>
           <span>Use Sample or re-scan the selected project.</span>
@@ -216,7 +219,10 @@ export function GraphView({
 
   return (
     <>
-      <div ref={containerRef} className="sigma-canvas" />
+      {/* Sigma owns this element's children and clears them on kill(). The key
+          stops React from reusing it for an empty state, whose content Sigma
+          would then delete out from under React. */}
+      <div key="sigma-canvas" ref={containerRef} className="sigma-canvas" />
       <div className="graph-minimap" aria-label="Graph orientation">
         <span>{slice.visibleNodeIds.size} visible</span>
         <span>{graph.nodes.length} indexed</span>
@@ -382,7 +388,9 @@ function layoutNodes(nodes: GraphNode[], focusNodeId: string) {
       const ring = index % 2 === 0 ? radius : radius * 0.72;
       return {
         node,
-        x: Math.cos(angle) * ring,
+        // A slightly narrow ellipse leaves horizontal room for labels,
+        // which always extend to the right of their node.
+        x: Math.cos(angle) * ring * 0.8,
         y: Math.sin(angle) * ring,
       };
     }),
